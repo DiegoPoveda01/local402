@@ -32,7 +32,8 @@
   .price { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
   .price small { font-size: 15px; color: var(--muted); font-weight: 400; margin-left: 6px; }
   .meta { color: var(--muted); font-size: 13px; }
-  .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .buttons { display: grid; grid-template-columns: auto repeat(3, 1fr); align-items: center; gap: 8px; }
+  .buttons span { color: var(--muted); font-size: 13px; }
   button { font: inherit; font-weight: 600; border-radius: 10px; border: 1px solid transparent; padding: 9px 14px; cursor: pointer; color: #0d1017; }
   button.usdc { background: var(--usdc); }
   button.xlm { background: var(--xlm); }
@@ -57,6 +58,9 @@
   .pill.xlm { background: rgba(181,140,255,.15); color: var(--xlm); }
   .pill.eurc { background: rgba(62,207,196,.15); color: var(--eurc); }
   .empty { color: var(--muted); padding: 24px; text-align: center; }
+  .integrate { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .integrate .card pre { margin: 0; background: #0f131b; border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 13px; overflow-x: auto; color: var(--text); }
+  .integrate .k { color: var(--xlm); } .integrate .s { color: var(--ok); } .integrate .c { color: var(--muted); }
   .row-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
 </style>
 </head>
@@ -79,6 +83,27 @@
 
   <h2>Productos</h2>
   <div class="products" id="products"></div>
+
+  <h2>Integración</h2>
+  <div class="integrate">
+    <div class="card">
+      <h3>Vendedor: una línea por ruta</h3>
+<pre><span class="k">app</span>.use(paymentMiddleware({
+  <span class="s">"GET /indicadores"</span>: localRoute(<span class="s">"50 CLP"</span>, { payTo }),
+  <span class="s">"GET /uf"</span>: localRoute(<span class="s">"0.01 UF"</span>, { payTo }),
+}, local402Server()));</pre>
+      <div class="meta">Acepta USDC (<code>exact</code>) y XLM/EURC (<code>exact-fx</code>) con la misma cotización. También para herramientas MCP: <code>localToolPayment(server, "20 CLP", …)</code>.</div>
+    </div>
+    <div class="card">
+      <h3>Agentes: MCP con límites</h3>
+<pre><span class="c">// .mcp.json → servidor local402</span>
+local402_discover  <span class="c">busca servicios (x402 Bazaar)</span>
+local402_quote     <span class="c">precio local y tasa</span>
+local402_pay       <span class="c">paga con USDC, XLM o EURC</span>
+local402_wallet    <span class="c">saldo y presupuesto</span></pre>
+      <div class="meta" id="discovery">El agente verifica la tasa del vendedor con su propio oráculo, respeta <code>MAX_PRICE</code> y un presupuesto por sesión (<code>BUDGET</code>). · <b id="discovery-count">…</b></div>
+    </div>
+  </div>
 
   <div class="row-head">
     <h2>Recibos</h2>
@@ -120,6 +145,7 @@ async function loadCatalog() {
   }
   $("network").innerHTML = `<b>●</b> ${catalog.network} · vendedor <span class="mono">${short(catalog.payTo)}</span>`;
   for (const item of catalog.items) renderProduct(item);
+  $("discovery-count").textContent = catalog.discovered == null ? "facilitador sin catálogo" : `${catalog.discovered} recursos en el catálogo Bazaar del facilitador`;
 }
 
 function renderProduct(item) {
@@ -134,13 +160,12 @@ function renderProduct(item) {
       <div class="meta desc"></div>
       <div class="price"></div>
       <div class="meta rate"></div>
-      <div class="buttons">
-      </div>
+      <div class="buttons"><span>Pagar con</span></div>
       <div class="result" hidden></div>`;
     for (const asset of catalog.payAssets) {
       const button = document.createElement("button");
       button.className = asset.toLowerCase();
-      button.textContent = `Pagar con ${asset}`;
+      button.textContent = asset;
       button.onclick = () => pay(item.path, asset, card);
       card.querySelector(".buttons").append(button);
     }
