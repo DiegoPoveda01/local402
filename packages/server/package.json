@@ -5,13 +5,16 @@
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./mcp": "./src/mcp.ts"
   },
   "dependencies": {
     "@local402/fx": "*",
     "@local402/pricing": "*",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@x402/core": "2.25.0",
-    "@x402/stellar": "2.25.0",
-    "@x402/extensions": "2.25.0"
+    "@x402/extensions": "2.25.0",
+    "@x402/mcp": "2.25.0",
+    "@x402/stellar": "2.25.0"
   }
 }
