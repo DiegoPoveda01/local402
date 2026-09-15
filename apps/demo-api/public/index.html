@@ -3,185 +3,355 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Local402</title>
+<title>Local402 · Cobra en tu moneda</title>
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0d1017; --panel: #151a24; --line: #232a38; --text: #e8ecf3; --muted: #8a94a8; --term: #0a0d13;
-    --accent: #f5c542; --usdc: #4d8dff; --xlm: #b58cff; --eurc: #3ecfc4; --ok: #3ecf8e; --err: #ff6b6b;
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --bg: #0a0908; --bg-elev: #110f0d; --bg-elev-2: #171512;
+    --fg: #f3efe7; --fg-muted: rgba(243,239,231,.66); --fg-dim: rgba(243,239,231,.42);
+    --border: rgba(243,239,231,.09); --border-strong: rgba(243,239,231,.18);
+    --copper: #e38b5a; --copper-muted: rgba(227,139,90,.12);
+    --green: #8be3a8; --red: #ff8a7a;
+    --usdc: #8ab4ff; --xlm: #c8a8ff; --eurc: #7fdccf;
+    --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+    --sans: "Geist", -apple-system, "Segoe UI", system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; }
-  main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 64px; }
-  a { color: var(--accent); }
-  code, .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .86em; }
-  nav { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
-  .logo { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
-  .logo span, h1 em { color: var(--accent); font-style: normal; }
-  .badge { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; color: var(--muted); font-size: 13px; }
-  .badge b { color: var(--ok); font-weight: 600; }
-  .hero { padding: 48px 0 28px; }
-  h1 { margin: 0; font-size: clamp(34px, 6vw, 56px); line-height: 1.05; letter-spacing: -.03em; max-width: 820px; }
-  .lead { color: var(--muted); font-size: 18px; max-width: 680px; margin: 16px 0 0; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
-  .chips span { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
-  .chips span::before { content: "●"; color: var(--ok); margin-right: 6px; font-size: 9px; vertical-align: 2px; }
-  .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
-  .cta a { text-decoration: none; font-weight: 600; border-radius: 10px; padding: 10px 16px; border: 1px solid var(--line); color: var(--text); }
-  .cta a.primary { background: var(--accent); color: #0d1017; border-color: var(--accent); }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 44px 0 6px; }
-  .sub { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
-  .stat div { font-size: 22px; font-weight: 700; }
-  .stat span { color: var(--muted); font-size: 13px; }
-  .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-  .step { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
-  .step small { color: var(--accent); font-weight: 600; }
-  .step p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
-  .products, .integrate { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-  .card h3 { margin: 0; font-size: 17px; }
-  .price { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
-  .price small { font-size: 15px; color: var(--muted); font-weight: 400; margin-left: 6px; }
-  .meta { color: var(--muted); font-size: 13px; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--copper); color: var(--bg); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 24px; }
+  a { color: inherit; }
+  code, .mono { font-family: var(--mono); font-size: .88em; }
+  em { font-style: italic; color: var(--copper); }
+
+  /* Nav */
+  nav { position: sticky; top: 0; z-index: 10; background: rgba(10,9,8,.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+  nav .wrap { display: flex; align-items: center; gap: 28px; height: 60px; }
+  .logo { display: flex; align-items: center; gap: 9px; text-decoration: none; font-family: var(--serif); font-size: 25px; letter-spacing: -.01em; }
+  .logo img { width: 26px; height: 26px; }
+  .logo i { color: var(--copper); margin-left: 1px; padding-right: 2px; }
+  .links { display: flex; gap: 22px; font-size: 14px; color: var(--fg-muted); }
+  .links a { text-decoration: none; } .links a:hover { color: var(--fg); }
+  .badge { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--fg-muted); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); margin-right: 8px; vertical-align: 1px; }
+
+  /* Hero */
+  .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--border); }
+  .hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(640px 420px at 78% 45%, rgba(227,139,90,.14), transparent 70%), radial-gradient(900px 500px at 10% 0%, rgba(243,239,231,.04), transparent 60%); pointer-events: none; }
+  .rings { position: absolute; right: -120px; top: 50%; width: 720px; height: 720px; transform: translateY(-50%); pointer-events: none; }
+  .hero .wrap { position: relative; display: grid; grid-template-columns: 1.45fr 1fr; gap: 48px; align-items: center; padding-block: 96px 88px; }
+  .eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--copper); }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(50px, 6.6vw, 84px); line-height: .98; letter-spacing: -.025em; margin: 20px 0 0; }
+  .lead { color: var(--fg-muted); font-size: 18px; max-width: 520px; margin: 24px 0 0; }
+  .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 500; font-size: 14.5px; border-radius: 999px; padding: 11px 20px; border: 1px solid var(--border-strong); }
+  .btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .btn:hover { border-color: var(--fg); }
+
+  /* Live quote ticket */
+  .ticket { background: linear-gradient(180deg, var(--bg-elev-2), var(--bg-elev)); border: 1px solid var(--border-strong); border-radius: 18px; padding: 22px 24px; box-shadow: 0 40px 120px -40px #000; font-family: var(--mono); font-size: 12.5px; color: var(--fg-dim); transform: rotate(1.5deg); }
+  .ticket .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; }
+  .ticket .cut { border-top: 1px dashed var(--border-strong); margin: 14px -24px; position: relative; }
+  .ticket .cut::before, .ticket .cut::after { content: ""; position: absolute; top: -10px; width: 20px; height: 20px; border-radius: 50%; background: var(--bg); border: 1px solid var(--border-strong); }
+  .ticket .cut::before { left: -11px; } .ticket .cut::after { right: -11px; }
+  .ticket .big { font-family: var(--serif); font-size: 64px; line-height: 1; color: var(--fg); letter-spacing: -.02em; margin: 14px 0 6px; }
+  .ticket .status { color: var(--copper); }
+  .ticket .v { color: var(--fg); }
+  .assets { display: flex; gap: 6px; }
+
+  /* Stats band */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); }
+  .stat { padding: 28px 24px 26px; border-left: 1px solid var(--border); min-width: 0; }
+  .stat:first-child { border-left: 0; padding-left: 0; }
+  .stat .value { font-family: var(--serif); font-size: 38px; line-height: 1.1; margin-top: 10px; overflow-wrap: anywhere; }
+  .stat .note { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--fg-dim); margin-top: 4px; }
+
+  /* Sections */
+  section { padding-block: 104px 0; }
+  h1, h2, .split h3 { text-wrap: balance; }
+  h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(36px, 4.6vw, 56px); line-height: 1.04; letter-spacing: -.02em; margin: 14px 0 0; max-width: 820px; }
+  .sub { color: var(--fg-muted); font-size: 16px; max-width: 620px; margin: 16px 0 36px; }
+  .card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .meta { color: var(--fg-muted); font-size: 13.5px; }
+  .label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-dim); }
+
+  /* Products */
+  .products { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .card h3 { margin: 0; font-family: var(--mono); font-weight: 500; font-size: 13px; color: var(--copper); }
+  .price { font-family: var(--serif); font-size: 48px; line-height: 1; letter-spacing: -.02em; margin-top: 6px; }
+  .price small { display: block; font-family: var(--mono); font-size: 12px; color: var(--fg-dim); letter-spacing: 0; margin-top: 8px; }
+  .card .desc { min-height: 3.1em; }
+  .rate { font-size: 12.5px; color: var(--fg-dim); }
+  button { font: inherit; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--fg); border: 1px solid var(--border-strong); border-radius: 999px; padding: 9px 14px; font-size: 13.5px; font-weight: 500; }
+  button.ghost:hover { border-color: var(--fg); }
   .buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  button { font: inherit; font-weight: 600; border-radius: 10px; border: 1px solid transparent; padding: 9px 12px; cursor: pointer; color: #0d1017; }
-  button.usdc { background: var(--usdc); }
-  button.xlm { background: var(--xlm); }
-  button.eurc { background: var(--eurc); }
-  button.ghost { background: transparent; border-color: var(--line); color: var(--text); font-weight: 500; }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  .term { background: var(--term); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-top: 16px; min-height: 200px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre; color: var(--muted); max-height: 420px; overflow-y: auto; }
-  .term .h { color: var(--text); } .term .y { color: var(--accent); } .term .g { color: var(--ok); } .term .r { color: var(--err); } .term .v { color: var(--xlm); }
-  .calc { display: grid; grid-template-columns: minmax(260px, 1fr) 2fr; gap: 16px; align-items: start; }
-  .calc form { display: flex; gap: 8px; }
-  .calc input { flex: 1; min-width: 0; font: inherit; font-size: 20px; font-weight: 600; background: var(--term); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+  button.pay { border-radius: 999px; padding: 9px 10px; font-family: var(--mono); font-size: 12.5px; font-weight: 500; border: 1px solid; transition: background .15s, color .15s; }
+  button.pay::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 7px; vertical-align: 1px; }
+  button.usdc { color: var(--usdc); border-color: rgba(138,180,255,.35); background: rgba(138,180,255,.07); }
+  button.xlm { color: var(--xlm); border-color: rgba(200,168,255,.35); background: rgba(200,168,255,.07); }
+  button.eurc { color: var(--eurc); border-color: rgba(127,220,207,.35); background: rgba(127,220,207,.07); }
+  button.pay:hover:not(:disabled) { color: var(--bg); }
+  button.usdc:hover:not(:disabled) { background: var(--usdc); } button.xlm:hover:not(:disabled) { background: var(--xlm); } button.eurc:hover:not(:disabled) { background: var(--eurc); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Terminal windows */
+  .window { margin-top: 14px; background: #070605; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; min-width: 0; }
+  .window-bar { display: flex; align-items: center; gap: 6px; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+  .window-bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--border-strong); }
+  .window-bar span { margin-left: 10px; font-family: var(--mono); font-size: 11px; color: var(--fg-dim); }
+  .term { padding: 16px 18px; min-height: 210px; max-height: 440px; overflow: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; white-space: pre; color: var(--fg-dim); }
+  .term .h { color: var(--fg); } .term .y { color: var(--copper); } .term .g { color: var(--green); } .term .r { color: var(--red); } .term .v { color: var(--xlm); }
+  .term a { color: var(--copper); }
+
+  /* Calculator */
+  .calc { display: grid; grid-template-columns: minmax(280px, 1fr) 1.6fr; gap: 14px; align-items: stretch; }
+  .calc form { display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border-strong); padding-bottom: 8px; }
+  .calc input { flex: 1; min-width: 0; font-family: var(--serif); font-size: 42px; background: transparent; color: var(--fg); border: 0; outline: 0; padding: 0; }
   .presets { display: flex; flex-wrap: wrap; gap: 6px; }
-  .presets button { padding: 4px 10px; font-size: 13px; }
-  .amounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-  .amount { border-radius: 12px; padding: 14px 16px; border: 1px solid var(--line); background: var(--panel); }
-  .amount div { font-size: 22px; font-weight: 700; overflow-wrap: anywhere; }
-  .amount.usdc { border-top: 3px solid var(--usdc); } .amount.xlm { border-top: 3px solid var(--xlm); } .amount.eurc { border-top: 3px solid var(--eurc); }
-  .table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; margin-top: 12px; }
+  .presets button { padding: 4px 11px; font-family: var(--mono); font-size: 12px; }
+  .amounts { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: 14px; background: var(--bg-elev); }
+  .amount { padding: 22px; border-left: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between; gap: 18px; min-width: 0; }
+  .amount:first-child { border-left: 0; }
+  .amount div { font-family: var(--serif); font-size: 38px; line-height: 1.05; overflow-wrap: anywhere; }
+  .amount .label::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+  .amount.usdc .label::before { background: var(--usdc); } .amount.xlm .label::before { background: var(--xlm); } .amount.eurc .label::before { background: var(--eurc); }
+
+  /* Flow */
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .step { padding: 24px 22px 28px; border-left: 1px solid var(--border); background: var(--bg-elev); }
+  .step:first-child { border-left: 0; }
+  .step h3 { font-family: var(--serif); font-weight: 400; font-size: 25px; line-height: 1.15; margin: 14px 0 8px; }
+  .step p { margin: 0; color: var(--fg-muted); font-size: 14px; }
+
+  /* Integration */
+  .split { display: grid; grid-template-columns: 1fr 1.25fr; gap: 48px; align-items: center; }
+  .split + .split { margin-top: 64px; }
+  .split h3 { font-family: var(--serif); font-weight: 400; font-size: clamp(32px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -.015em; margin: 12px 0 12px; }
+  .split p { color: var(--fg-muted); margin: 0 0 14px; }
+  .split .window { margin: 0; }
+  pre.code { margin: 0; padding: 18px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.75; overflow-x: auto; color: var(--fg); }
+  .k { color: var(--xlm); } .s { color: var(--green); } .c { color: var(--fg-dim); }
+  .discovery { font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--green); }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-elev); }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  th, td { text-align: left; padding: 13px 18px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { font-family: var(--mono); font-weight: 400; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-dim); }
   tr:last-child td { border-bottom: 0; }
-  .compare td { white-space: normal; min-width: 180px; }
-  .compare td:first-child { color: var(--muted); min-width: 140px; }
-  .compare td:last-child { color: var(--text); }
-  .yes { color: var(--ok); font-weight: 600; } .no { color: var(--muted); }
-  tr.new { animation: flash 1.6s ease-out; }
-  @keyframes flash { from { background: rgba(245,197,66,.18); } to { background: transparent; } }
-  .pill { border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
-  .pill.usdc { background: rgba(77,141,255,.15); color: var(--usdc); }
-  .pill.xlm { background: rgba(181,140,255,.15); color: var(--xlm); }
-  .pill.eurc { background: rgba(62,207,196,.15); color: var(--eurc); }
-  .empty { color: var(--muted); padding: 24px; text-align: center; }
-  .integrate pre { margin: 0; background: var(--term); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 13px; overflow-x: auto; color: var(--text); }
-  .k { color: var(--xlm); } .s { color: var(--ok); } .c { color: var(--muted); }
-  .row-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
-  @media (max-width: 720px) { .calc { grid-template-columns: 1fr; } }
+  .compare td { white-space: normal; min-width: 200px; vertical-align: top; }
+  .compare td:first-child { font-family: var(--serif); font-size: 20px; min-width: 150px; line-height: 1.2; }
+  .compare td.no { color: var(--fg-dim); }
+  .compare th:last-child { color: var(--copper); }
+  .yes { color: var(--copper); margin-right: 8px; }
+  tr.new { animation: flash 1.8s ease-out; }
+  @keyframes flash { from { background: var(--copper-muted); } to { background: transparent; } }
+  .pill { font-family: var(--mono); border-radius: 999px; padding: 2px 8px; font-size: 11px; border: 1px solid; }
+  .pill.usdc { color: var(--usdc); border-color: rgba(138,180,255,.3); }
+  .pill.xlm { color: var(--xlm); border-color: rgba(200,168,255,.3); }
+  .pill.eurc { color: var(--eurc); border-color: rgba(127,220,207,.3); }
+  .empty { color: var(--fg-dim); padding: 36px; text-align: center; font-family: var(--serif); font-size: 22px; font-style: italic; }
+  .row-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 36px; }
+  .link { font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; color: var(--fg); }
+  .link:hover { color: var(--copper); }
+
+  /* Footer */
+  footer { margin-top: 128px; border-top: 1px solid var(--border); }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 32px 48px; justify-content: space-between; align-items: start; padding-block: 44px; }
+  footer p { color: var(--fg-dim); font-size: 13px; max-width: 320px; margin: 12px 0 0; }
+  footer .cols { display: flex; flex-wrap: wrap; gap: 56px; }
+  footer .cols div { display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; color: var(--fg-muted); }
+  footer .cols a { text-decoration: none; } footer .cols a:hover { color: var(--fg); }
+
+  @media (max-width: 900px) {
+    .card .desc { min-height: 0; }
+    .hero .wrap, .split, .calc { grid-template-columns: 1fr; }
+    .split { gap: 20px; }
+    .hero .wrap { padding-block: 64px; gap: 44px; }
+    .ticket { transform: none; }
+    .products, .grid4 { grid-template-columns: 1fr; }
+    .step { border-left: 0; border-top: 1px solid var(--border); } .step:first-child { border-top: 0; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stat:nth-child(3) { border-left: 0; padding-left: 0; } .stat:nth-child(n+3) { border-top: 1px solid var(--border); }
+    .links { display: none; }
+    section { padding-top: 80px; }
+  }
+  @media (max-width: 560px) {
+    .amounts { grid-template-columns: 1fr; } .amount { border-left: 0; border-top: 1px solid var(--border); } .amount:first-child { border-top: 0; }
+    .stat { padding-inline: 14px; } .stat .value { font-size: 28px; }
+    .badge { max-width: 190px; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <nav>
-    <div class="logo">Local<span>402</span></div>
+<nav>
+  <div class="wrap">
+    <a class="logo" href="#"><img src="/logo.svg" alt=""><span>Local<i>402</i></span></a>
+    <div class="links"><a href="#probar">Probar</a><a href="#calculadora">Calculadora</a><a href="#integracion">Integración</a><a href="#recibos">Recibos</a></div>
     <div class="badge" id="network">Conectando…</div>
-  </nav>
+  </div>
+</nav>
 
-  <section class="hero">
-    <h1>Cobra en <em>pesos</em>. Recibe USDC exacto.</h1>
-    <p class="lead">Pagos x402 en Stellar con precios en moneda local. Tus clientes, personas o agentes de IA, pagan con USDC, XLM o EURC en una sola transacción.</p>
-    <div class="chips">
-      <span>Stellar testnet</span><span>Oráculo Reflector on-chain</span><span>Swap atómico en Soroswap</span><span>x402 v2 + MCP</span>
+<header class="hero">
+  <svg class="rings" viewBox="0 0 720 720" fill="none" aria-hidden="true">
+    <circle cx="360" cy="360" r="150" stroke="rgba(243,239,231,.07)"/>
+    <circle cx="360" cy="360" r="240" stroke="rgba(243,239,231,.05)"/>
+    <circle cx="360" cy="360" r="340" stroke="rgba(243,239,231,.035)"/>
+  </svg>
+  <div class="wrap">
+    <div>
+      <div class="eyebrow"><span class="dot"></span>x402 en Stellar · precios en moneda local</div>
+      <h1>Cobra en <em>pesos</em>.<br>Recibe USDC exacto.</h1>
+      <p class="lead">Tus clientes, personas o agentes de IA, pagan con USDC, XLM o EURC. Una sola transacción, tasa de un oráculo on-chain, y el vendedor recibe siempre el monto justo.</p>
+      <div class="cta">
+        <a class="btn primary" href="#probar">Probar un pago real →</a>
+        <a class="btn" href="#calculadora">Calcular un precio</a>
+      </div>
     </div>
-    <div class="cta">
-      <a class="primary" href="#productos">Probar un pago real</a>
-      <a href="#calculadora">Calcular un precio</a>
+    <div class="ticket">
+      <div class="row"><span id="ticket-path">GET /indicadores</span><span class="status">402 · pago requerido</span></div>
+      <div class="big" id="ticket-price">—</div>
+      <div id="ticket-usdc">cotizando con Reflector…</div>
+      <div class="cut"></div>
+      <div class="row"><span>tasa</span><span class="v" id="ticket-rate">—</span></div>
+      <div class="row"><span>fuente</span><span class="v">Oráculo Reflector</span></div>
+      <div class="row"><span>pagar con</span><span class="assets"><span class="pill usdc">USDC</span><span class="pill xlm">XLM</span><span class="pill eurc">EURC</span></span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap stats">
+  <div class="stat"><div class="label">Pagos</div><div class="value" id="stat-count">0</div><div class="note">liquidados on-chain</div></div>
+  <div class="stat"><div class="label">Vendido</div><div class="value" id="stat-local">—</div><div class="note">en moneda local</div></div>
+  <div class="stat"><div class="label">Recibido</div><div class="value" id="stat-usdc">0 USDC</div><div class="note">por el vendedor</div></div>
+  <div class="stat"><div class="label">Con swap</div><div class="value" id="stat-xlm">0</div><div class="note">pagados con XLM o EURC</div></div>
+</div>
+
+<main class="wrap">
+  <section id="probar">
+    <div class="eyebrow">01 — Pruébalo</div>
+    <h2>Tres APIs, tres monedas. <em>Un solo</em> USDC al otro lado.</h2>
+    <p class="sub">«Ver el 402» muestra lo que recibe cualquier cliente x402, sin wallet ni pago. Los botones de color hacen un pago real en testnet con una wallet de demo.</p>
+    <div class="products" id="products"></div>
+    <div class="window">
+      <div class="window-bar"><i></i><i></i><i></i><span>agente@local402</span></div>
+      <div class="term" id="console" aria-live="polite">Cargando…</div>
     </div>
   </section>
 
-  <div class="stats">
-    <div class="stat"><div id="stat-count">0</div><span>pagos liquidados on-chain</span></div>
-    <div class="stat"><div id="stat-local">—</div><span>vendido en moneda local</span></div>
-    <div class="stat"><div id="stat-usdc">0 USDC</div><span>recibido por el vendedor</span></div>
-    <div class="stat"><div id="stat-xlm">0</div><span>pagados con XLM o EURC (swap)</span></div>
-  </div>
-
-  <h2 id="productos">Pruébalo ahora</h2>
-  <p class="sub">Tres APIs reales, cada una con precio en su moneda. «Ver el 402» muestra lo que recibe un cliente sin pagar; los botones de color hacen un pago real en testnet con una wallet de demo.</p>
-  <div class="products" id="products"></div>
-  <div class="term" id="console" aria-live="polite">Cargando…</div>
-
-  <h2 id="calculadora">Pon tu precio</h2>
-  <p class="sub">Cualquier precio en CLP, UF, EUR, BRL o USD, convertido con el oráculo, y lo que costaría ahora pagarlo con cada activo según el contrato FxPay.</p>
-  <div class="calc">
-    <div class="card">
-      <form id="calc-form"><input id="calc-input" value="1500 CLP" aria-label="Precio en moneda local"><button class="ghost">Cotizar</button></form>
-      <div class="presets" id="presets"></div>
-      <div class="meta" id="calc-rate"></div>
+  <section id="calculadora">
+    <div class="eyebrow">02 — Calculadora</div>
+    <h2>Pon tu precio. <em>Nosotros</em> hacemos el cambio.</h2>
+    <p class="sub">Cualquier monto en CLP, UF, EUR, BRL o USD, convertido con el oráculo, y lo que costaría ahora pagarlo con cada activo según el contrato FxPay.</p>
+    <div class="calc">
+      <div class="card">
+        <div class="label">Precio del vendedor</div>
+        <form id="calc-form"><input id="calc-input" value="1500 CLP" aria-label="Precio en moneda local"><button class="ghost">Cotizar</button></form>
+        <div class="presets" id="presets"></div>
+        <div class="rate" id="calc-rate"></div>
+      </div>
+      <div class="amounts" id="calc-amounts"></div>
     </div>
-    <div class="amounts" id="calc-amounts"></div>
-  </div>
+  </section>
 
-  <h2>Cómo funciona</h2>
-  <div class="flow">
-    <div class="step"><small>1 · Precio local</small><p>El vendedor fija <code>"50 CLP"</code> en su ruta x402.</p></div>
-    <div class="step"><small>2 · Oráculo Reflector</small><p>Se convierte a USDC con la tasa on-chain, redondeando a favor del vendedor. La cotización viaja en el 402.</p></div>
-    <div class="step"><small>3 · Paga con lo que tengas</small><p>USDC con <code>exact</code>. XLM o EURC con <code>exact-fx</code>: FxPay swapea en Soroswap dentro de la misma transacción.</p></div>
-    <div class="step"><small>4 · Recibo</small><p>El vendedor recibe el USDC exacto; el sobrante vuelve al cliente. Recibo con tasa, fuente y transacción.</p></div>
-  </div>
+  <section>
+    <div class="eyebrow">03 — Cómo funciona</div>
+    <h2>Cuatro pasos y <em>ningún</em> tipo de cambio a mano.</h2>
+    <p class="sub">Todo ocurre dentro del flujo x402 estándar. Si algo no cuadra, la transacción entera se revierte.</p>
+    <div class="grid4">
+      <div class="step"><div class="eyebrow">01</div><h3>Precio local</h3><p>El vendedor fija <code>"50 CLP"</code> en su ruta x402.</p></div>
+      <div class="step"><div class="eyebrow">02</div><h3>Oráculo Reflector</h3><p>Se convierte a USDC con la tasa on-chain, redondeando a favor del vendedor. La cotización viaja en el 402.</p></div>
+      <div class="step"><div class="eyebrow">03</div><h3>Paga con lo que tengas</h3><p>USDC con <code>exact</code>. XLM o EURC con <code>exact-fx</code>: FxPay swapea en Soroswap en la misma transacción.</p></div>
+      <div class="step"><div class="eyebrow">04</div><h3>Recibo</h3><p>El vendedor recibe el USDC exacto y el sobrante vuelve al cliente. Queda un recibo con tasa, fuente y transacción.</p></div>
+    </div>
+  </section>
 
-  <h2>Integración</h2>
-  <div class="integrate">
-    <div class="card">
-      <h3>Vendedor: una línea por ruta</h3>
-<pre><span class="k">app</span>.use(paymentMiddleware({
+  <section id="integracion">
+    <div class="split">
+      <div>
+        <div class="eyebrow">04 — Vendedores</div>
+        <h3>Una línea por ruta.</h3>
+        <p>Acepta USDC (<code>exact</code>) y XLM o EURC (<code>exact-fx</code>) con la misma cotización. También sirve para herramientas MCP con <code>localToolPayment(server, "20 CLP", …)</code>.</p>
+      </div>
+      <div class="window">
+        <div class="window-bar"><i></i><i></i><i></i><span>server.ts</span></div>
+<pre class="code"><span class="k">app</span>.use(paymentMiddleware({
   <span class="s">"GET /indicadores"</span>: localRoute(<span class="s">"50 CLP"</span>, { payTo }),
   <span class="s">"GET /uf"</span>: localRoute(<span class="s">"0.01 UF"</span>, { payTo }),
 }, local402Server()));</pre>
-      <div class="meta">Acepta USDC (<code>exact</code>) y XLM/EURC (<code>exact-fx</code>) con la misma cotización. También para herramientas MCP: <code>localToolPayment(server, "20 CLP", …)</code>.</div>
+      </div>
     </div>
-    <div class="card">
-      <h3>Agentes: MCP con límites</h3>
-<pre><span class="c">// .mcp.json → servidor local402</span>
-local402_discover  <span class="c">busca servicios (x402 Bazaar)</span>
+    <div class="split">
+      <div>
+        <div class="eyebrow">05 — Agentes</div>
+        <h3>MCP, pero con <em>límites</em>.</h3>
+        <p>El agente verifica la tasa del vendedor con su propio oráculo, respeta <code>MAX_PRICE</code> y un presupuesto por sesión (<code>BUDGET</code>).</p>
+        <div class="discovery" id="discovery-count">…</div>
+      </div>
+      <div class="window">
+        <div class="window-bar"><i></i><i></i><i></i><span>.mcp.json → local402</span></div>
+<pre class="code">local402_discover  <span class="c">busca servicios (x402 Bazaar)</span>
 local402_quote     <span class="c">precio local y tasa</span>
 local402_pay       <span class="c">paga con USDC, XLM o EURC</span>
 local402_wallet    <span class="c">saldo y presupuesto</span></pre>
-      <div class="meta">El agente verifica la tasa del vendedor con su propio oráculo, respeta <code>MAX_PRICE</code> y un presupuesto por sesión (<code>BUDGET</code>). · <b id="discovery-count">…</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">06 — Comparación</div>
+    <h2>x402 hoy, y <em>con</em> Local402.</h2>
+    <p class="sub">Lo que cambia para quien vende y para quien paga.</p>
+    <div class="table-wrap">
+      <table class="compare">
+        <thead><tr><th></th><th>x402 en Stellar hoy</th><th>Con Local402</th></tr></thead>
+        <tbody>
+          <tr><td>Precio</td><td class="no">En dólares; <code>"50 CLP"</code> falla</td><td><span class="yes">✓</span>CLP, UF, EUR, BRL… vía oráculo on-chain</td></tr>
+          <tr><td>El cliente paga con</td><td class="no">Solo el activo exacto (USDC)</td><td><span class="yes">✓</span>USDC, XLM o EURC, con swap atómico</td></tr>
+          <tr><td>El vendedor recibe</td><td class="no">USDC</td><td><span class="yes">✓</span>USDC exacto, sin exposición a XLM</td></tr>
+          <tr><td>Si el swap no alcanza</td><td class="no">—</td><td><span class="yes">✓</span>Se revierte todo; el sobrante vuelve</td></tr>
+          <tr><td>Agentes de IA</td><td class="no">Confían en el precio del vendedor</td><td><span class="yes">✓</span>Verifican la tasa, con tope por pago y presupuesto</td></tr>
+          <tr><td>Contabilidad</td><td class="no">Montos en USDC</td><td><span class="yes">✓</span>Recibo con precio local, tasa y fuente; CSV</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="recibos">
+    <div class="row-head">
+      <div>
+        <div class="eyebrow">07 — Recibos en vivo</div>
+        <h2>Cada venta, <em>lista</em> para contabilidad.</h2>
+      </div>
+      <a href="/receipts.csv" class="link">Exportar CSV →</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Hora</th><th>Recurso</th><th>Precio</th><th>Tasa (USD)</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Transacción</th></tr></thead>
+        <tbody id="receipts"><tr><td colspan="7" class="empty">Aún no hay pagos. Prueba uno arriba.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <a class="logo" href="#"><img src="/logo.svg" alt=""><span>Local<i>402</i></span></a>
+      <p>Pagos x402 con precios en moneda local, liquidados en USDC sobre Stellar. Hecho en Chile para Find Your Way.</p>
+    </div>
+    <div class="cols">
+      <div><span class="label">Proyecto</span><a href="https://github.com/DiegoPoveda01/local402" target="_blank" rel="noopener">GitHub</a><a href="/receipts.csv">Recibos CSV</a></div>
+      <div><span class="label">Construido con</span><a href="https://www.x402.org" target="_blank" rel="noopener">x402</a><a href="https://reflector.network" target="_blank" rel="noopener">Reflector</a><a href="https://soroswap.finance" target="_blank" rel="noopener">Soroswap</a></div>
     </div>
   </div>
-
-  <h2>x402 hoy vs. Local402</h2>
-  <div class="table-wrap">
-    <table class="compare">
-      <thead><tr><th></th><th>x402 en Stellar hoy</th><th>Con Local402</th></tr></thead>
-      <tbody>
-        <tr><td>Precio</td><td class="no">En dólares; <code>"50 CLP"</code> falla</td><td><span class="yes">✓</span> CLP, UF, EUR, BRL… vía oráculo on-chain</td></tr>
-        <tr><td>El cliente paga con</td><td class="no">Solo el activo exacto (USDC)</td><td><span class="yes">✓</span> USDC, XLM o EURC; swap atómico</td></tr>
-        <tr><td>El vendedor recibe</td><td class="no">USDC</td><td><span class="yes">✓</span> USDC exacto, sin exposición a XLM</td></tr>
-        <tr><td>Si el swap no alcanza</td><td class="no">—</td><td><span class="yes">✓</span> Se revierte todo; sobrante devuelto</td></tr>
-        <tr><td>Agentes de IA</td><td class="no">Confían en el precio del vendedor</td><td><span class="yes">✓</span> Verifican la tasa, tope por pago y presupuesto</td></tr>
-        <tr><td>Contabilidad</td><td class="no">Montos en USDC</td><td><span class="yes">✓</span> Recibo con precio local, tasa y fuente; CSV</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="row-head">
-    <h2>Recibos en vivo</h2>
-    <a href="/receipts.csv" class="meta">Exportar CSV</a>
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Hora</th><th>Recurso</th><th>Precio</th><th>Tasa (USD)</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Transacción</th></tr></thead>
-      <tbody id="receipts"><tr><td colspan="7" class="empty">Aún no hay pagos. Prueba uno arriba.</td></tr></tbody>
-    </table>
-  </div>
-</main>
+</footer>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -205,11 +375,21 @@ async function loadCatalog() {
     $("network").textContent = "API no disponible";
     return;
   }
-  $("network").innerHTML = `<b>●</b> ${catalog.network} · vendedor <span class="mono">${short(catalog.payTo)}</span>`;
+  $("network").innerHTML = `<span class="dot"></span>${escape(catalog.network)} · vendedor ${short(catalog.payTo)}`;
   const first = !$("products").children.length;
   for (const item of catalog.items) renderProduct(item);
+  renderTicket(catalog.items[0]);
   if (first) peek(catalog.items[0].path);
-  $("discovery-count").textContent = catalog.discovered == null ? "facilitador sin catálogo" : `${catalog.discovered} ${catalog.discovered === 1 ? "recurso" : "recursos"} en el catálogo Bazaar del facilitador`;
+  $("discovery-count").textContent = catalog.discovered == null ? "facilitador sin catálogo" : `● ${catalog.discovered} ${catalog.discovered === 1 ? "recurso" : "recursos"} en el catálogo Bazaar`;
+}
+
+// Hero ticket: the live quote of the first product, as a client would see it in the 402.
+function renderTicket(item) {
+  const q = item.quote;
+  $("ticket-path").textContent = `GET ${item.path}`;
+  $("ticket-price").innerHTML = `${local(q.localAmount)} ${currencyLabel(q.currency)}`;
+  $("ticket-usdc").textContent = `≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC para el vendedor`;
+  $("ticket-rate").innerHTML = `1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD`;
 }
 
 function renderProduct(item) {
@@ -223,9 +403,9 @@ function renderProduct(item) {
       <h3></h3>
       <div class="meta desc"></div>
       <div class="price"></div>
-      <div class="meta rate"></div>
-      <button class="ghost peek">Ver el 402 (gratis, sin wallet)</button>
-      <div class="meta">Pagar con</div>
+      <div class="rate"></div>
+      <button class="ghost peek">Ver el 402 · gratis, sin wallet</button>
+      <div class="label">Pagar con</div>
       <div class="buttons"></div>`;
     card.querySelector(".peek").onclick = () => { peek(item.path); $("console").scrollIntoView({ behavior: "smooth", block: "nearest" }); };
     for (const asset of catalog.payAssets) {
@@ -239,7 +419,7 @@ function renderProduct(item) {
   }
   const q = item.quote;
   const age = Math.max(0, Math.round(Date.now() / 1000 - q.oracleTimestamp));
-  card.querySelector("h3").innerHTML = `<code>GET ${escape(item.path)}</code>`;
+  card.querySelector("h3").textContent = `GET ${item.path}`;
   card.querySelector(".desc").textContent = item.description;
   card.querySelector(".price").innerHTML = `${local(q.localAmount)} ${currencyLabel(q.currency)}<small>≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC</small>`;
   card.querySelector(".rate").innerHTML =
@@ -326,9 +506,9 @@ async function calculate(price) {
     const q = data.quote;
     $("calc-rate").innerHTML = `1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD · ${sourceLabel(q.oracleSource)}. XLM y EURC según simulación de FxPay en Soroswap testnet, sin el 2% de margen de slippage.`;
     $("calc-amounts").innerHTML = Object.entries(data.pay).map(([asset, units]) => `
-      <div class="amount ${asset.toLowerCase()}"><div>${fmt(units)}</div><span class="meta">${asset}${asset === "USDC" ? " · lo que recibe el vendedor" : " · lo que gasta el cliente"}</span></div>`).join("");
+      <div class="amount ${asset.toLowerCase()}"><span class="label">${asset}</span><div>${fmt(units)}</div><span class="meta">${asset === "USDC" ? "recibe el vendedor" : "gasta el cliente"}</span></div>`).join("");
   } catch (error) {
-    $("calc-rate").innerHTML = `<span style="color:var(--err)">${escape(error.message)}</span>`;
+    $("calc-rate").innerHTML = `<span style="color:var(--red)">${escape(error.message)}</span>`;
     $("calc-amounts").innerHTML = "";
   }
 }
@@ -349,7 +529,7 @@ function renderReceipts(newId) {
       ? `<span class="pill ${symbol(r.spent.asset).toLowerCase()}">${symbol(r.spent.asset)}</span> ${fmt(r.spent.amount)}`
       : `<span class="pill usdc">USDC</span> ${fmt(r.settled.amount, r.settled.decimals)}`;
     return `<tr class="${r.id === newId ? "new" : ""}">
-      <td>${new Date(r.paidAt).toLocaleTimeString("es-CL")}</td>
+      <td class="mono">${new Date(r.paidAt).toLocaleTimeString("es-CL")}</td>
       <td class="mono">${escape(new URL(r.resource || "http://x/").pathname)}</td>
       <td><b>${local(r.local.amount)} ${currencyLabel(r.local.currency)}</b></td>
       <td class="mono">${rate(r.rate.usdPerUnit)}</td>
@@ -367,7 +547,7 @@ function renderReceipts(newId) {
   }
   $("stat-count").textContent = receipts.length;
   $("stat-local").textContent = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString("es-CL", { maximumFractionDigits: 4 })} ${c === "CLF" ? "UF" : c}`).join(" · ");
-  $("stat-usdc").textContent = `${usdc.toLocaleString("es-CL", { maximumFractionDigits: 7 })} USDC`;
+  $("stat-usdc").textContent = `${usdc.toLocaleString("es-CL", { maximumFractionDigits: 4 })} USDC`;
   $("stat-xlm").textContent = receipts.filter((r) => r.spent).length;
 }
 
