@@ -2,9 +2,12 @@
 // pointing at them. The workspace keeps importing the TypeScript sources, so development is unchanged.
 //
 // npx tsx scripts/npm/pack.ts
-// then, logged in to npm with access to the @local402 scope: npm publish --access public .npm/<package>
+// then, logged in to npm: npm publish .npm/<package>
+//
+// The @local402 npm scope belongs to someone else, so packages publish as local402-<name> and the compiled imports
+// of @local402/<name> are rewritten to match.
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const OUT = resolve(".npm");
@@ -16,6 +19,8 @@ const DESCRIPTIONS: Record<string, string> = {
   client: "x402 client for Stellar that checks local-currency quotes against its own oracle and pays with USDC, XLM or EURC",
   server: "One-line local-currency x402 routes and paid MCP tools on Stellar",
 };
+
+const published = (workspaceName: string) => workspaceName.replace(/^@local402\//, "local402-");
 
 rmSync(OUT, { recursive: true, force: true });
 
@@ -39,6 +44,10 @@ for (const name of PACKAGES) {
     }),
   );
   execFileSync(process.execPath, [resolve("node_modules/typescript/bin/tsc"), "-p", tsconfig], { stdio: "inherit" });
+  for (const file of readdirSync(join(dir, "dist"))) {
+    const path = join(dir, "dist", file);
+    writeFileSync(path, readFileSync(path, "utf8").replace(/(["'])@local402\/([a-z]+)(["'\/])/g, "$1local402-$2$3"));
+  }
 
   const exports = Object.fromEntries(
     Object.entries(source.exports as Record<string, string>).map(([key, file]) => {
@@ -47,13 +56,13 @@ for (const name of PACKAGES) {
     }),
   );
   const dependencies = Object.fromEntries(
-    Object.entries(source.dependencies as Record<string, string>).map(([dep, range]) => [dep, dep.startsWith("@local402/") ? `^${source.version}` : range]),
+    Object.entries(source.dependencies as Record<string, string>).map(([dep, range]) => dep.startsWith("@local402/") ? [published(dep), `^${source.version}`] : [dep, range]),
   );
   writeFileSync(
     join(dir, "package.json"),
     `${JSON.stringify(
       {
-        name: source.name,
+        name: published(source.name),
         version: source.version,
         description: DESCRIPTIONS[name],
         keywords: ["x402", "stellar", "soroban", "payments", "usdc", "oracle", "mcp"],
@@ -71,5 +80,5 @@ for (const name of PACKAGES) {
     )}\n`,
   );
   copyFileSync("LICENSE", join(dir, "LICENSE"));
-  console.log(`${source.name}@${source.version} → ${dir}`);
+  console.log(`${published(source.name)}@${source.version} → ${dir}`);
 }
