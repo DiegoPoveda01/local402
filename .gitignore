@@ -6,3 +6,4 @@ target/
 apps/demo-api/data/
 .vercel/
 .npm/
+video/
