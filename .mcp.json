@@ -2,11 +2,15 @@
   "mcpServers": {
     "local402": {
       "command": "npx",
-      "args": ["tsx", "apps/mcp/src/index.ts"],
+      "args": [
+        "tsx",
+        "apps/mcp/src/index.ts"
+      ],
       "env": {
         "STELLAR_IDENTITY": "local402-agent",
         "PAY_WITH": "USDC",
-        "MAX_PRICE": "500 CLP"
+        "MAX_PRICE": "500 CLP",
+        "BUDGET": "5000 CLP"
       }
     }
   }

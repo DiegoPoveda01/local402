@@ -10,12 +10,21 @@ export type PayAsset = "USDC" | "XLM" | "EURC";
 /** Assets paid through `exact-fx`, swapped to the seller's USDC by FxPay. */
 const FX_SEND_ASSETS: Record<Exclude<PayAsset, "USDC">, string> = { XLM: FX_TESTNET.xlm, EURC: FX_TESTNET.eurc };
 
+/** A running spending cap in local currency, e.g. "5000 CLP". Share one across clients that pay with different assets. */
+export class SpendingBudget {
+  /** USDC units spent or reserved by in-flight payments. */
+  spent = 0n;
+  constructor(readonly limit: string) {}
+}
+
 export interface Local402ClientOptions {
   secret: string;
   /** Asset the payer spends. USDC uses stock `exact`; XLM and EURC use `exact-fx` through FxPay. */
   payWith?: PayAsset;
   /** Refuse any single payment worth more than this local price, e.g. "500 CLP", whatever currency it is priced in. */
   maxPrice?: string;
+  /** Refuse any payment that would take total spending past this budget. */
+  budget?: SpendingBudget;
   /** Refuse quotes charging more than this above the client's own oracle rate. Default 200 (2%). */
   maxOverchargeBps?: number;
   /** Rates used to check the seller's quote. Defaults to Reflector plus UF. */
@@ -67,6 +76,7 @@ export class Local402Client {
   readonly payWith: PayAsset;
   private readonly http: x402HTTPClient;
   private readonly maxPrice?: string;
+  readonly budget?: SpendingBudget;
   private readonly maxOverchargeBps: bigint;
   private readonly oracle: FiatRateSource;
 
@@ -80,6 +90,7 @@ export class Local402Client {
         : new ExactFxClientScheme(signer, { fxContract: FX_TESTNET.fxContract, sendAsset: FX_SEND_ASSETS[this.payWith] });
     this.http = new x402HTTPClient(new x402Client().register("stellar:*", scheme));
     this.maxPrice = options.maxPrice;
+    this.budget = options.budget;
     this.maxOverchargeBps = BigInt(options.maxOverchargeBps ?? 200);
     this.oracle = options.oracle ?? new UfRateSource(new ReflectorFiatOracle());
   }
@@ -103,8 +114,15 @@ export class Local402Client {
     const price = describe(url, payload.accepted);
     await this.checkPrice(price);
 
-    const paid = await fetch(url, { headers: this.http.encodePaymentSignatureHeader(payload) });
+    // Reserve the amount so concurrent payments cannot overrun the budget together.
+    const charged = BigInt(price.amount);
+    if (this.budget) this.budget.spent += charged;
+    const paid = await fetch(url, { headers: this.http.encodePaymentSignatureHeader(payload) }).catch((error) => {
+      if (this.budget) this.budget.spent -= charged;
+      throw error;
+    });
     if (!paid.ok) {
+      if (this.budget) this.budget.spent -= charged;
       throw new Error(`Payment failed (HTTP ${paid.status}): ${await paid.text()}`);
     }
     const settlement = this.http.getPaymentSettleResponse((name) => paid.headers.get(name));
@@ -126,9 +144,10 @@ export class Local402Client {
   /** Checks the charge against the client's own oracle rather than trusting the seller's rate. */
   async checkPrice(price: Price): Promise<void> {
     const charged = BigInt(price.amount);
-    const [fair, cap] = await Promise.all([
+    const [fair, cap, budget] = await Promise.all([
       price.local && quoteLocalPrice(`${price.local.amount} ${price.local.currency}`, { oracle: this.oracle }),
       this.maxPrice && quoteLocalPrice(this.maxPrice, { oracle: this.oracle }),
+      this.budget && quoteLocalPrice(this.budget.limit, { oracle: this.oracle }),
     ]);
     if (fair && charged * 10_000n > BigInt(fair.tokenAmount) * (10_000n + this.maxOverchargeBps)) {
       throw new Error(
@@ -138,6 +157,9 @@ export class Local402Client {
     if (cap && charged > BigInt(cap.tokenAmount)) {
       const label = fair ? `${fair.localAmount} ${fair.currency}` : `${price.amount} USDC units`;
       throw new Error(`Refusing to pay ${label}: above the ${this.maxPrice} limit`);
+    }
+    if (budget && this.budget && this.budget.spent + charged > BigInt(budget.tokenAmount)) {
+      throw new Error(`Refusing to pay: it would exceed the ${this.budget.limit} budget (${this.budget.spent} of ${budget.tokenAmount} USDC units already spent)`);
     }
   }
 }

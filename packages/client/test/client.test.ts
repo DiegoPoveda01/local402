@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Keypair } from "@stellar/stellar-sdk";
 import { UfRateSource, type FiatRateSource } from "@local402/pricing";
-import { Local402Client, type Price } from "../src/index.js";
+import { Local402Client, SpendingBudget, type Price } from "../src/index.js";
 
 // 1 CLP = 0.00105408590567 USD, so 50 CLP = 527043 USDC units.
 const rates: Record<string, bigint> = { CLP: 105408590567n, EUR: 115458117990386n };
@@ -50,5 +50,16 @@ describe("Local402Client.checkPrice", () => {
     // 0.01 UF = 400 CLP = 4216344 units; 0.05 UF = 2000 CLP, over the limit
     await expect(withUf.checkPrice(price("4216344", { amount: "0.01", currency: "CLF" }))).resolves.toBeUndefined();
     await expect(withUf.checkPrice(price("21081719", { amount: "0.05", currency: "CLF" }))).rejects.toThrow(/limit/);
+  });
+
+  it("stops at a budget shared between clients", async () => {
+    // 100 CLP = 1054086 units: one 50 CLP payment fits after another, a third does not.
+    const budget = new SpendingBudget("100 CLP");
+    const [usdc, xlm] = [0, 1].map(() => new Local402Client({ secret: Keypair.random().secret(), oracle, budget }));
+    await expect(usdc.checkPrice(price("527043"))).resolves.toBeUndefined();
+    budget.spent += 527043n;
+    await expect(xlm.checkPrice(price("527043"))).resolves.toBeUndefined();
+    budget.spent += 527043n;
+    await expect(usdc.checkPrice(price("527043"))).rejects.toThrow(/exceed the 100 CLP budget/);
   });
 });

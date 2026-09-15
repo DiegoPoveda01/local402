@@ -4,7 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { withBazaar } from "@x402/extensions/bazaar";
 import { z } from "zod";
-import { Local402Client, type PayAsset } from "@local402/client";
+import { Local402Client, SpendingBudget, type PayAsset } from "@local402/client";
 import type { LocalQuote } from "@local402/pricing";
 
 // A stellar-cli identity keeps the secret out of MCP config files.
@@ -18,10 +18,12 @@ if (!SECRET) {
 const payWith = (process.env.PAY_WITH ?? "USDC").toUpperCase() as PayAsset;
 // Without an explicit limit an agent could be talked into paying anything, so default to a small one.
 const maxPrice = process.env.MAX_PRICE ?? "500 CLP";
+// One budget for the whole session, whatever asset each payment uses.
+const budget = new SpendingBudget(process.env.BUDGET ?? "5000 CLP");
 const clients: Record<PayAsset, Local402Client> = {
-  USDC: new Local402Client({ secret: SECRET, payWith: "USDC", maxPrice }),
-  XLM: new Local402Client({ secret: SECRET, payWith: "XLM", maxPrice }),
-  EURC: new Local402Client({ secret: SECRET, payWith: "EURC", maxPrice }),
+  USDC: new Local402Client({ secret: SECRET, payWith: "USDC", maxPrice, budget }),
+  XLM: new Local402Client({ secret: SECRET, payWith: "XLM", maxPrice, budget }),
+  EURC: new Local402Client({ secret: SECRET, payWith: "EURC", maxPrice, budget }),
 };
 const client = clients[payWith];
 const bazaar = withBazaar(new HTTPFacilitatorClient({ url: process.env.FACILITATOR_URL ?? "http://localhost:4022" }));
@@ -86,7 +88,7 @@ server.registerTool(
   "local402_pay",
   {
     title: "Pay for and fetch an x402 resource",
-    description: `Fetches an HTTP resource and pays for it on Stellar testnet if it returns 402. Pays with ${payWith} unless payWith says otherwise (XLM or EURC is swapped to the seller's USDC in the same transaction); refuses prices above ${maxPrice}. Returns the response body, the price and the transaction link.`,
+    description: `Fetches an HTTP resource and pays for it on Stellar testnet if it returns 402. Pays with ${payWith} unless payWith says otherwise (XLM or EURC is swapped to the seller's USDC in the same transaction); refuses prices above ${maxPrice} and stops once this session has spent ${budget.limit}. Returns the response body, the price and the transaction link.`,
     inputSchema: { url: z.string().url(), payWith: z.enum(["USDC", "XLM", "EURC"]).optional() },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   },
@@ -103,7 +105,7 @@ server.registerTool(
   "local402_wallet",
   {
     title: "Show the paying wallet",
-    description: "Shows the agent's Stellar testnet address, balances, payment asset and per-payment limit.",
+    description: "Shows the agent's Stellar testnet address, balances, payment asset, per-payment limit and how much of the session budget is spent.",
     annotations: { readOnlyHint: true, openWorldHint: true },
   },
   async () => {
@@ -113,7 +115,8 @@ server.registerTool(
       const balances = Object.fromEntries(
         (account.balances ?? []).map((b) => [b.asset_type === "native" ? "XLM" : b.asset_code, b.balance]),
       );
-      return text({ address: client.address, network: "stellar:testnet", payWith, maxPrice, balances });
+      const sessionBudget = { limit: budget.limit, spentUsdc: (Number(budget.spent) / 1e7).toFixed(7) };
+      return text({ address: client.address, network: "stellar:testnet", payWith, maxPrice, budget: sessionBudget, balances });
     } catch (error) {
       return failure(error);
     }
