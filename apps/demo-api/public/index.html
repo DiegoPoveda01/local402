@@ -437,7 +437,8 @@ const $ = (id) => document.getElementById(id);
 const fmt = (units, decimals = 7) => (Number(units) / 10 ** decimals).toLocaleString("es-CL", { maximumFractionDigits: 7 });
 const local = (amount) => Number(amount).toLocaleString("es-CL", { maximumFractionDigits: 4 });
 const rate = (usdPerUnit) => Number(Number(usdPerUnit).toPrecision(6)).toLocaleString("es-CL", { maximumFractionDigits: 8 });
-const sourceLabel = (source) => source.startsWith("mindicador.cl") ? "UF de la CMF (mindicador.cl) × Reflector" : "Oráculo Reflector";
+// UF sources are named "<site>:uf*reflector:…"; everything else comes straight from Reflector.
+const sourceLabel = (source) => (source.includes(":uf*") ? `UF de ${escape(source.split(":")[0])} × Reflector` : "Oráculo Reflector");
 const currencyLabel = (code) => (code === "CLF" ? "UF" : escape(code));
 const symbol = (asset) => escape(catalog?.assetSymbols?.[asset] ?? short(asset));
 const short = (s) => `${s.slice(0, 6)}…${s.slice(-6)}`;
@@ -515,12 +516,12 @@ function renderProduct(item) {
   }
   card.querySelector("h3").textContent = `GET ${item.path}`;
   card.querySelector(".desc").textContent = item.description;
-  // A rate source can be down (the UF comes from mindicador.cl); the other products keep working.
+  // A rate source can be down (the UF comes from off-chain sites); the other products keep working.
   card.querySelector(".peek").disabled = Boolean(item.error);
   if (item.error) {
     card.querySelector(".price").innerHTML = `${escape(item.price.replace(".", ","))}<small>cotización no disponible</small>`;
-    card.querySelector(".rate").textContent = /mindicador|fetch failed|abort/i.test(item.error)
-      ? "La fuente de la UF (mindicador.cl) no responde ahora. Se reintenta sola."
+    card.querySelector(".rate").textContent = /UF source|fetch failed|abort/i.test(item.error)
+      ? "Las fuentes de la UF (SII, findic.cl, mindicador.cl) no responden ahora. Se reintenta sola."
       : `Error: ${item.error}`;
     for (const button of card.querySelectorAll("button.pay")) button.disabled = true;
     return;

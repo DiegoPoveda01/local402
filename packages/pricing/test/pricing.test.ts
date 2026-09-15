@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { encodePaymentSignatureHeader } from "@x402/core/http";
 import type { AssetAmount } from "@x402/core/types";
 import { localPrice, parseLocalPrice, quoteLocalPrice, UfRateSource, type FiatRateSource } from "../src/index.js";
+import { firstUf, parseSiiUf } from "../src/uf.js";
 import { medianRecord } from "../src/oracle.js";
 
 // 1 USD = 948.6902 CLP  =>  1 CLP ≈ 0.00105408 USD (14 decimals, as Reflector publishes)
@@ -159,6 +160,28 @@ describe("UfRateSource", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("reads a day's UF from the SII yearly table", () => {
+    const html = `<div class='meses' id='mes_agosto'><table><tr><th width='40'><strong>15</strong></th>
+      <td width='200'>40.100,00</td></tr></table></div>
+      <div class='meses' id='mes_septiembre'><table><tr>
+      <th width='40'><strong>5</strong></th>
+      <td width='200'>40.880,36</td>
+      <th width='40'><strong>15</strong></th>
+      <td width='200'>40.934,58</td></tr></table></div>`;
+    expect(parseSiiUf(html, "2026-09-15")).toBe("40934.58");
+    expect(parseSiiUf(html, "2026-09-05")).toBe("40880.36");
+    expect(parseSiiUf(html, "2026-08-15")).toBe("40100.00");
+    expect(parseSiiUf(html, "2026-10-01")).toBeUndefined();
+  });
+
+  it("falls back to the next UF source", async () => {
+    const down = async () => {
+      throw new Error("sii down");
+    };
+    await expect(firstUf(down, async () => ({ clp: "1", source: "b" }))()).resolves.toEqual({ clp: "1", source: "b" });
+    await expect(firstUf(down, down)()).rejects.toThrow("No UF source available: sii down; sii down");
   });
 
   it("passes other currencies through", async () => {

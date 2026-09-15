@@ -4,7 +4,7 @@ import { paymentMiddleware } from "@x402/express";
 import type { DynamicPrice, PaymentOption } from "@x402/core/http";
 import type { AssetAmount, Network } from "@x402/core/types";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
-import { mindicadorUf, quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource, type UfValueSource } from "@local402/pricing";
+import { chileUf, quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource, type UfValueSource } from "@local402/pricing";
 import { fxNetwork, mainnetShadowQuote, quoteFx } from "@local402/fx";
 import { local402Server, localRoute } from "@local402/server";
 import { Local402Client, oracleSendAmount, type PayAsset } from "@local402/client";
@@ -25,11 +25,11 @@ const ASSET_SYMBOLS: Record<string, string> = { [fxConfig.xlm]: "XLM", [fxConfig
 
 const redis = Redis.fromEnv();
 // Serverless instances start without the UfRateSource cache, so the last UF value also lives in Redis
-// for when mindicador.cl is down. Like the cache, it is used for up to three days.
+// for when every UF source is down. Like the cache, it is used for up to three days.
 const UF_KEY = "local402:uf";
 const ufValue: UfValueSource = async () => {
   try {
-    const uf = await mindicadorUf();
+    const uf = await chileUf();
     await redis?.pipeline(["SET", UF_KEY, JSON.stringify({ ...uf, savedAt: Date.now() })]).catch(() => undefined);
     return uf;
   } catch (error) {
@@ -65,7 +65,7 @@ const products = [
     path: "/uf",
     price: "0.01 UF",
     description: "Valor de la UF en pesos y dólares, cobrado en UF",
-    example: { clpPorUf: 40934.18, usdPorUf: 43.0118, fuente: "mindicador.cl:uf*reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC", timestamp: 1789450500 },
+    example: { clpPorUf: 40934.18, usdPorUf: 43.0118, fuente: "sii.cl:uf*reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC", timestamp: 1789450500 },
   },
 ].map(({ path, price, description, example }) => {
   const route = localRoute(price, {
@@ -130,7 +130,7 @@ app.get("/uf", async (_req, res) => {
 // --- Dashboard support: free, read-only views of prices and receipts. ---
 
 app.get("/catalog", async (_req, res) => {
-  // One product whose rate source is down (UF depends on mindicador.cl) must not take the others with it.
+  // One product whose rate source is down (the UF comes from off-chain sites) must not take the others with it.
   const items = await Promise.all(
     products.map(async ({ path, price, description, quote }) => {
       try {
@@ -249,7 +249,7 @@ app.post("/demo/pay", async (req, res) => {
 
 app.use(express.static(fileURLToPath(new URL("../public", import.meta.url))));
 
-// A price that can't be quoted right now (for example, the UF source is down) is a temporary outage, not a bug.
+// A price that can't be quoted right now (for example, every UF source is down) is a temporary outage, not a bug.
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   res.status(503).json({ error: (error instanceof Error ? error.message : String(error)).split("\n")[0] });
 });

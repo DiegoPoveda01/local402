@@ -6,21 +6,72 @@ const MAX_STALE_MS = 3 * 24 * 60 * 60 * 1000;
 /** Value of one UF in CLP, e.g. "40934.58". */
 export type UfValueSource = () => Promise<{ clp: string; source: string }>;
 
-/** UF values published by Chile's CMF, served by mindicador.cl. Off-chain: no on-chain oracle publishes CLF. */
-export const mindicadorUf: UfValueSource = async () => {
-  const response = await fetch("https://mindicador.cl/api/uf", { signal: AbortSignal.timeout(5_000) });
-  if (!response.ok) throw new Error(`mindicador.cl returned HTTP ${response.status}`);
-  const body = (await response.json()) as { serie?: { valor: number }[] };
-  const value = body.serie?.[0]?.valor;
-  if (!value) throw new Error("mindicador.cl returned no UF value");
-  return { clp: String(value), source: "mindicador.cl" };
+const TIMEOUT_MS = 4_000;
+const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** The UF is defined per calendar day in Chile, e.g. "2026-09-15". */
+export const chileDate = (now = Date.now()) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(now);
+
+async function get(url: string): Promise<Response> {
+  const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!response.ok) throw new Error(`${new URL(url).host} returned HTTP ${response.status}`);
+  return response;
+}
+
+/** Finds a day's value in the yearly UF page of Chile's tax service: one table per month, "40.934,58" per day. */
+export function parseSiiUf(html: string, date: string): string | undefined {
+  const [, month, day] = date.split("-").map(Number);
+  const start = html.indexOf(`id='mes_${MONTHS[month - 1]}'`);
+  if (start < 0) return undefined;
+  const end = html.indexOf("class='meses'", start);
+  const table = html.slice(start, end < 0 ? undefined : end);
+  const cell = new RegExp(`<strong>${day}</strong></th>\\s*<td[^>]*>([\\d.]+,\\d+)</td>`).exec(table);
+  return cell?.[1].replaceAll(".", "").replace(",", ".");
+}
+
+/** Official UF values from the SII (Servicio de Impuestos Internos), published up to the 9th of the next month. */
+export const siiUf: UfValueSource = async () => {
+  const date = chileDate();
+  const html = await (await get(`https://www.sii.cl/valores_y_fechas/uf/uf${date.slice(0, 4)}.htm`)).text();
+  const clp = parseSiiUf(html, date);
+  if (!clp) throw new Error(`sii.cl has no UF value for ${date}`);
+  return { clp, source: "sii.cl" };
 };
+
+/** mindicador.cl and findic.cl serve the same JSON shape: a series of { fecha, valor }, newest first. */
+const seriesUf = (host: string): UfValueSource => async () => {
+  const date = chileDate();
+  const body = (await (await get(`https://${host}/api/uf`)).json()) as { serie?: { fecha: string; valor: number }[] };
+  const value = body.serie?.find((entry) => entry.fecha.startsWith(date))?.valor;
+  if (!value) throw new Error(`${host} has no UF value for ${date}`);
+  return { clp: String(value), source: host };
+};
+export const mindicadorUf = seriesUf("mindicador.cl");
+export const findicUf = seriesUf("findic.cl");
+
+/** Tries each source in order and returns the first value; fails only if all of them do. */
+export function firstUf(...sources: UfValueSource[]): UfValueSource {
+  return async () => {
+    const errors: string[] = [];
+    for (const source of sources) {
+      try {
+        return await source();
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error));
+      }
+    }
+    throw new Error(`No UF source available: ${errors.join("; ")}`);
+  };
+}
+
+/** Off-chain, since no on-chain oracle publishes CLF: the SII first, then two public mirrors. */
+export const chileUf = firstUf(siiUf, findicUf, mindicadorUf);
 
 /**
  * Adds Unidad de Fomento (ISO 4217 "CLF") to a fiat rate source.
  * USD per UF = UF value in CLP (off-chain, daily) x USD per CLP (from the wrapped oracle).
  * Every other currency goes straight to the wrapped source.
- * If the UF source is down, the last value it returned keeps being used for up to three days (the UF moves about
+ * If every UF source is down, the last value it returned keeps being used for up to three days (the UF moves about
  * 0.01% a day), and the source is asked again at most once a minute.
  */
 export class UfRateSource implements FiatRateSource {
@@ -30,7 +81,7 @@ export class UfRateSource implements FiatRateSource {
 
   constructor(
     private readonly inner: FiatRateSource,
-    private readonly ufValue: UfValueSource = mindicadorUf,
+    private readonly ufValue: UfValueSource = chileUf,
   ) {}
 
   async getRate(currency: string): Promise<FiatRate> {
@@ -48,7 +99,7 @@ export class UfRateSource implements FiatRateSource {
 
   private async dailyUf() {
     const now = Date.now();
-    const day = new Date(now).toISOString().slice(0, 10);
+    const day = chileDate(now);
     if (this.cached?.day === day) return this.cached;
     const usable = this.cached && now - Date.parse(this.cached.day) < MAX_STALE_MS ? this.cached : undefined;
     if (now < this.retryAt) {
