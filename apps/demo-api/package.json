@@ -8,6 +8,7 @@
     "start": "tsx --env-file-if-exists=.env src/index.ts"
   },
   "dependencies": {
+    "@local402/client": "*",
     "@local402/fx": "*",
     "@local402/pricing": "*",
     "@x402/core": "2.25.0",

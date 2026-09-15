@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local402</title>
+<style>
+  :root {
+    --bg: #0d1017; --panel: #151a24; --line: #232a38; --text: #e8ecf3; --muted: #8a94a8;
+    --accent: #f5c542; --usdc: #4d8dff; --xlm: #b58cff; --ok: #3ecf8e; --err: #ff6b6b;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; }
+  a { color: var(--accent); }
+  code, .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .86em; }
+  header { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; margin-bottom: 28px; }
+  h1 { margin: 0; font-size: 34px; letter-spacing: -.02em; }
+  h1 span { color: var(--accent); }
+  .tag { color: var(--muted); margin: 4px 0 0; }
+  .badge { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; color: var(--muted); font-size: 13px; }
+  .badge b { color: var(--ok); font-weight: 600; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 36px 0 12px; }
+  .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .step small { color: var(--accent); font-weight: 600; }
+  .step p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+  .products { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .card h3 { margin: 0; font-size: 17px; }
+  .price { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+  .price small { font-size: 15px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { font: inherit; font-weight: 600; border-radius: 10px; border: 1px solid transparent; padding: 9px 14px; cursor: pointer; color: #0d1017; }
+  button.usdc { background: var(--usdc); }
+  button.xlm { background: var(--xlm); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .result { background: #0f131b; border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 13px; overflow-x: auto; }
+  .result.err { border-color: var(--err); color: var(--err); }
+  .result pre { margin: 8px 0 0; white-space: pre-wrap; color: var(--muted); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .stat div { font-size: 24px; font-weight: 700; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  tr:last-child td { border-bottom: 0; }
+  tr.new { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: rgba(245,197,66,.18); } to { background: transparent; } }
+  .pill { border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+  .pill.usdc { background: rgba(77,141,255,.15); color: var(--usdc); }
+  .pill.xlm { background: rgba(181,140,255,.15); color: var(--xlm); }
+  .empty { color: var(--muted); padding: 24px; text-align: center; }
+  .row-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Local<span>402</span></h1>
+      <p class="tag">Cobra en tu moneda. Recibe USDC exacto. Tus clientes pagan con lo que tengan.</p>
+    </div>
+    <div class="badge" id="network">Conectando…</div>
+  </header>
+
+  <div class="flow">
+    <div class="step"><small>1 · Precio local</small><p>El vendedor fija <code>"50 CLP"</code> en su ruta x402.</p></div>
+    <div class="step"><small>2 · Oráculo Reflector</small><p>Se convierte a USDC con la tasa on-chain, redondeando a favor del vendedor.</p></div>
+    <div class="step"><small>3 · Paga con USDC o XLM</small><p>USDC: esquema <code>exact</code>. XLM: <code>exact-fx</code> swapea en Soroswap dentro de la misma transacción.</p></div>
+    <div class="step"><small>4 · Recibo</small><p>El vendedor recibe el monto exacto y un recibo con tasa, fuente y transacción.</p></div>
+  </div>
+
+  <h2>Productos</h2>
+  <div class="products" id="products"></div>
+
+  <div class="row-head">
+    <h2>Recibos</h2>
+    <a href="/receipts.csv" class="meta">Exportar CSV</a>
+  </div>
+  <div class="stats">
+    <div class="stat"><div id="stat-count">0</div><span>ventas</span></div>
+    <div class="stat"><div id="stat-local">—</div><span>vendido en moneda local</span></div>
+    <div class="stat"><div id="stat-usdc">0 USDC</div><span>recibido por el vendedor</span></div>
+    <div class="stat"><div id="stat-xlm">0</div><span>pagos hechos con XLM</span></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Hora</th><th>Recurso</th><th>Precio</th><th>Tasa (USD)</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Transacción</th></tr></thead>
+      <tbody id="receipts"><tr><td colspan="7" class="empty">Aún no hay pagos. Prueba uno arriba.</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (units, decimals = 7) => (Number(units) / 10 ** decimals).toLocaleString("es-CL", { maximumFractionDigits: 7 });
+const local = (amount) => Number(amount).toLocaleString("es-CL", { maximumFractionDigits: 2 });
+const short = (s) => `${s.slice(0, 6)}…${s.slice(-6)}`;
+const txLink = (hash) => `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/tx/${hash}">${short(hash)}</a>`;
+const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+let catalog;
+const receipts = [];
+
+async function loadCatalog() {
+  try {
+    catalog = await (await fetch("/catalog")).json();
+  } catch {
+    $("network").textContent = "API no disponible";
+    return;
+  }
+  $("network").innerHTML = `<b>●</b> ${catalog.network} · vendedor <span class="mono">${short(catalog.payTo)}</span>`;
+  for (const item of catalog.items) renderProduct(item);
+}
+
+function renderProduct(item) {
+  const id = `product-${item.path.slice(1)}`;
+  let card = $(id);
+  if (!card) {
+    card = document.createElement("div");
+    card.className = "card";
+    card.id = id;
+    card.innerHTML = `
+      <h3></h3>
+      <div class="meta desc"></div>
+      <div class="price"></div>
+      <div class="meta rate"></div>
+      <div class="buttons">
+        <button class="usdc">Pagar con USDC</button>
+        <button class="xlm">Pagar con XLM</button>
+      </div>
+      <div class="result" hidden></div>`;
+    card.querySelector(".usdc").onclick = () => pay(item.path, "USDC", card);
+    card.querySelector(".xlm").onclick = () => pay(item.path, "XLM", card);
+    $("products").append(card);
+  }
+  const q = item.quote;
+  const age = Math.max(0, Math.round(Date.now() / 1000 - q.oracleTimestamp));
+  card.querySelector("h3").innerHTML = `<code>GET ${escape(item.path)}</code>`;
+  card.querySelector(".desc").textContent = item.description;
+  card.querySelector(".price").innerHTML = `${local(q.localAmount)} ${escape(q.currency)}<small>≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC</small>`;
+  card.querySelector(".rate").innerHTML =
+    `1 ${escape(q.currency)} = ${Number(Number(q.usdPerUnit).toPrecision(6)).toLocaleString("es-CL", { maximumFractionDigits: 8 })} USD · Reflector, hace ${Math.round(age / 60)} min · cotización válida hasta ${new Date(q.expiresAt * 1000).toLocaleTimeString("es-CL")}`;
+  for (const button of card.querySelectorAll("button")) {
+    button.disabled = !catalog.demoAgent;
+    button.title = catalog.demoAgent ? "" : "Define DEMO_AGENT_SECRET en la API para activar pagos de demo";
+  }
+}
+
+async function pay(path, asset, card) {
+  const box = card.querySelector(".result");
+  const buttons = card.querySelectorAll("button");
+  buttons.forEach((b) => (b.disabled = true));
+  box.hidden = false;
+  box.className = "result";
+  box.textContent = asset === "XLM"
+    ? "El agente firma un pago en XLM; el facilitador verifica y FxPay swapea a USDC…"
+    : "El agente firma una transferencia de USDC; el facilitador verifica y liquida…";
+  try {
+    const response = await fetch(`/demo/pay?with=${asset}&path=${encodeURIComponent(path)}`, { method: "POST" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+    const spent = data.spent ? ` · gastó ${fmt(data.spent.amount)} XLM` : "";
+    box.innerHTML = `✓ Pagado con ${asset}${spent} · ${txLink(data.transaction)}<pre>${escape(JSON.stringify(data.body, null, 2))}</pre>`;
+  } catch (error) {
+    box.className = "result err";
+    box.textContent = `Error: ${error.message}`;
+  } finally {
+    buttons.forEach((b) => (b.disabled = !catalog.demoAgent));
+  }
+}
+
+function renderReceipts(newId) {
+  const body = $("receipts");
+  if (!receipts.length) return;
+  body.innerHTML = receipts.map((r) => {
+    const paidWith = r.spent
+      ? `<span class="pill xlm">XLM</span> ${fmt(r.spent.amount)}`
+      : `<span class="pill usdc">USDC</span> ${fmt(r.settled.amount, r.settled.decimals)}`;
+    return `<tr class="${r.id === newId ? "new" : ""}">
+      <td>${new Date(r.paidAt).toLocaleTimeString("es-CL")}</td>
+      <td class="mono">${escape(new URL(r.resource || "http://x/").pathname)}</td>
+      <td><b>${local(r.local.amount)} ${escape(r.local.currency)}</b></td>
+      <td class="mono">${Number(Number(r.rate.usdPerUnit).toPrecision(6)).toLocaleString("es-CL", { maximumFractionDigits: 8 })}</td>
+      <td>${fmt(r.settled.amount, r.settled.decimals)} USDC</td>
+      <td>${paidWith}</td>
+      <td>${txLink(r.transaction)}</td>
+    </tr>`;
+  }).join("");
+
+  const byCurrency = {};
+  let usdc = 0;
+  for (const r of receipts) {
+    byCurrency[r.local.currency] = (byCurrency[r.local.currency] ?? 0) + Number(r.local.amount);
+    usdc += Number(r.settled.amount) / 10 ** r.settled.decimals;
+  }
+  $("stat-count").textContent = receipts.length;
+  $("stat-local").textContent = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString("es-CL")} ${c}`).join(" · ");
+  $("stat-usdc").textContent = `${usdc.toLocaleString("es-CL", { maximumFractionDigits: 7 })} USDC`;
+  $("stat-xlm").textContent = receipts.filter((r) => r.spent).length;
+}
+
+async function start() {
+  await loadCatalog();
+  setInterval(loadCatalog, 30_000);
+  receipts.push(...(await (await fetch("/receipts")).json()));
+  renderReceipts();
+  new EventSource("/receipts/stream").onmessage = (event) => {
+    const receipt = JSON.parse(event.data);
+    receipts.unshift(receipt);
+    renderReceipts(receipt.id);
+  };
+}
+start();
+</script>
+</body>
+</html>

@@ -40,6 +40,7 @@ app.post("/settle", async (req, res) => {
   res.json(result);
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, (error) => {
+  if (error) throw error;
   console.log(`Local402 facilitator on http://localhost:${PORT} (${NETWORK}, fees paid by ${signer.address})`);
 });

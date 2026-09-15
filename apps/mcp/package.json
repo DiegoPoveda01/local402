@@ -1,5 +1,5 @@
 {
-  "name": "@local402/agent",
+  "name": "@local402/mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,6 +7,8 @@
     "start": "tsx --env-file-if-exists=.env src/index.ts"
   },
   "dependencies": {
-    "@local402/client": "*"
+    "@local402/client": "*",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "^3.25.0"
   }
 }

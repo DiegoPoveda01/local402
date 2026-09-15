@@ -127,7 +127,10 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
       if (result.status !== Api.GetTransactionStatus.SUCCESS) {
         return { success: false, network, transaction: hash, errorReason: "settle_exact_fx_transaction_failed", payer };
       }
-      return { success: true, network, transaction: hash, payer };
+      // `pay` returns the send-asset amount the swap consumed; the rest was refunded to the payer.
+      const sendAsset = scValToNative(invoke.func.invokeContract().args()[1]) as string;
+      const sendAmount = result.returnValue ? String(scValToNative(result.returnValue)) : undefined;
+      return { success: true, network, transaction: hash, payer, extra: { sendAsset, sendAmount } };
     } catch (error) {
       console.error("exact-fx settlement error:", error);
       return { success: false, network, transaction: hash, errorReason: "unexpected_settle_error", payer };
