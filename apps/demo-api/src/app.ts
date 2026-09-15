@@ -4,10 +4,10 @@ import { paymentMiddleware } from "@x402/express";
 import type { DynamicPrice, PaymentOption } from "@x402/core/http";
 import type { AssetAmount, Network } from "@x402/core/types";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
-import { quoteLocalPrice, ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
-import { FX_TESTNET, quoteFx } from "@local402/fx";
+import { quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
+import { FX_TESTNET, mainnetShadowQuote, quoteFx } from "@local402/fx";
 import { local402Server, localRoute } from "@local402/server";
-import { Local402Client, type PayAsset } from "@local402/client";
+import { Local402Client, oracleSendAmount, type PayAsset } from "@local402/client";
 import { ReceiptBook, Redis } from "./receipts.js";
 
 const NETWORK = (process.env.NETWORK ?? "stellar:testnet") as Network;
@@ -23,6 +23,9 @@ const ASSET_SYMBOLS: Record<string, string> = { [FX_TESTNET.xlm]: "XLM", [FX_TES
 
 // Reflector on-chain rates, plus UF (CLF) composed from its daily CLP value.
 const oracle = new UfRateSource(new ReflectorFiatOracle());
+// USD value of the send assets, as the client checks them: XLM from Reflector's exchange feed, EURC at the euro rate.
+const exchanges = new ReflectorFiatOracle(REFLECTOR_CEX);
+const sendAssetRate = (symbol: string) => (symbol === "XLM" ? exchanges.getRate("XLM") : oracle.getRate("EUR"));
 const redis = Redis.fromEnv();
 const receipts = new ReceiptBook({ redis, file: process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)) });
 const server = local402Server(FACILITATOR_URL, NETWORK).onAfterSettle(receipts.record);
@@ -124,19 +127,27 @@ app.get("/catalog", async (_req, res) => {
 });
 
 // Price calculator: what any local price costs in each payment asset right now, without paying.
+// Next to the testnet pools it shows the oracle value and a read-only mainnet quote for the same swap.
 app.get("/demo/quote", async (req, res) => {
   try {
     const quote = await quoteLocalPrice(String(req.query.price ?? ""), { oracle });
     const { asset } = (await products[0].quote({} as never)) as AssetAmount;
-    const pay = Object.fromEntries(
-      await Promise.all(
-        Object.entries(ASSET_SYMBOLS).map(async ([contract, symbol]) => [
-          symbol,
-          (await quoteFx({ fxContract: FX_TESTNET.fxContract, sendAsset: contract }, NETWORK, asset, quote.tokenAmount)).toString(),
-        ]),
-      ),
+    const fx = await Promise.all(
+      Object.entries(ASSET_SYMBOLS).map(async ([contract, symbol]) => {
+        const [pay, rate, mainnet] = await Promise.all([
+          quoteFx({ fxContract: FX_TESTNET.fxContract, sendAsset: contract }, NETWORK, asset, quote.tokenAmount),
+          sendAssetRate(symbol).catch(() => undefined),
+          mainnetShadowQuote(symbol as "XLM" | "EURC", BigInt(quote.tokenAmount)),
+        ]);
+        return { symbol, pay: pay.toString(), oracle: rate && oracleSendAmount(quote.tokenAmount, rate).toString(), mainnet };
+      }),
     );
-    res.json({ quote, pay: { USDC: quote.tokenAmount, ...pay } });
+    res.json({
+      quote,
+      pay: { USDC: quote.tokenAmount, ...Object.fromEntries(fx.map((f) => [f.symbol, f.pay])) },
+      oracle: Object.fromEntries(fx.map((f) => [f.symbol, f.oracle])),
+      mainnet: Object.fromEntries(fx.map((f) => [f.symbol, f.mainnet])),
+    });
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
   }
@@ -201,7 +212,9 @@ app.post("/demo/pay", async (req, res) => {
   const payWith = PAY_ASSETS.includes(requested) ? requested : "USDC";
   const path = products.some((p) => p.path === req.query.path) ? String(req.query.path) : products[0].path;
   try {
-    const client = new Local402Client({ secret: DEMO_AGENT_SECRET, payWith });
+    // The client refuses swaps more than 5% above the oracle. Testnet pools are seeded with arbitrary prices
+    // (tstEURC trades near 0.74 USD), so the demo allows more there and shows the premium next to each payment.
+    const client = new Local402Client({ secret: DEMO_AGENT_SECRET, payWith, maxFxPremiumBps: NETWORK === "stellar:testnet" ? 10_000 : undefined });
     // The agent buys from this same API, at the address the dashboard was opened on.
     const origin = `${req.protocol}://${req.get("host")}`;
     res.json(await client.pay(`${origin}${path}`));

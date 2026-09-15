@@ -10,6 +10,7 @@
   "dependencies": {
     "@local402/fx": "*",
     "@local402/pricing": "*",
+    "@stellar/stellar-sdk": "16.3.0",
     "@x402/core": "2.25.0",
     "@x402/stellar": "2.25.0"
   }

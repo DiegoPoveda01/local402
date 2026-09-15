@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { Keypair } from "@stellar/stellar-sdk";
+import { Account, Contract, Keypair, nativeToScVal, Networks, TransactionBuilder } from "@stellar/stellar-sdk";
+import type { PaymentPayload } from "@x402/core/types";
 import { UfRateSource, type FiatRateSource } from "@local402/pricing";
-import { Local402Client, SpendingBudget, type Price } from "../src/index.js";
+import { fxMaxSend, Local402Client, SpendingBudget, type Price } from "../src/index.js";
 
 // 1 CLP = 0.00105408590567 USD, so 50 CLP = 527043 USDC units.
 const rates: Record<string, bigint> = { CLP: 105408590567n, EUR: 115458117990386n };
@@ -63,3 +64,44 @@ describe("Local402Client.checkPrice", () => {
     await expect(usdc.checkPrice(price("527043"))).rejects.toThrow(/exceed the 100 CLP budget/);
   });
 });
+
+describe("Local402Client.checkFxLeg", () => {
+  // 1 XLM = 0.19161695781320 USD, so 527043 USDC units are worth 2750503 XLM units.
+  const assetOracle: FiatRateSource = {
+    async getRate(symbol) {
+      const usdPerUnit = { XLM: 19161695781320n, EUR: 115458117990386n }[symbol]!;
+      return { usdPerUnit, decimals: 14, timestamp: Math.floor(Date.now() / 1000), source: `test:${symbol}` };
+    },
+  };
+  const payer = (payWith: "XLM" | "EURC", maxFxPremiumBps?: number) =>
+    new Local402Client({ secret: Keypair.random().secret(), oracle, assetOracle, payWith, maxFxPremiumBps });
+
+  it("accepts a swap within the premium limit and reports it", async () => {
+    // Soroswap mainnet quote plus 2% slippage: about 2.6% over the oracle.
+    const fx = await payer("XLM").checkFxLeg("527043", 2_822_000n);
+    expect(fx).toMatchObject({ oracleSend: "2750503", premiumBps: 259, oracleSource: "test:XLM" });
+    // A pool pricing XLM above the oracle only helps the payer.
+    expect((await payer("XLM").checkFxLeg("527043", 300_000n)).premiumBps).toBeLessThan(0);
+  });
+
+  it("refuses a swap that may spend too much of the send asset", async () => {
+    // 527043 USDC units = 456480 EURC units at 1.1546 USD per euro; a pool pricing EURC at 0.74 USD asks ~56% more.
+    await expect(payer("EURC").checkFxLeg("527043", 712_000n)).rejects.toThrow(/above the 456480 the oracle rate implies \(limit 5%\)/);
+    await expect(payer("EURC", 6_000).checkFxLeg("527043", 712_000n)).resolves.toMatchObject({ premiumBps: 5597 });
+  });
+
+  it("reads maxSend from the signed FxPay call", () => {
+    const address = (value: string) => nativeToScVal(value, { type: "address" });
+    const from = Keypair.random().publicKey();
+    const transaction = new TransactionBuilder(new Account(from, "1"), { fee: "100", networkPassphrase: Networks.TESTNET })
+      .addOperation(
+        new Contract(FX).call("pay", address(from), address(FX), nativeToScVal(2_822_000n, { type: "i128" }), address(FX), nativeToScVal(527_043n, { type: "i128" }), address(from), nativeToScVal(1n, { type: "u64" })),
+      )
+      .setTimeout(60)
+      .build();
+    const payload = { payload: { transaction: transaction.toXDR() }, accepted: { network: "stellar:testnet" } } as unknown as PaymentPayload;
+    expect(fxMaxSend(payload)).toBe(2_822_000n);
+  });
+});
+
+const FX = "CDLIJ3SXAYQDCIO4GLS3OQPUKT6JTWICRDTOB3F5ESG5TWYKRRPJ6IUC";

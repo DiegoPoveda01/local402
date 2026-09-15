@@ -131,6 +131,8 @@
   .amount:first-child { border-left: 0; }
   .amount div { font-family: var(--serif); font-size: 38px; line-height: 1.05; overflow-wrap: anywhere; }
   .amount .label::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+  .fx { list-style: none; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11.5px; line-height: 1.65; color: var(--fg-dim); }
+  .fx b, .fx span { white-space: nowrap; } .fx b { font-weight: 500; color: var(--fg); } .fx .ok { color: var(--green); } .fx .warn { color: var(--copper); }
   .amount.usdc .label::before { background: var(--usdc); } .amount.xlm .label::before { background: var(--xlm); } .amount.eurc .label::before { background: var(--eurc); }
 
   /* Flow */
@@ -387,6 +389,11 @@ const txLink = (hash) => `<a class="mono" target="_blank" rel="noopener" href="h
 // Accounts (G…) and contracts (C…) open in the explorer too.
 const idLink = (id) => `<a target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/${id.startsWith("C") ? "contract" : "account"}/${escape(id)}">${short(escape(id))}</a>`;
 const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+// Premium of a send amount over its oracle value, as a signed percentage.
+const premium = (units, oracle) => {
+  const pct = (Number(units) / Number(oracle) - 1) * 100;
+  return `${pct >= 0 ? "+" : "−"}${Math.abs(pct).toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+};
 const span = (cls, text) => `<span class="${cls}">${text}</span>`;
 let catalog;
 const receipts = [];
@@ -516,6 +523,7 @@ async function pay(path, asset) {
     show(
       span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${txLink(data.transaction)}`),
       data.spent ? `  cliente gastó ${span("v", `${fmt(data.spent.amount)} ${symbol(data.spent.asset)}`)} · vendedor recibió ${fmt(data.price.amount)} USDC` : `  vendedor recibió ${fmt(data.price.amount)} USDC`,
+      ...(data.fx ? [`  guardia FX: gasto máx. ${fmt(data.fx.maxSend)} ${asset} · Reflector ${fmt(data.fx.oracleSend)} · prima ${span(data.fx.premiumBps > 500 ? "y" : "g", premium(data.fx.maxSend, data.fx.oracleSend))}${data.fx.premiumBps > 500 ? span("y", " (pool de testnet; en mainnet el cliente rechaza > 5%)") : span("g", " ✓ bajo el límite de 5%")}`] : []),
       escape(JSON.stringify(data.body, null, 2)),
     );
     loadReceipts();
@@ -524,6 +532,21 @@ async function pay(path, asset) {
   } finally {
     buttons.forEach((b) => (b.disabled = b.classList.contains("pay") && !catalog.demoAgent));
   }
+}
+
+// Testnet pool vs oracle, and the read-only mainnet quote for the same swap.
+function fxLines(asset, units, data) {
+  const oracle = data.oracle?.[asset];
+  if (asset === "USDC" || !oracle) return "";
+  const main = data.mainnet?.[asset] ?? {};
+  const best = [main.soroswap, main.sdex].filter(Boolean).sort((a, b) => Number(a) - Number(b))[0];
+  const cls = (u) => (Number(u) <= Number(oracle) * 1.05 ? "ok" : "warn");
+  return `<ul class="fx">
+    <li>Reflector: <b>${fmt(oracle)}</b></li>
+    <li>testnet: <span class="${cls(units)}">${premium(units, oracle)}</span></li>
+    ${best ? `<li>mainnet: <b>${fmt(best)}</b> <span class="${cls(best)}">${premium(best, oracle)}</span></li>
+    <li>${main.soroswap ? `<span>Soroswap ${premium(main.soroswap, oracle)}</span>` : ""}${main.soroswap && main.sdex ? " · " : ""}${main.sdex ? `<span>SDEX ${premium(main.sdex, oracle)}</span>` : ""}</li>` : "<li>mainnet: sin ruta</li>"}
+  </ul>`;
 }
 
 const PRESETS = ["1500 CLP", "0.5 UF", "2 EUR", "10 BRL"];
@@ -535,9 +558,9 @@ async function calculate(price) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     const q = data.quote;
-    $("calc-rate").innerHTML = `1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD · ${sourceLabel(q.oracleSource)}. XLM y EURC según simulación de FxPay en Soroswap testnet, sin el 2% de margen de slippage.`;
+    $("calc-rate").innerHTML = `1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD · ${sourceLabel(q.oracleSource)}. XLM y EURC según simulación de FxPay en Soroswap testnet (pools de prueba con precios arbitrarios), sin el 2% de slippage. Debajo, la misma compra en <b>mainnet ahora</b>, solo lectura, frente al valor de Reflector.`;
     $("calc-amounts").innerHTML = Object.entries(data.pay).map(([asset, units]) => `
-      <div class="amount ${asset.toLowerCase()}"><span class="label">${asset}</span><div>${fmt(units)}</div><span class="meta">${asset === "USDC" ? "recibe el vendedor" : "gasta el cliente"}</span></div>`).join("");
+      <div class="amount ${asset.toLowerCase()}"><span class="label">${asset}</span><div>${fmt(units)}</div><span class="meta">${asset === "USDC" ? "recibe el vendedor" : "gasta el cliente en testnet"}</span>${fxLines(asset, units, data)}</div>`).join("");
   } catch (error) {
     $("calc-rate").innerHTML = `<span style="color:var(--red)">${escape(error.message)}</span>`;
     $("calc-amounts").innerHTML = "";

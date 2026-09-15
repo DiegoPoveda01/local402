@@ -1,14 +1,20 @@
 import { x402Client, x402HTTPClient } from "@x402/core/client";
-import type { PaymentRequirements } from "@x402/core/types";
-import { createEd25519Signer } from "@x402/stellar";
+import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
+import { Operation, scValToNative, Transaction } from "@stellar/stellar-sdk";
+import { createEd25519Signer, getNetworkPassphrase } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/client";
 import { ExactFxClientScheme, FX_TESTNET } from "@local402/fx";
-import { quoteLocalPrice, ReflectorFiatOracle, UfRateSource, type FiatRateSource, type LocalQuote } from "@local402/pricing";
+import { quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource, type FiatRate, type FiatRateSource, type LocalQuote } from "@local402/pricing";
 
 export type PayAsset = "USDC" | "XLM" | "EURC";
 
+type FxAsset = Exclude<PayAsset, "USDC">;
+
 /** Assets paid through `exact-fx`, swapped to the seller's USDC by FxPay. */
-const FX_SEND_ASSETS: Record<Exclude<PayAsset, "USDC">, string> = { XLM: FX_TESTNET.xlm, EURC: FX_TESTNET.eurc };
+const FX_SEND_ASSETS: Record<FxAsset, string> = { XLM: FX_TESTNET.xlm, EURC: FX_TESTNET.eurc };
+
+/** Oracle symbol that prices each send asset in USD. EURC is valued at the euro rate, being redeemable 1:1 for euros. */
+const FX_ORACLE_SYMBOLS: Record<FxAsset, string> = { XLM: "XLM", EURC: "EUR" };
 
 /** A running spending cap in local currency, e.g. "5000 CLP". Share one across clients that pay with different assets. */
 export class SpendingBudget {
@@ -29,6 +35,24 @@ export interface Local402ClientOptions {
   maxOverchargeBps?: number;
   /** Rates used to check the seller's quote. Defaults to Reflector plus UF. */
   oracle?: FiatRateSource;
+  /**
+   * Refuse XLM or EURC payments whose swap may spend more than this above the oracle value of the price.
+   * Covers slippage (2%), pool fees and spread. Default 500 (5%).
+   */
+  maxFxPremiumBps?: number;
+  /** USD rates for the send assets, asked for `XLM` and `EUR`. Defaults to Reflector's exchange feed for XLM and `oracle` for EUR. */
+  assetOracle?: FiatRateSource;
+}
+
+/** How the FX leg of a payment compares with the oracle. */
+export interface FxCheck {
+  /** Most send asset the payment can spend (quote plus slippage), in its smallest unit. Unused input is refunded. */
+  maxSend: string;
+  /** Send asset worth the USDC price at the oracle rate. */
+  oracleSend: string;
+  /** How far `maxSend` is above `oracleSend`, in basis points; negative when the pool prices the asset above the oracle. */
+  premiumBps: number;
+  oracleSource: string;
 }
 
 export interface Price {
@@ -48,6 +72,7 @@ export interface PaidResult {
   explorerUrl: string;
   /** Send-asset amount the FX swap consumed, when paying with XLM or EURC. */
   spent?: { asset: string; amount: string };
+  fx?: FxCheck;
   body: unknown;
 }
 
@@ -79,6 +104,8 @@ export class Local402Client {
   readonly budget?: SpendingBudget;
   private readonly maxOverchargeBps: bigint;
   private readonly oracle: FiatRateSource;
+  private readonly maxFxPremiumBps: number;
+  private readonly assetOracle: FiatRateSource;
 
   constructor(options: Local402ClientOptions) {
     const signer = createEd25519Signer(options.secret, NETWORK);
@@ -93,6 +120,9 @@ export class Local402Client {
     this.budget = options.budget;
     this.maxOverchargeBps = BigInt(options.maxOverchargeBps ?? 200);
     this.oracle = options.oracle ?? new UfRateSource(new ReflectorFiatOracle());
+    this.maxFxPremiumBps = options.maxFxPremiumBps ?? 500;
+    const exchanges = new ReflectorFiatOracle(REFLECTOR_CEX);
+    this.assetOracle = options.assetOracle ?? { getRate: (symbol) => (symbol === "XLM" ? exchanges : this.oracle).getRate(symbol) };
   }
 
   /** Reads a resource's price without paying. Returns undefined if the resource is free. */
@@ -113,6 +143,7 @@ export class Local402Client {
     const payload = await this.http.createPaymentPayload(required);
     const price = describe(url, payload.accepted);
     await this.checkPrice(price);
+    const fx = this.payWith === "USDC" ? undefined : await this.checkFxLeg(price.amount, fxMaxSend(payload));
 
     // Reserve the amount so concurrent payments cannot overrun the budget together.
     const charged = BigInt(price.amount);
@@ -133,6 +164,7 @@ export class Local402Client {
       transaction: settlement.transaction,
       explorerUrl: `https://stellar.expert/explorer/testnet/tx/${settlement.transaction}`,
       spent: extra?.sendAsset && extra.sendAmount ? { asset: extra.sendAsset, amount: extra.sendAmount } : undefined,
+      fx,
       body: await readBody(paid),
     };
   }
@@ -162,6 +194,41 @@ export class Local402Client {
       throw new Error(`Refusing to pay: it would exceed the ${this.budget.limit} budget (${this.budget.spent} of ${budget.tokenAmount} USDC units already spent)`);
     }
   }
+
+  /**
+   * The seller's quote is checked in USDC, but an XLM or EURC payment also trusts the pool's exchange rate.
+   * This bounds the swap too: the most it may spend is compared with the oracle value of the USDC price.
+   */
+  async checkFxLeg(usdcAmount: string, maxSend: bigint): Promise<FxCheck> {
+    if (this.payWith === "USDC") throw new Error("USDC payments have no FX leg");
+    const symbol = FX_ORACLE_SYMBOLS[this.payWith];
+    const rate = await this.assetOracle.getRate(symbol);
+    if (Date.now() / 1000 - rate.timestamp > MAX_ORACLE_AGE_SECONDS) {
+      throw new Error(`Refusing to pay: the ${symbol} oracle rate is stale`);
+    }
+    const oracleSend = oracleSendAmount(usdcAmount, rate);
+    const premiumBps = Number(((maxSend - oracleSend) * 10_000n) / oracleSend);
+    if (premiumBps > this.maxFxPremiumBps) {
+      throw new Error(
+        `Refusing to pay: the swap may spend ${maxSend} ${this.payWith} units, ${(premiumBps / 100).toFixed(2)}% above the ${oracleSend} the oracle rate implies (limit ${this.maxFxPremiumBps / 100}%)`,
+      );
+    }
+    return { maxSend: maxSend.toString(), oracleSend: oracleSend.toString(), premiumBps, oracleSource: rate.source };
+  }
+}
+
+const MAX_ORACLE_AGE_SECONDS = 900;
+
+/** Send-asset units worth `usdcAmount` at an oracle rate, rounded up. USDC and the send assets use 7 decimals; USDC counts as one dollar. */
+export function oracleSendAmount(usdcAmount: string | bigint, rate: FiatRate): bigint {
+  return (BigInt(usdcAmount) * 10n ** BigInt(rate.decimals) + rate.usdPerUnit - 1n) / rate.usdPerUnit;
+}
+
+/** Reads the `maxSend` argument of the FxPay `pay` call the payload authorizes. */
+export function fxMaxSend(payload: PaymentPayload): bigint {
+  const transaction = new Transaction(String((payload.payload as { transaction?: unknown }).transaction), getNetworkPassphrase(payload.accepted.network));
+  const operation = transaction.operations[0] as Operation.InvokeHostFunction;
+  return scValToNative(operation.func.invokeContract().args()[2]) as bigint;
 }
 
 async function readBody(response: Response): Promise<unknown> {

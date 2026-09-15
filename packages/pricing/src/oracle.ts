@@ -36,6 +36,13 @@ export const REFLECTOR_FIAT = {
   },
 } as const;
 
+/** Reflector "Centralized exchanges" feed on mainnet (base USD, 14 decimals); publishes crypto such as `XLM`. */
+export const REFLECTOR_CEX = {
+  rpcUrl: REFLECTOR_FIAT.mainnet.rpcUrl,
+  networkPassphrase: Networks.PUBLIC,
+  contractId: "CAFJZQWSED6YAWZU3GWRTOCNPPCGBN32L7QV43XX5LZLFTK6JLN34DLN",
+} as const;
+
 // Any valid account works for read-only simulation; it never signs or submits.
 const SIMULATION_SOURCE = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
 
