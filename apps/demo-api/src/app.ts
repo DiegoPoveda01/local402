@@ -5,7 +5,7 @@ import type { DynamicPrice, PaymentOption } from "@x402/core/http";
 import type { AssetAmount, Network } from "@x402/core/types";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
-import { FX_TESTNET, mainnetShadowQuote, quoteFx } from "@local402/fx";
+import { fxNetwork, mainnetShadowQuote, quoteFx } from "@local402/fx";
 import { local402Server, localRoute } from "@local402/server";
 import { Local402Client, oracleSendAmount, type PayAsset } from "@local402/client";
 import { ReceiptBook, Redis } from "./receipts.js";
@@ -18,8 +18,10 @@ if (!PAY_TO) {
 }
 const DEMO_AGENT_SECRET = process.env.DEMO_AGENT_SECRET;
 const PAY_ASSETS: PayAsset[] = ["USDC", "XLM", "EURC"];
+const fxConfig = fxNetwork(NETWORK, process.env.FX_CONTRACT || undefined);
+const rpcUrl = process.env.RPC_URL || fxConfig.rpcUrl;
 // Symbols for the assets payers can spend through exact-fx, keyed by contract.
-const ASSET_SYMBOLS: Record<string, string> = { [FX_TESTNET.xlm]: "XLM", [FX_TESTNET.eurc]: "EURC" };
+const ASSET_SYMBOLS: Record<string, string> = { [fxConfig.xlm]: "XLM", [fxConfig.eurc]: "EURC" };
 
 // Reflector on-chain rates, plus UF (CLF) composed from its daily CLP value.
 const oracle = new UfRateSource(new ReflectorFiatOracle());
@@ -135,7 +137,7 @@ app.get("/demo/quote", async (req, res) => {
     const fx = await Promise.all(
       Object.entries(ASSET_SYMBOLS).map(async ([contract, symbol]) => {
         const [pay, rate, mainnet] = await Promise.all([
-          quoteFx({ fxContract: FX_TESTNET.fxContract, sendAsset: contract }, NETWORK, asset, quote.tokenAmount),
+          quoteFx({ fxContract: fxConfig.fxContract!, sendAsset: contract, rpcConfig: rpcUrl ? { url: rpcUrl } : undefined }, NETWORK, asset, quote.tokenAmount),
           sendAssetRate(symbol).catch(() => undefined),
           mainnetShadowQuote(symbol as "XLM" | "EURC", BigInt(quote.tokenAmount)),
         ]);
@@ -200,8 +202,9 @@ async function withinLimit(key: string, max: number): Promise<boolean> {
 
 // Demo only: lets the dashboard trigger a real agent payment against this API.
 app.post("/demo/pay", async (req, res) => {
-  if (!DEMO_AGENT_SECRET) {
-    res.status(404).json({ error: "Set DEMO_AGENT_SECRET to enable demo payments" });
+  // A public button must not spend real money: mainnet payments run from scripts/mainnet/pay.ts instead.
+  if (!DEMO_AGENT_SECRET || NETWORK !== "stellar:testnet") {
+    res.status(404).json({ error: "Demo payments need DEMO_AGENT_SECRET and run on testnet only" });
     return;
   }
   if (!(await withinLimit(`ip:${req.ip}`, PAY_LIMITS.perVisitor)) || !(await withinLimit("all", PAY_LIMITS.overall))) {
@@ -214,7 +217,7 @@ app.post("/demo/pay", async (req, res) => {
   try {
     // The client refuses swaps more than 5% above the oracle. Testnet pools are seeded with arbitrary prices
     // (tstEURC trades near 0.74 USD), so the demo allows more there and shows the premium next to each payment.
-    const client = new Local402Client({ secret: DEMO_AGENT_SECRET, payWith, maxFxPremiumBps: NETWORK === "stellar:testnet" ? 10_000 : undefined });
+    const client = new Local402Client({ secret: DEMO_AGENT_SECRET, payWith, maxFxPremiumBps: 10_000 });
     // The agent buys from this same API, at the address the dashboard was opened on.
     const origin = `${req.protocol}://${req.get("host")}`;
     res.json(await client.pay(`${origin}${path}`));

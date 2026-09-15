@@ -1,17 +1,14 @@
 import { x402Client, x402HTTPClient } from "@x402/core/client";
-import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
+import type { Network, PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import { Operation, scValToNative, Transaction } from "@stellar/stellar-sdk";
 import { createEd25519Signer, getNetworkPassphrase } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/client";
-import { ExactFxClientScheme, FX_TESTNET } from "@local402/fx";
+import { ExactFxClientScheme, fxNetwork } from "@local402/fx";
 import { quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource, type FiatRate, type FiatRateSource, type LocalQuote } from "@local402/pricing";
 
 export type PayAsset = "USDC" | "XLM" | "EURC";
 
 type FxAsset = Exclude<PayAsset, "USDC">;
-
-/** Assets paid through `exact-fx`, swapped to the seller's USDC by FxPay. */
-const FX_SEND_ASSETS: Record<FxAsset, string> = { XLM: FX_TESTNET.xlm, EURC: FX_TESTNET.eurc };
 
 /** Oracle symbol that prices each send asset in USD. EURC is valued at the euro rate, being redeemable 1:1 for euros. */
 const FX_ORACLE_SYMBOLS: Record<FxAsset, string> = { XLM: "XLM", EURC: "EUR" };
@@ -25,6 +22,12 @@ export class SpendingBudget {
 
 export interface Local402ClientOptions {
   secret: string;
+  /** Default `stellar:testnet`. On `stellar:pubnet`, XLM and EURC payments also need `fxContract`. */
+  network?: Network;
+  /** Soroban RPC. Defaults to the public testnet RPC, or a public mainnet one. */
+  rpcUrl?: string;
+  /** FxPay contract trusted with XLM and EURC payments. Defaults to the Local402 testnet deployment. */
+  fxContract?: string;
   /** Asset the payer spends. USDC uses stock `exact`; XLM and EURC use `exact-fx` through FxPay. */
   payWith?: PayAsset;
   /** Refuse any single payment worth more than this local price, e.g. "500 CLP", whatever currency it is priced in. */
@@ -76,8 +79,6 @@ export interface PaidResult {
   body: unknown;
 }
 
-const NETWORK = "stellar:testnet";
-
 function describe(url: string, option: PaymentRequirements): Price {
   const quote = option.extra?.local402 as LocalQuote | undefined;
   return {
@@ -95,10 +96,11 @@ function describe(url: string, option: PaymentRequirements): Price {
   };
 }
 
-/** Pays x402 resources priced in local currency on Stellar testnet, with USDC or XLM. */
+/** Pays x402 resources priced in local currency on Stellar, with USDC, XLM or EURC. */
 export class Local402Client {
   readonly address: string;
   readonly payWith: PayAsset;
+  readonly network: Network;
   private readonly http: x402HTTPClient;
   private readonly maxPrice?: string;
   readonly budget?: SpendingBudget;
@@ -108,13 +110,18 @@ export class Local402Client {
   private readonly assetOracle: FiatRateSource;
 
   constructor(options: Local402ClientOptions) {
-    const signer = createEd25519Signer(options.secret, NETWORK);
+    this.network = options.network ?? "stellar:testnet";
+    const signer = createEd25519Signer(options.secret, this.network);
     this.address = signer.address;
     this.payWith = options.payWith ?? "USDC";
+    const fx = fxNetwork(this.network, options.fxContract);
+    const rpcUrl = options.rpcUrl ?? fx.rpcUrl;
+    const rpcConfig = rpcUrl ? { url: rpcUrl } : undefined;
+    if (this.payWith !== "USDC" && !fx.fxContract) throw new Error(`Paying with ${this.payWith} on ${this.network} needs fxContract`);
     const scheme =
       this.payWith === "USDC"
-        ? new ExactStellarScheme(signer)
-        : new ExactFxClientScheme(signer, { fxContract: FX_TESTNET.fxContract, sendAsset: FX_SEND_ASSETS[this.payWith] });
+        ? new ExactStellarScheme(signer, rpcConfig)
+        : new ExactFxClientScheme(signer, { fxContract: fx.fxContract!, sendAsset: this.payWith === "XLM" ? fx.xlm : fx.eurc, rpcConfig });
     this.http = new x402HTTPClient(new x402Client().register("stellar:*", scheme));
     this.maxPrice = options.maxPrice;
     this.budget = options.budget;
@@ -162,7 +169,7 @@ export class Local402Client {
       price,
       payWith: this.payWith,
       transaction: settlement.transaction,
-      explorerUrl: `https://stellar.expert/explorer/testnet/tx/${settlement.transaction}`,
+      explorerUrl: `https://stellar.expert/explorer/${this.network === "stellar:pubnet" ? "public" : "testnet"}/tx/${settlement.transaction}`,
       spent: extra?.sendAsset && extra.sendAmount ? { asset: extra.sendAsset, amount: extra.sendAmount } : undefined,
       fx,
       body: await readBody(paid),

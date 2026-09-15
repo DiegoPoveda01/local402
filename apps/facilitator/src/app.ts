@@ -4,7 +4,7 @@ import type { Network, SettleResponse } from "@x402/core/types";
 import { BAZAAR, extractDiscoveryInfo, type DiscoveryResource } from "@x402/extensions/bazaar";
 import { createEd25519Signer } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/facilitator";
-import { ChannelPool, ExactFxFacilitatorScheme, FX_TESTNET } from "@local402/fx";
+import { ChannelPool, ExactFxFacilitatorScheme, fxNetwork } from "@local402/fx";
 
 const NETWORK = (process.env.NETWORK ?? "stellar:testnet") as Network;
 // Several fee-paying accounts ("channels") let settlements run in parallel without sequence number clashes.
@@ -12,8 +12,13 @@ const SECRETS = (process.env.FACILITATOR_PRIVATE_KEYS || process.env.FACILITATOR
 if (!SECRETS.length) {
   throw new Error("FACILITATOR_PRIVATE_KEY (fee-paying Stellar account) is required. See .env.example");
 }
-const FX_CONTRACT = process.env.FX_CONTRACT ?? FX_TESTNET.fxContract;
-const SEND_ASSETS = (process.env.SEND_ASSETS ?? `${FX_TESTNET.xlm},${FX_TESTNET.eurc}`).split(",");
+const fx = fxNetwork(NETWORK, process.env.FX_CONTRACT || undefined);
+if (!fx.fxContract) {
+  throw new Error(`FX_CONTRACT (FxPay deployment) is required on ${NETWORK}. See scripts/mainnet/deploy-fxpay.sh`);
+}
+const SEND_ASSETS = (process.env.SEND_ASSETS || `${fx.xlm},${fx.eurc}`).split(",");
+const rpcUrl = process.env.RPC_URL || fx.rpcUrl;
+const rpcConfig = rpcUrl ? { url: rpcUrl } : undefined;
 
 // Bazaar catalog: every resource that settles here and declares discovery info, keyed by URL.
 const catalog = new Map<string, DiscoveryResource>();
@@ -21,10 +26,10 @@ const catalog = new Map<string, DiscoveryResource>();
 const signers = SECRETS.map((secret) => createEd25519Signer(secret, NETWORK));
 const channels = new ChannelPool(signers.map((signer) => signer.address));
 const facilitator = new x402Facilitator()
-  .register(NETWORK, new ExactStellarScheme(signers, { selectSigner: channels.select }))
+  .register(NETWORK, new ExactStellarScheme(signers, { rpcConfig, selectSigner: channels.select }))
   .register(
     NETWORK,
-    new ExactFxFacilitatorScheme(signers, { fxContract: FX_CONTRACT, sendAssets: SEND_ASSETS, selectSigner: channels.select }),
+    new ExactFxFacilitatorScheme(signers, { fxContract: fx.fxContract, sendAssets: SEND_ASSETS, rpcConfig, selectSigner: channels.select }),
   )
   .registerExtension(BAZAAR)
   .onAfterSettle(async ({ paymentPayload, requirements, result }) => {
