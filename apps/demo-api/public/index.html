@@ -284,7 +284,7 @@
       <li>Contrato FxPay: <span class="mono" id="judges-fxpay">—</span></li>
       <li>Último pago: <span class="mono" id="judges-tx">haz uno arriba</span></li>
       <li><a href="#mainnet">3 pagos reales en mainnet</a> con FxPay <a class="mono" href="https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV" target="_blank" rel="noopener">CBMWKV…RSCV</a>; bug de comisión reportado a <a href="https://github.com/x402-foundation/x402/issues/3491" target="_blank" rel="noopener">x402</a></li>
-      <li><b>24</b> tests TypeScript y <b>8</b> del contrato; facilitador con 3 cuentas en paralelo</li>
+      <li><b>24</b> tests TypeScript y <b>8</b> del contrato; paquetes en <a href="https://www.npmjs.com/package/local402-server" target="_blank" rel="noopener">npm</a></li>
     </ul>
   </div>
   <div>
@@ -345,7 +345,10 @@
       </div>
       <div class="window">
         <div class="window-bar"><i></i><i></i><i></i><span>server.ts</span></div>
-<pre class="code"><span class="k">app</span>.use(paymentMiddleware({
+<pre class="code"><span class="c">// npm install local402-server</span>
+<span class="k">import</span> { localRoute, local402Server } <span class="k">from</span> <span class="s">"local402-server"</span>;
+
+<span class="k">app</span>.use(paymentMiddleware({
   <span class="s">"GET /indicadores"</span>: localRoute(<span class="s">"50 CLP"</span>, { payTo }),
   <span class="s">"GET /uf"</span>: localRoute(<span class="s">"0.01 UF"</span>, { payTo }),
 }, local402Server()));</pre>
@@ -703,7 +706,7 @@ const EN = [
     "The agent <b>checks</b> the seller's rate and the swap's before signing",
     null, null,
     '<a href="#mainnet">3 real mainnet payments</a> through FxPay <a class="mono" href="https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV" target="_blank" rel="noopener">CBMWKV…RSCV</a>; fee bug reported to <a href="https://github.com/x402-foundation/x402/issues/3491" target="_blank" rel="noopener">x402</a>',
-    "<b>24</b> TypeScript tests and <b>8</b> contract tests; facilitator settling from 3 accounts in parallel",
+    '<b>24</b> TypeScript tests and <b>8</b> contract tests; packages on <a href="https://www.npmjs.com/package/local402-server" target="_blank" rel="noopener">npm</a>',
     "Integrating is free: one line per route, and the seller still receives USDC",
     "The facilitator charges a few <b>basis points</b>, only on swap payments",
     "Next: Mexican, Peruvian and Colombian currencies for Latin American APIs and agents",
