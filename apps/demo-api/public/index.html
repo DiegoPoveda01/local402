@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Local402 · Cobra en tu moneda</title>
+<meta name="description" content="x402 en Stellar con precios en moneda local (CLP, UF, EUR, BRL) vía el oráculo Reflector. El cliente paga con USDC, XLM o EURC y el vendedor recibe USDC exacto.">
+<meta name="theme-color" content="#0a0908">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://local402.vercel.app/">
+<meta property="og:title" content="Local402 · Cobra en pesos, recibe USDC exacto">
+<meta property="og:description" content="Pagos x402 en Stellar con precios en moneda local y swap atómico en Soroswap. Demo en vivo en testnet.">
+<meta name="twitter:card" content="summary">
 <link rel="icon" href="/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +18,7 @@
 <style>
   :root {
     --bg: #0a0908; --bg-elev: #110f0d; --bg-elev-2: #171512;
-    --fg: #f3efe7; --fg-muted: rgba(243,239,231,.66); --fg-dim: rgba(243,239,231,.42);
+    --fg: #f3efe7; --fg-muted: rgba(243,239,231,.66); --fg-dim: rgba(243,239,231,.54);
     --border: rgba(243,239,231,.09); --border-strong: rgba(243,239,231,.18);
     --copper: #e38b5a; --copper-muted: rgba(227,139,90,.12);
     --green: #8be3a8; --red: #ff8a7a;
@@ -28,6 +35,8 @@
   a { color: inherit; }
   code, .mono { font-family: var(--mono); font-size: .88em; }
   em { font-style: italic; color: var(--copper); }
+  :focus-visible { outline: 2px solid var(--copper); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } tr.new { animation: none; } }
 
   /* Nav */
   nav { position: sticky; top: 0; z-index: 10; background: rgba(10,9,8,.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
@@ -47,7 +56,8 @@
   .hero .wrap { position: relative; display: grid; grid-template-columns: 1.45fr 1fr; gap: 48px; align-items: center; padding-block: 96px 88px; }
   .eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--copper); }
   h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(50px, 6.6vw, 84px); line-height: .98; letter-spacing: -.025em; margin: 20px 0 0; }
-  .lead { color: var(--fg-muted); font-size: 18px; max-width: 520px; margin: 24px 0 0; }
+  .problem { font-family: var(--mono); font-size: 13px; color: var(--fg-muted); max-width: 520px; margin: 26px 0 0; padding-left: 12px; border-left: 2px solid var(--copper); }
+  .lead { color: var(--fg-muted); font-size: 18px; max-width: 520px; margin: 18px 0 0; }
   .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px; }
   .btn { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 500; font-size: 14.5px; border-radius: 999px; padding: 11px 20px; border: 1px solid var(--border-strong); }
   .btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
@@ -73,7 +83,7 @@
 
   /* Sections */
   section { padding-block: 104px 0; }
-  h1, h2, .split h3 { text-wrap: balance; }
+  h1, h2 { text-wrap: balance; }
   h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(36px, 4.6vw, 56px); line-height: 1.04; letter-spacing: -.02em; margin: 14px 0 0; max-width: 820px; }
   .sub { color: var(--fg-muted); font-size: 16px; max-width: 620px; margin: 16px 0 36px; }
   .card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -113,6 +123,7 @@
   .calc { display: grid; grid-template-columns: minmax(280px, 1fr) 1.6fr; gap: 14px; align-items: stretch; }
   .calc form { display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border-strong); padding-bottom: 8px; }
   .calc input { flex: 1; min-width: 0; font-family: var(--serif); font-size: 42px; background: transparent; color: var(--fg); border: 0; outline: 0; padding: 0; }
+  .calc form:focus-within { border-bottom-color: var(--copper); }
   .presets { display: flex; flex-wrap: wrap; gap: 6px; }
   .presets button { padding: 4px 11px; font-family: var(--mono); font-size: 12px; }
   .amounts { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: 14px; background: var(--bg-elev); }
@@ -132,7 +143,7 @@
   /* Integration */
   .split { display: grid; grid-template-columns: 1fr 1.25fr; gap: 48px; align-items: center; }
   .split + .split { margin-top: 64px; }
-  .split h3 { font-family: var(--serif); font-weight: 400; font-size: clamp(32px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -.015em; margin: 12px 0 12px; }
+  .split h2 { font-size: clamp(32px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -.015em; margin: 12px 0 12px; }
   .split p { color: var(--fg-muted); margin: 0 0 14px; }
   .split .window { margin: 0; }
   pre.code { margin: 0; padding: 18px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.75; overflow-x: auto; color: var(--fg); }
@@ -186,6 +197,15 @@
     .amounts { grid-template-columns: 1fr; } .amount { border-left: 0; border-top: 1px solid var(--border); } .amount:first-child { border-top: 0; }
     .stat { padding-inline: 14px; } .stat .value { font-size: 28px; }
     .badge { max-width: 190px; }
+    .term { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+    .compare thead { display: none; }
+    .compare tr { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); }
+    .compare tr:last-child { border-bottom: 0; }
+    .compare td { min-width: 0; border-bottom: 0; padding: 10px 14px; font-size: 13.5px; }
+    .compare td:first-child { grid-column: 1 / -1; min-width: 0; padding-bottom: 0; }
+    .compare td:not(:first-child)::before { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-dim); margin-bottom: 4px; }
+    .compare td.no::before { content: "x402 hoy"; }
+    .compare td:last-child::before { content: "Con Local402"; color: var(--copper); }
   }
 </style>
 </head>
@@ -208,6 +228,7 @@
     <div>
       <div class="eyebrow"><span class="dot"></span>x402 en Stellar · precios en moneda local</div>
       <h1>Cobra en <em>pesos</em>.<br>Recibe USDC exacto.</h1>
+      <p class="problem">Hoy x402 solo cobra en dólares y en un único activo. Pero Chile factura en pesos y UF.</p>
       <p class="lead">Tus clientes, personas o agentes de IA, pagan con USDC, XLM o EURC. Una sola transacción, tasa de un oráculo on-chain, y el vendedor recibe siempre el monto justo.</p>
       <div class="cta">
         <a class="btn primary" href="#probar">Probar un pago real →</a>
@@ -276,7 +297,7 @@
     <div class="split">
       <div>
         <div class="eyebrow">04 — Vendedores</div>
-        <h3>Una línea por ruta.</h3>
+        <h2>Una línea por ruta.</h2>
         <p>Acepta USDC (<code>exact</code>) y XLM o EURC (<code>exact-fx</code>) con la misma cotización. También sirve para herramientas MCP con <code>localToolPayment(server, "20 CLP", …)</code>.</p>
       </div>
       <div class="window">
@@ -290,7 +311,7 @@
     <div class="split">
       <div>
         <div class="eyebrow">05 — Agentes</div>
-        <h3>MCP, pero con <em>límites</em>.</h3>
+        <h2>MCP, pero con <em>límites</em>.</h2>
         <p>El agente verifica la tasa del vendedor con su propio oráculo, respeta <code>MAX_PRICE</code> y un presupuesto por sesión (<code>BUDGET</code>).</p>
         <div class="discovery" id="discovery-count">…</div>
       </div>
@@ -363,6 +384,8 @@ const currencyLabel = (code) => (code === "CLF" ? "UF" : escape(code));
 const symbol = (asset) => escape(catalog?.assetSymbols?.[asset] ?? short(asset));
 const short = (s) => `${s.slice(0, 6)}…${s.slice(-6)}`;
 const txLink = (hash) => `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/tx/${hash}">${short(hash)}</a>`;
+// Accounts (G…) and contracts (C…) open in the explorer too.
+const idLink = (id) => `<a target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/${id.startsWith("C") ? "contract" : "account"}/${escape(id)}">${short(escape(id))}</a>`;
 const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const span = (cls, text) => `<span class="${cls}">${text}</span>`;
 let catalog;
@@ -375,12 +398,13 @@ async function loadCatalog() {
     $("network").textContent = "API no disponible";
     return;
   }
-  $("network").innerHTML = `<span class="dot"></span>${escape(catalog.network)} · vendedor ${short(catalog.payTo)}`;
+  $("network").innerHTML = `<span class="dot"></span>${escape(catalog.network)} · vendedor ${idLink(catalog.payTo)}`;
   const first = !$("products").children.length;
   for (const item of catalog.items) renderProduct(item);
   renderTicket(catalog.items[0]);
   if (first) peek(catalog.items[0].path);
-  $("discovery-count").textContent = catalog.discovered == null ? "facilitador sin catálogo" : `● ${catalog.discovered} ${catalog.discovered === 1 ? "recurso" : "recursos"} en el catálogo Bazaar`;
+  // Serverless facilitators start with an empty catalog; only show the count once there is something to find.
+  $("discovery-count").textContent = catalog.discovered ? `● ${catalog.discovered} ${catalog.discovered === 1 ? "recurso" : "recursos"} en el catálogo Bazaar` : "";
 }
 
 // Hero ticket: the live quote of the first product, as a client would see it in the 402.
@@ -450,8 +474,8 @@ function describe402(path, required) {
     `  precio    ${span("h", `${local(q.localAmount)} ${currencyLabel(q.currency)}`)}  1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD`,
     `  fuente    ${sourceLabel(q.oracleSource)}, ${new Date(q.oracleTimestamp * 1000).toLocaleTimeString("es-CL")}`,
   ];
-  if (exact) lines.push(`  exact     ${span("h", `${fmt(exact.amount)} USDC`)} → ${short(exact.payTo)}`);
-  if (fx) lines.push(`  exact-fx  ${span("v", fx.extra.sendAssets.map(symbol).join(" o "))} → FxPay ${short(fx.extra.fxContract)} → mismo USDC`);
+  if (exact) lines.push(`  exact     ${span("h", `${fmt(exact.amount)} USDC`)} → ${idLink(exact.payTo)}`);
+  if (fx) lines.push(`  exact-fx  ${span("v", fx.extra.sendAssets.map(symbol).join(" o "))} → FxPay ${idLink(fx.extra.fxContract)} → mismo USDC`);
   lines.push(`  válido    hasta ${new Date(q.expiresAt * 1000).toLocaleTimeString("es-CL")}`);
   return lines;
 }
@@ -479,7 +503,13 @@ async function pay(path, asset) {
       : span("h", `→ el agente firma FxPay.pay con ${asset} (exact-fx)${asset === "EURC" ? ", ruta EURC → XLM → USDC" : ""}`));
     show(span("c", "  reintenta con PAYMENT-SIGNATURE; el facilitador verifica, simula y liquida…"));
     const started = performance.now();
-    const response = await fetch(`/demo/pay?with=${asset}&path=${encodeURIComponent(path)}`, { method: "POST" });
+    // A settlement takes several seconds; a live counter shows the demo is working.
+    show(span("y", "  esperando confirmación on-chain · 0 s"));
+    const waiting = setInterval(() => {
+      lines[lines.length - 1] = span("y", `  esperando confirmación on-chain · ${Math.floor((performance.now() - started) / 1000)} s`);
+      term.innerHTML = lines.join("\n");
+    }, 1000);
+    const response = await fetch(`/demo/pay?with=${asset}&path=${encodeURIComponent(path)}`, { method: "POST" }).finally(() => { clearInterval(waiting); lines.pop(); });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     const seconds = ((performance.now() - started) / 1000).toLocaleString("es-CL", { maximumFractionDigits: 1 });
