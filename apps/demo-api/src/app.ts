@@ -125,7 +125,7 @@ app.get("/catalog", async (_req, res) => {
   const discovered = await fetch(`${FACILITATOR_URL}/discovery/resources?limit=1`)
     .then(async (r) => ((await r.json()) as { pagination: { total: number } }).pagination.total)
     .catch(() => null);
-  res.json({ network: NETWORK, payTo: PAY_TO, demoAgent: Boolean(DEMO_AGENT_SECRET), payAssets: PAY_ASSETS, assetSymbols: ASSET_SYMBOLS, discovered, items });
+  res.json({ network: NETWORK, payTo: PAY_TO, fxContract: fxConfig.fxContract, demoAgent: Boolean(DEMO_AGENT_SECRET), payAssets: PAY_ASSETS, assetSymbols: ASSET_SYMBOLS, discovered, items });
 });
 
 // Price calculator: what any local price costs in each payment asset right now, without paying.

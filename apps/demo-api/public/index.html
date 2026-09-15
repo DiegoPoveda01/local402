@@ -81,6 +81,17 @@
   .stat .value { font-family: var(--serif); font-size: 38px; line-height: 1.1; margin-top: 10px; overflow-wrap: anywhere; }
   .stat .note { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--fg-dim); margin-top: 4px; }
 
+  .lang { cursor: pointer; font: inherit; background: transparent; color: inherit; margin-left: auto; margin-right: 8px; }
+  .lang + .badge { margin-left: 0; }
+
+  /* Judges strip */
+  .judges { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--border); }
+  .judges > div { padding: 26px 24px 28px; border-left: 1px solid var(--border); min-width: 0; }
+  .judges > div:first-child { border-left: 0; padding-left: 0; }
+  .judges ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; font-size: 14px; color: var(--fg-muted); }
+  .judges li::before { content: "→"; color: var(--copper); margin-right: 8px; }
+  .judges b { color: var(--fg); font-weight: 500; }
+
   /* Sections */
   section { padding-block: 104px 0; }
   h1, h2 { text-wrap: balance; }
@@ -191,6 +202,7 @@
     .products, .grid4 { grid-template-columns: 1fr; }
     .step { border-left: 0; border-top: 1px solid var(--border); } .step:first-child { border-top: 0; }
     .stats { grid-template-columns: 1fr 1fr; }
+    .judges { grid-template-columns: 1fr; } .judges > div { border-left: 0; padding-inline: 0; } .judges > div + div { border-top: 1px solid var(--border); }
     .stat:nth-child(3) { border-left: 0; padding-left: 0; } .stat:nth-child(n+3) { border-top: 1px solid var(--border); }
     .links { display: none; }
     section { padding-top: 80px; }
@@ -216,6 +228,7 @@
   <div class="wrap">
     <a class="logo" href="#"><img src="/logo.svg" alt=""><span>Local<i>402</i></span></a>
     <div class="links"><a href="#probar">Probar</a><a href="#calculadora">Calculadora</a><a href="#integracion">Integración</a><a href="#recibos">Recibos</a></div>
+    <button class="badge lang" id="lang" type="button" aria-label="Switch to English">EN</button>
     <div class="badge" id="network">Conectando…</div>
   </div>
 </nav>
@@ -254,6 +267,33 @@
   <div class="stat"><div class="label">Vendido</div><div class="value" id="stat-local">—</div><div class="note">en moneda local</div></div>
   <div class="stat"><div class="label">Recibido</div><div class="value" id="stat-usdc">0 USDC</div><div class="note">por el vendedor</div></div>
   <div class="stat"><div class="label">Con swap</div><div class="value" id="stat-xlm">0</div><div class="note">pagados con XLM o EURC</div></div>
+</div>
+
+<div class="wrap judges" id="jurado">
+  <div>
+    <div class="label">Qué es nuevo</div>
+    <ul>
+      <li><b>exact-fx</b>: un esquema x402 nuevo, con <a href="https://github.com/DiegoPoveda01/local402/blob/main/docs/scheme_exact_fx_stellar.md" target="_blank" rel="noopener">especificación</a> y contrato Soroban propio (FxPay)</li>
+      <li>Precios en <b>CLP, UF, EUR y BRL</b> con el oráculo Reflector on-chain</li>
+      <li>El agente <b>verifica</b> la tasa del vendedor y la del swap antes de firmar</li>
+    </ul>
+  </div>
+  <div>
+    <div class="label">Verifícalo</div>
+    <ul>
+      <li>Contrato FxPay: <span class="mono" id="judges-fxpay">—</span></li>
+      <li>Último pago: <span class="mono" id="judges-tx">haz uno arriba</span></li>
+      <li><b>24</b> tests TypeScript y <b>8</b> del contrato; facilitador con 3 cuentas en paralelo</li>
+    </ul>
+  </div>
+  <div>
+    <div class="label">Modelo de negocio (propuesta)</div>
+    <ul>
+      <li>Integrar es gratis: una línea por ruta, sin cambiar el USDC que recibe el vendedor</li>
+      <li>El facilitador cobra unos <b>puntos básicos</b> solo en pagos con swap</li>
+      <li>Siguiente: pesos, soles y pesos colombianos para APIs y agentes de Latinoamérica</li>
+    </ul>
+  </div>
 </div>
 
 <main class="wrap">
@@ -361,6 +401,18 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
       </table>
     </div>
   </section>
+
+  <section id="mainnet" hidden>
+    <div class="eyebrow">08 — Mainnet</div>
+    <h2>Lo mismo, con <em>dinero real</em>.</h2>
+    <p class="sub">Pagos hechos en Stellar mainnet con el mismo código: USDC y EURC de Circle, Soroswap y Reflector reales. Con las guardias por defecto: 2% sobre el oráculo y 5% en el swap.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Precio</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Prima vs Reflector</th><th>Transacción</th></tr></thead>
+        <tbody id="mainnet-payments"></tbody>
+      </table>
+    </div>
+  </section>
 </main>
 
 <footer>
@@ -385,7 +437,7 @@ const sourceLabel = (source) => source.startsWith("mindicador.cl") ? "UF de la C
 const currencyLabel = (code) => (code === "CLF" ? "UF" : escape(code));
 const symbol = (asset) => escape(catalog?.assetSymbols?.[asset] ?? short(asset));
 const short = (s) => `${s.slice(0, 6)}…${s.slice(-6)}`;
-const txLink = (hash) => `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/tx/${hash}">${short(hash)}</a>`;
+const txLink = (hash, net = "testnet") => `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/${net}/tx/${hash}">${short(hash)}</a>`;
 // Accounts (G…) and contracts (C…) open in the explorer too.
 const idLink = (id) => `<a target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/${id.startsWith("C") ? "contract" : "account"}/${escape(id)}">${short(escape(id))}</a>`;
 const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -410,6 +462,7 @@ async function loadCatalog() {
   for (const item of catalog.items) renderProduct(item);
   renderTicket(catalog.items[0]);
   if (first) peek(catalog.items[0].path);
+  if (catalog.fxContract) $("judges-fxpay").innerHTML = idLink(catalog.fxContract);
   // Serverless facilitators start with an empty catalog; only show the count once there is something to find.
   $("discovery-count").textContent = catalog.discovered ? `● ${catalog.discovered} ${catalog.discovered === 1 ? "recurso" : "recursos"} en el catálogo Bazaar` : "";
 }
@@ -603,6 +656,7 @@ function renderReceipts(newId) {
   $("stat-local").textContent = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString("es-CL", { maximumFractionDigits: 4 })} ${c === "CLF" ? "UF" : c}`).join(" · ");
   $("stat-usdc").textContent = `${usdc.toLocaleString("es-CL", { maximumFractionDigits: 4 })} USDC`;
   $("stat-xlm").textContent = receipts.filter((r) => r.spent).length;
+  $("judges-tx").innerHTML = txLink(receipts[0].transaction);
 }
 
 // Receipts come from the shared list; the stream only makes this instance feel instant.
@@ -614,7 +668,105 @@ async function loadReceipts() {
   renderReceipts(fresh?.id);
 }
 
+// Written by scripts/mainnet/pay.ts; the section stays hidden until there is at least one payment.
+async function loadMainnet() {
+  const payments = await fetch("/mainnet-payments.json").then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  if (!payments.length) return;
+  $("mainnet-payments").innerHTML = payments.slice().reverse().map((p) => `<tr>
+      <td class="mono">${new Date(p.paidAt).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}</td>
+      <td><b>${local(p.local.amount)} ${currencyLabel(p.local.currency)}</b></td>
+      <td>${fmt(p.usdc)} USDC</td>
+      <td><span class="pill ${escape(p.payWith.toLowerCase())}">${escape(p.payWith)}</span> ${fmt(p.spent)}</td>
+      <td class="mono">${p.fxPremiumBps === undefined ? "—" : `${p.fxPremiumBps >= 0 ? "+" : "−"}${(Math.abs(p.fxPremiumBps) / 100).toLocaleString("es-CL", { minimumFractionDigits: 2 })}% máx.`}</td>
+      <td>${txLink(p.transaction, "public")}</td>
+    </tr>`).join("");
+  $("mainnet").hidden = false;
+}
+
+// English copy for the static page, keyed by selector (and index when a selector matches several elements).
+// Live output (console, calculator, receipts) stays in Spanish.
+const EN = [
+  [".links a", ["Try it", "Calculator", "Integrate", "Receipts"]],
+  [".hero .eyebrow", '<span class="dot"></span>x402 on Stellar · local-currency prices'],
+  [".hero h1", "Charge in <em>pesos</em>.<br>Receive exact USDC."],
+  [".hero .problem", "Today x402 only charges in dollars, in a single asset. But Chile invoices in pesos and UF."],
+  [".hero .lead", "Your customers, people or AI agents, pay with USDC, XLM or EURC. One transaction, an on-chain oracle rate, and the seller always receives the exact amount."],
+  [".cta .btn", ["Try a real payment →", "Price something"]],
+  [".ticket .row span:first-child", [null, "rate", "source", "pay with"]],
+  [".stats .label", ["Payments", "Sold", "Received", "Swapped"]],
+  [".stats .note", ["settled on-chain", "in local currency", "by the seller", "paid with XLM or EURC"]],
+  [".judges .label", ["What's new", "Verify it", "Business model (proposal)"]],
+  [".judges li", [
+    '<b>exact-fx</b>: a new x402 scheme, with a <a href="https://github.com/DiegoPoveda01/local402/blob/main/docs/scheme_exact_fx_stellar.md" target="_blank" rel="noopener">spec</a> and its own Soroban contract (FxPay)',
+    "Prices in <b>CLP, UF, EUR and BRL</b> from the on-chain Reflector oracle",
+    "The agent <b>checks</b> the seller's rate and the swap's before signing",
+    null, null,
+    "<b>24</b> TypeScript tests and <b>8</b> contract tests; facilitator settling from 3 accounts in parallel",
+    "Integrating is free: one line per route, and the seller still receives USDC",
+    "The facilitator charges a few <b>basis points</b>, only on swap payments",
+    "Next: Mexican, Peruvian and Colombian currencies for Latin American APIs and agents",
+  ]],
+  ["#probar h2", "Three APIs, three currencies. <em>One</em> USDC on the other side."],
+  ["#probar .sub", "“Ver el 402” shows what any x402 client receives, with no wallet or payment. The colored buttons make a real testnet payment with a demo wallet."],
+  ["#calculadora h2", "Set your price. <em>We</em> handle the exchange."],
+  ["#calculadora .sub", "Any amount in CLP, UF, EUR, BRL or USD, converted with the oracle, and what paying it with each asset would cost right now through FxPay."],
+  ["#calculadora .card > .label", "Seller's price"],
+  ["main > section > .eyebrow, .split .eyebrow, #recibos .eyebrow", ["01 — Try it", "02 — Calculator", "03 — How it works", "04 — Sellers", "05 — Agents", "06 — Comparison", "07 — Live receipts", "08 — Mainnet"]],
+  ["main > section:nth-of-type(3) h2", "Four steps and <em>no</em> manual exchange rates."],
+  ["main > section:nth-of-type(3) .sub", "It all happens inside the standard x402 flow. If anything doesn't add up, the whole transaction reverts."],
+  [".step h3", ["Local price", "Reflector oracle", "Pay with what you hold", "Receipt"]],
+  [".step p", [
+    'The seller sets <code>"50 CLP"</code> on its x402 route.',
+    "Converted to USDC at the on-chain rate, rounded in the seller's favor. The quote travels in the 402.",
+    "USDC with <code>exact</code>. XLM or EURC with <code>exact-fx</code>: FxPay swaps on Soroswap in the same transaction.",
+    "The seller receives the exact USDC and the rest goes back to the payer. A receipt keeps the rate, source and transaction.",
+  ]],
+  [".split h2", ["One line per route.", "MCP, with <em>limits</em>."]],
+  [".split > div:first-child > p", [
+    'Accept USDC (<code>exact</code>) and XLM or EURC (<code>exact-fx</code>) from the same quote. It also works for MCP tools with <code>localToolPayment(server, "20 CLP", …)</code>.',
+    "The agent checks the seller's rate against its own oracle, and respects <code>MAX_PRICE</code> and a per-session <code>BUDGET</code>.",
+  ]],
+  ["main > section:nth-of-type(5) h2", "x402 today, and <em>with</em> Local402."],
+  ["main > section:nth-of-type(5) .sub", "What changes for whoever sells and whoever pays."],
+  [".compare th", [null, "x402 on Stellar today", "With Local402"]],
+  [".compare td", [
+    "Price", 'In dollars; <code>"50 CLP"</code> fails', '<span class="yes">✓</span>CLP, UF, EUR, BRL… via an on-chain oracle',
+    "The payer pays with", "Only the exact asset (USDC)", '<span class="yes">✓</span>USDC, XLM or EURC, with an atomic swap',
+    "The seller receives", "USDC", '<span class="yes">✓</span>Exact USDC, no XLM exposure',
+    "If the swap falls short", null, '<span class="yes">✓</span>Everything reverts; unused funds go back',
+    "AI agents", "Trust the seller's price", '<span class="yes">✓</span>Check the rate, with a per-payment cap and a budget',
+    "Accounting", "USDC amounts", '<span class="yes">✓</span>Receipt with local price, rate and source; CSV',
+  ]],
+  ["#recibos h2", "Every sale, <em>ready</em> for accounting."],
+  ["#recibos .link", "Export CSV →"],
+  ["#recibos th", ["Time", "Resource", "Price", "Rate (USD)", "Seller receives", "Payer paid", "Transaction"]],
+  ["#mainnet h2", "The same, with <em>real money</em>."],
+  ["#mainnet .sub", "Payments made on Stellar mainnet with the same code: Circle's USDC and EURC, real Soroswap and Reflector. With the default guards: 2% over the oracle and 5% on the swap."],
+  ["#mainnet th", ["Date", "Price", "Seller receives", "Payer paid", "Premium vs Reflector", "Transaction"]],
+  ["footer p", "x402 payments priced in local currency, settled in USDC on Stellar. Made in Chile for Find Your Way."],
+  ["footer .label", ["Project", "Built with"]],
+  ["footer .cols a[href='/receipts.csv']", "Receipts CSV"],
+];
+
+function setLang(lang) {
+  for (const [selector, copy] of EN) {
+    document.querySelectorAll(selector).forEach((el, i) => {
+      const en = Array.isArray(copy) ? copy[i] : copy;
+      if (en == null) return;
+      el.dataset.es ??= el.innerHTML;
+      el.innerHTML = lang === "en" ? en : el.dataset.es;
+    });
+  }
+  document.documentElement.lang = lang;
+  $("lang").textContent = lang === "en" ? "ES" : "EN";
+  $("lang").setAttribute("aria-label", lang === "en" ? "Cambiar a español" : "Switch to English");
+  try { localStorage.setItem("lang", lang); } catch {}
+}
+$("lang").addEventListener("click", () => setLang(document.documentElement.lang === "en" ? "es" : "en"));
+try { if (localStorage.getItem("lang") === "en") setLang("en"); } catch {}
+
 async function start() {
+  loadMainnet();
   await loadCatalog();
   setInterval(loadCatalog, 30_000);
   calculate(PRESETS[0]);
