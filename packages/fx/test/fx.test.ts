@@ -32,7 +32,7 @@ const PAYER_SECRET = process.env.FX_PAYER_SECRET;
 const SELLER = "GC57EF3M4NJXMYB56JMSS52RCBVPS5OJAT7WMK54CCYSBGPRQ64GVM62";
 
 describe.skipIf(!PAYER_SECRET)("exact-fx facilitator on testnet", () => {
-  const payer = createEd25519Signer(PAYER_SECRET ?? "", "stellar:testnet");
+  const payer = createEd25519Signer(PAYER_SECRET ?? Keypair.random().secret(), "stellar:testnet");
   // Verification never signs, so a throwaway facilitator key is enough.
   const facilitator = new ExactFxFacilitatorScheme(createEd25519Signer(Keypair.random().secret(), "stellar:testnet"), {
     fxContract: FX_TESTNET.fxContract,
