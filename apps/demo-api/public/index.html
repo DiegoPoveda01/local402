@@ -256,7 +256,7 @@
       <div id="ticket-usdc">cotizando con Reflector…</div>
       <div class="cut"></div>
       <div class="row"><span>tasa</span><span class="v" id="ticket-rate">—</span></div>
-      <div class="row"><span>fuente</span><span class="v">Oráculo Reflector</span></div>
+      <div class="row"><span>fuente</span><span class="v" id="ticket-source">Oráculo Reflector</span></div>
       <div class="row"><span>pagar con</span><span class="assets"><span class="pill usdc">USDC</span><span class="pill xlm">XLM</span><span class="pill eurc">EURC</span></span></div>
     </div>
   </div>
@@ -284,7 +284,7 @@
       <li>Contrato FxPay: <span class="mono" id="judges-fxpay">—</span></li>
       <li>Último pago: <span class="mono" id="judges-tx">haz uno arriba</span></li>
       <li><a href="#mainnet">3 pagos reales en mainnet</a> con FxPay <a class="mono" href="https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV" target="_blank" rel="noopener">CBMWKV…RSCV</a>; bug de comisión reportado a <a href="https://github.com/x402-foundation/x402/issues/3491" target="_blank" rel="noopener">x402</a></li>
-      <li><b>24</b> tests TypeScript y <b>8</b> del contrato; paquetes en <a href="https://www.npmjs.com/package/local402-server" target="_blank" rel="noopener">npm</a></li>
+      <li><b>27</b> tests TypeScript y <b>8</b> del contrato; paquetes en <a href="https://www.npmjs.com/package/local402-server" target="_blank" rel="noopener">npm</a></li>
     </ul>
   </div>
   <div>
@@ -301,7 +301,7 @@
   <section id="probar">
     <div class="eyebrow">01 — Pruébalo</div>
     <h2>Tres APIs, tres monedas. <em>Un solo</em> USDC al otro lado.</h2>
-    <p class="sub">«Ver el 402» muestra lo que recibe cualquier cliente x402, sin wallet ni pago. Los botones de color hacen un pago real en testnet con una wallet de demo.</p>
+    <p class="sub">«Ver el 402» muestra lo que recibe cualquier cliente x402, sin wallet ni pago. Los botones de color hacen un pago real en testnet con una wallet de demo, gratis para cualquiera. Los pagos con dinero real, con el mismo código, están en <a href="#mainnet">mainnet</a>.</p>
     <div class="products" id="products"></div>
     <div class="window">
       <div class="window-bar"><i></i><i></i><i></i><span>agente@local402</span></div>
@@ -455,6 +455,15 @@ const span = (cls, text) => `<span class="${cls}">${text}</span>`;
 let catalog;
 const receipts = [];
 
+// The live demo pays with testnet funds; real mainnet payments, when there are any, are listed further down.
+let mainnetPayments = 0;
+function renderNetwork() {
+  if (!catalog) return;
+  const net = catalog.network === "stellar:testnet" ? "demo en testnet" : escape(catalog.network);
+  const mainnet = mainnetPayments ? ` · <a href="#mainnet">${mainnetPayments} pagos en mainnet</a>` : "";
+  $("network").innerHTML = `<span class="dot"></span>${net}${mainnet} · vendedor ${idLink(catalog.payTo)}`;
+}
+
 async function loadCatalog() {
   try {
     const response = await fetch("/catalog");
@@ -468,8 +477,7 @@ async function loadCatalog() {
     }
     return;
   }
-  const net = catalog.network === "stellar:testnet" ? "demo en testnet" : escape(catalog.network);
-  $("network").innerHTML = `<span class="dot"></span>${net} · vendedor ${idLink(catalog.payTo)}`;
+  renderNetwork();
   const first = !$("products").children.length;
   for (const item of catalog.items) renderProduct(item);
   const quoted = catalog.items.find((item) => !item.error);
@@ -487,6 +495,7 @@ function renderTicket(item) {
   $("ticket-price").innerHTML = `${local(q.localAmount)} ${currencyLabel(q.currency)}`;
   $("ticket-usdc").textContent = `≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC para el vendedor`;
   $("ticket-rate").innerHTML = `1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD`;
+  $("ticket-source").innerHTML = sourceLabel(q.oracleSource);
 }
 
 function renderProduct(item) {
@@ -705,6 +714,8 @@ async function loadMainnet() {
       <td>${txLink(p.transaction, "public")}</td>
     </tr>`).join("");
   $("mainnet").hidden = false;
+  mainnetPayments = payments.length;
+  renderNetwork();
 }
 
 // English copy for the static page, keyed by selector (and index when a selector matches several elements).
@@ -726,13 +737,13 @@ const EN = [
     "The agent <b>checks</b> the seller's rate and the swap's before signing",
     null, null,
     '<a href="#mainnet">3 real mainnet payments</a> through FxPay <a class="mono" href="https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV" target="_blank" rel="noopener">CBMWKV…RSCV</a>; fee bug reported to <a href="https://github.com/x402-foundation/x402/issues/3491" target="_blank" rel="noopener">x402</a>',
-    '<b>24</b> TypeScript tests and <b>8</b> contract tests; packages on <a href="https://www.npmjs.com/package/local402-server" target="_blank" rel="noopener">npm</a>',
+    '<b>27</b> TypeScript tests and <b>8</b> contract tests; packages on <a href="https://www.npmjs.com/package/local402-server" target="_blank" rel="noopener">npm</a>',
     "Integrating is free: one line per route, and the seller still receives USDC",
     "The facilitator charges a few <b>basis points</b>, only on swap payments",
     "Next: Latin American APIs and agents, where MXN, COP and PEN already quote",
   ]],
   ["#probar h2", "Three APIs, three currencies. <em>One</em> USDC on the other side."],
-  ["#probar .sub", "“Ver el 402” shows what any x402 client receives, with no wallet or payment. The colored buttons make a real testnet payment with a demo wallet."],
+  ["#probar .sub", "“Ver el 402” shows what any x402 client receives, with no wallet or payment. The colored buttons make a real testnet payment with a demo wallet, free for anyone. Payments with real money, from the same code, are under <a href=\"#mainnet\">mainnet</a>."],
   ["#calculadora h2", "Set your price. <em>We</em> handle the exchange."],
   ["#calculadora .sub", "Any amount in UF, USD or Reflector's 24 currencies (CLP, MXN, COP, PEN, BRL, EUR…), converted with the oracle, and what paying it with each asset would cost right now through FxPay."],
   ["#calculadora .card > .label", "Seller's price"],
