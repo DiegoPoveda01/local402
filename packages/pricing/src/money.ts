@@ -5,15 +5,18 @@ export interface LocalMoney {
   currency: string;
 }
 
-const LOCAL_PRICE = /^\s*(\d+(?:\.\d+)?)\s+([A-Za-z]{3})\s*$/;
+const LOCAL_PRICE = /^\s*(\d+(?:\.\d+)?)\s+([A-Za-z]{2,3})\s*$/;
+// Common names that are not ISO 4217 codes.
+const ALIASES: Record<string, string> = { UF: "CLF" };
 
-/** Parses a seller price such as "50 CLP" or "1.20 EUR". */
+/** Parses a seller price such as "50 CLP", "1.20 EUR" or "0.5 UF". */
 export function parseLocalPrice(price: string): LocalMoney {
   const match = LOCAL_PRICE.exec(price);
   if (!match) {
     throw new Error(`Invalid local price "${price}". Expected "<amount> <CURRENCY>", e.g. "50 CLP".`);
   }
-  return { amount: match[1], currency: match[2].toUpperCase() };
+  const code = match[2].toUpperCase();
+  return { amount: match[1], currency: ALIASES[code] ?? code };
 }
 
 /** Converts a decimal string to an integer scaled by 10^decimals, plus the decimals it used. */

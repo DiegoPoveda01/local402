@@ -99,7 +99,9 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const fmt = (units, decimals = 7) => (Number(units) / 10 ** decimals).toLocaleString("es-CL", { maximumFractionDigits: 7 });
-const local = (amount) => Number(amount).toLocaleString("es-CL", { maximumFractionDigits: 2 });
+const local = (amount) => Number(amount).toLocaleString("es-CL", { maximumFractionDigits: 4 });
+const sourceLabel = (source) => source.startsWith("mindicador.cl") ? "UF de la CMF (mindicador.cl) × Reflector" : "Oráculo Reflector";
+const currencyLabel = (code) => (code === "CLF" ? "UF" : escape(code));
 const short = (s) => `${s.slice(0, 6)}…${s.slice(-6)}`;
 const txLink = (hash) => `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/tx/${hash}">${short(hash)}</a>`;
 const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -142,9 +144,9 @@ function renderProduct(item) {
   const age = Math.max(0, Math.round(Date.now() / 1000 - q.oracleTimestamp));
   card.querySelector("h3").innerHTML = `<code>GET ${escape(item.path)}</code>`;
   card.querySelector(".desc").textContent = item.description;
-  card.querySelector(".price").innerHTML = `${local(q.localAmount)} ${escape(q.currency)}<small>≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC</small>`;
+  card.querySelector(".price").innerHTML = `${local(q.localAmount)} ${currencyLabel(q.currency)}<small>≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC</small>`;
   card.querySelector(".rate").innerHTML =
-    `1 ${escape(q.currency)} = ${Number(Number(q.usdPerUnit).toPrecision(6)).toLocaleString("es-CL", { maximumFractionDigits: 8 })} USD · Reflector, hace ${Math.round(age / 60)} min · cotización válida hasta ${new Date(q.expiresAt * 1000).toLocaleTimeString("es-CL")}`;
+    `1 ${currencyLabel(q.currency)} = ${Number(Number(q.usdPerUnit).toPrecision(6)).toLocaleString("es-CL", { maximumFractionDigits: 8 })} USD · ${sourceLabel(q.oracleSource)}, hace ${Math.round(age / 60)} min · cotización válida hasta ${new Date(q.expiresAt * 1000).toLocaleTimeString("es-CL")}`;
   for (const button of card.querySelectorAll("button")) {
     button.disabled = !catalog.demoAgent;
     button.title = catalog.demoAgent ? "" : "Define DEMO_AGENT_SECRET en la API para activar pagos de demo";
@@ -184,7 +186,7 @@ function renderReceipts(newId) {
     return `<tr class="${r.id === newId ? "new" : ""}">
       <td>${new Date(r.paidAt).toLocaleTimeString("es-CL")}</td>
       <td class="mono">${escape(new URL(r.resource || "http://x/").pathname)}</td>
-      <td><b>${local(r.local.amount)} ${escape(r.local.currency)}</b></td>
+      <td><b>${local(r.local.amount)} ${currencyLabel(r.local.currency)}</b></td>
       <td class="mono">${Number(Number(r.rate.usdPerUnit).toPrecision(6)).toLocaleString("es-CL", { maximumFractionDigits: 8 })}</td>
       <td>${fmt(r.settled.amount, r.settled.decimals)} USDC</td>
       <td>${paidWith}</td>
@@ -199,7 +201,7 @@ function renderReceipts(newId) {
     usdc += Number(r.settled.amount) / 10 ** r.settled.decimals;
   }
   $("stat-count").textContent = receipts.length;
-  $("stat-local").textContent = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString("es-CL")} ${c}`).join(" · ");
+  $("stat-local").textContent = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString("es-CL", { maximumFractionDigits: 4 })} ${c === "CLF" ? "UF" : c}`).join(" · ");
   $("stat-usdc").textContent = `${usdc.toLocaleString("es-CL", { maximumFractionDigits: 7 })} USDC`;
   $("stat-xlm").textContent = receipts.filter((r) => r.spent).length;
 }

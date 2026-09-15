@@ -4,7 +4,7 @@ import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactStellarScheme } from "@x402/stellar/exact/server";
 import type { AssetAmount, Network } from "@x402/core/types";
-import { localPrice, ReflectorFiatOracle } from "@local402/pricing";
+import { localPrice, ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
 import { ExactFxServerScheme, FX_SCHEME } from "@local402/fx";
 import { Local402Client, type PayAsset } from "@local402/client";
 import { ReceiptBook } from "./receipts.js";
@@ -18,7 +18,8 @@ if (!PAY_TO) {
 }
 const DEMO_AGENT_SECRET = process.env.DEMO_AGENT_SECRET;
 
-const oracle = new ReflectorFiatOracle();
+// Reflector on-chain rates, plus UF (CLF) composed from its daily CLP value.
+const oracle = new UfRateSource(new ReflectorFiatOracle());
 const receipts = new ReceiptBook(process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)));
 const server = new x402ResourceServer(new HTTPFacilitatorClient({ url: FACILITATOR_URL }))
   .register(NETWORK, new ExactStellarScheme())
@@ -29,6 +30,7 @@ const server = new x402ResourceServer(new HTTPFacilitatorClient({ url: FACILITAT
 const products = [
   { path: "/indicadores", price: "50 CLP", description: "Indicadores de mercado para Chile, cobrados en pesos chilenos" },
   { path: "/europa", price: "0.05 EUR", description: "Tipos de cambio del euro, cobrados en euros" },
+  { path: "/uf", price: "0.01 UF", description: "Valor de la UF en pesos y dólares, cobrado en UF" },
 ].map((product) => ({ ...product, quote: localPrice(product.price, { network: NETWORK, oracle }) }));
 
 const app = express();
@@ -75,6 +77,16 @@ app.get("/europa", async (_req, res) => {
     clpPorEur: +(eur.value / clp.value).toFixed(2),
     fuente: eur.rate.source,
     timestamp: eur.rate.timestamp,
+  });
+});
+
+app.get("/uf", async (_req, res) => {
+  const [uf, clp] = await Promise.all(["CLF", "CLP"].map(usd));
+  res.json({
+    clpPorUf: +(uf.value / clp.value).toFixed(2),
+    usdPorUf: +uf.value.toFixed(4),
+    fuente: uf.rate.source,
+    timestamp: uf.rate.timestamp,
   });
 });
 

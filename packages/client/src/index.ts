@@ -3,7 +3,7 @@ import type { PaymentRequirements } from "@x402/core/types";
 import { createEd25519Signer } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/client";
 import { ExactFxClientScheme, FX_TESTNET } from "@local402/fx";
-import { parseLocalPrice, type LocalQuote } from "@local402/pricing";
+import { quoteLocalPrice, ReflectorFiatOracle, UfRateSource, type FiatRateSource, type LocalQuote } from "@local402/pricing";
 
 export type PayAsset = "USDC" | "XLM";
 
@@ -11,8 +11,12 @@ export interface Local402ClientOptions {
   secret: string;
   /** Asset the payer spends. USDC uses stock `exact`; XLM uses `exact-fx` through FxPay. */
   payWith?: PayAsset;
-  /** Refuse any single payment above this local price, e.g. "500 CLP". */
+  /** Refuse any single payment worth more than this local price, e.g. "500 CLP", whatever currency it is priced in. */
   maxPrice?: string;
+  /** Refuse quotes charging more than this above the client's own oracle rate. Default 200 (2%). */
+  maxOverchargeBps?: number;
+  /** Rates used to check the seller's quote. Defaults to Reflector plus UF. */
+  oracle?: FiatRateSource;
 }
 
 export interface Price {
@@ -59,7 +63,9 @@ export class Local402Client {
   readonly address: string;
   readonly payWith: PayAsset;
   private readonly http: x402HTTPClient;
-  private readonly maxPrice?: { amount: number; currency: string };
+  private readonly maxPrice?: string;
+  private readonly maxOverchargeBps: bigint;
+  private readonly oracle: FiatRateSource;
 
   constructor(options: Local402ClientOptions) {
     const signer = createEd25519Signer(options.secret, NETWORK);
@@ -70,10 +76,9 @@ export class Local402Client {
         ? new ExactFxClientScheme(signer, { fxContract: FX_TESTNET.fxContract, sendAsset: FX_TESTNET.xlm })
         : new ExactStellarScheme(signer);
     this.http = new x402HTTPClient(new x402Client().register("stellar:*", scheme));
-    if (options.maxPrice) {
-      const cap = parseLocalPrice(options.maxPrice);
-      this.maxPrice = { amount: Number(cap.amount), currency: cap.currency };
-    }
+    this.maxPrice = options.maxPrice;
+    this.maxOverchargeBps = BigInt(options.maxOverchargeBps ?? 200);
+    this.oracle = options.oracle ?? new UfRateSource(new ReflectorFiatOracle());
   }
 
   /** Reads a resource's price without paying. Returns undefined if the resource is free. */
@@ -93,7 +98,7 @@ export class Local402Client {
     const required = this.http.getPaymentRequiredResponse((name) => first.headers.get(name), await first.json());
     const payload = await this.http.createPaymentPayload(required);
     const price = describe(url, payload.accepted);
-    this.enforceBudget(price);
+    await this.checkPrice(price);
 
     const paid = await fetch(url, { headers: this.http.encodePaymentSignatureHeader(payload) });
     if (!paid.ok) {
@@ -115,15 +120,21 @@ export class Local402Client {
     return this.payWith === "XLM" ? "exact-fx" : "exact";
   }
 
-  private enforceBudget(price: Price): void {
-    if (!this.maxPrice) return;
-    if (!price.local || price.local.currency !== this.maxPrice.currency) {
-      throw new Error(`Refusing to pay: price is not in ${this.maxPrice.currency}`);
-    }
-    if (Number(price.local.amount) > this.maxPrice.amount) {
+  /** Checks the charge against the client's own oracle rather than trusting the seller's rate. */
+  async checkPrice(price: Price): Promise<void> {
+    const charged = BigInt(price.amount);
+    const [fair, cap] = await Promise.all([
+      price.local && quoteLocalPrice(`${price.local.amount} ${price.local.currency}`, { oracle: this.oracle }),
+      this.maxPrice && quoteLocalPrice(this.maxPrice, { oracle: this.oracle }),
+    ]);
+    if (fair && charged * 10_000n > BigInt(fair.tokenAmount) * (10_000n + this.maxOverchargeBps)) {
       throw new Error(
-        `Refusing to pay ${price.local.amount} ${price.local.currency}: above the ${this.maxPrice.amount} ${this.maxPrice.currency} limit`,
+        `Refusing to pay: ${fair.localAmount} ${fair.currency} is ${fair.tokenAmount} USDC units by our oracle, but the seller charges ${price.amount}`,
       );
+    }
+    if (cap && charged > BigInt(cap.tokenAmount)) {
+      const label = fair ? `${fair.localAmount} ${fair.currency}` : `${price.amount} USDC units`;
+      throw new Error(`Refusing to pay ${label}: above the ${this.maxPrice} limit`);
     }
   }
 }
