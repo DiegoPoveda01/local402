@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { localPrice, parseLocalPrice, quoteLocalPrice, UfRateSource, type FiatRateSource } from "../src/index.js";
+import { medianRecord } from "../src/oracle.js";
 
 // 1 USD = 948.6902 CLP  =>  1 CLP ≈ 0.00105408 USD (14 decimals, as Reflector publishes)
 const CLP_RATE = 105408590567n;
@@ -71,6 +72,21 @@ describe("localPrice", () => {
     now += 1;
     await price({} as never);
     expect(oracle.calls).toBe(2);
+  });
+});
+
+describe("medianRecord", () => {
+  it("ignores a single outlier tick and keeps the latest timestamp", () => {
+    // Real CLP prints from Reflector mainnet, including a 0.65% outlier.
+    const records = [
+      { price: 105408496043n, timestamp: 1789447200n },
+      { price: 105408490439n, timestamp: 1789446900n },
+      { price: 104719706665n, timestamp: 1789446600n },
+      { price: 105408494990n, timestamp: 1789446300n },
+      { price: 105408496273n, timestamp: 1789447500n },
+    ];
+    expect(medianRecord(records)).toEqual({ price: 105408494990n, timestamp: 1789447500 });
+    expect(medianRecord(records.slice(0, 2)).price).toBe(105408493241n);
   });
 });
 
