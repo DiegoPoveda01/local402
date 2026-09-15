@@ -1,0 +1,17 @@
+{
+  "name": "@local402/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@local402/fx": "*",
+    "@local402/pricing": "*",
+    "@x402/core": "2.25.0",
+    "@x402/stellar": "2.25.0",
+    "@x402/extensions": "2.25.0"
+  }
+}

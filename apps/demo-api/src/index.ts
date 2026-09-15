@@ -1,12 +1,12 @@
 import { fileURLToPath } from "node:url";
 import express from "express";
-import { paymentMiddleware, x402ResourceServer } from "@x402/express";
-import { HTTPFacilitatorClient } from "@x402/core/server";
-import { ExactStellarScheme } from "@x402/stellar/exact/server";
+import { paymentMiddleware } from "@x402/express";
+import type { DynamicPrice, PaymentOption } from "@x402/core/http";
 import type { AssetAmount, Network } from "@x402/core/types";
-import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/extensions/bazaar";
-import { localPrice, ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
-import { ExactFxServerScheme, FX_SCHEME, FX_TESTNET } from "@local402/fx";
+import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
+import { ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
+import { FX_TESTNET } from "@local402/fx";
+import { local402Server, localRoute } from "@local402/server";
 import { Local402Client, type PayAsset } from "@local402/client";
 import { ReceiptBook } from "./receipts.js";
 
@@ -25,13 +25,8 @@ const ASSET_SYMBOLS: Record<string, string> = { [FX_TESTNET.xlm]: "XLM", [FX_TES
 // Reflector on-chain rates, plus UF (CLF) composed from its daily CLP value.
 const oracle = new UfRateSource(new ReflectorFiatOracle());
 const receipts = new ReceiptBook(process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)));
-const server = new x402ResourceServer(new HTTPFacilitatorClient({ url: FACILITATOR_URL }))
-  .register(NETWORK, new ExactStellarScheme())
-  .register(NETWORK, new ExactFxServerScheme())
-  .registerExtension(bazaarResourceServerExtension)
-  .onAfterSettle(receipts.record);
+const server = local402Server(FACILITATOR_URL, NETWORK).onAfterSettle(receipts.record);
 
-// Each product shares one quote across both options, so USDC, XLM and EURC payers are charged the same USDC amount.
 // The output examples are published through Bazaar so agents can find these routes before paying.
 const products = [
   {
@@ -52,28 +47,24 @@ const products = [
     description: "Valor de la UF en pesos y dólares, cobrado en UF",
     example: { clpPorUf: 40934.18, usdPorUf: 43.0118, fuente: "mindicador.cl:uf*reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC", timestamp: 1789450500 },
   },
-].map((product) => ({ ...product, quote: localPrice(product.price, { network: NETWORK, oracle }) }));
+].map(({ path, price, description, example }) => {
+  const route = localRoute(price, {
+    payTo: PAY_TO,
+    network: NETWORK,
+    oracle,
+    description,
+    serviceName: "Local402 demo",
+    tags: ["local-currency", "fx", "chile"],
+    extensions: declareDiscoveryExtension({ output: { example } }),
+  });
+  return { path, price, description, route, quote: (route.accepts as PaymentOption[])[0].price as DynamicPrice };
+});
 
 const app = express();
 
 app.use(
   paymentMiddleware(
-    Object.fromEntries(
-      products.map(({ path, quote, description, example }) => [
-        `GET ${path}`,
-        {
-          accepts: [
-            { scheme: "exact", network: NETWORK, payTo: PAY_TO, price: quote },
-            { scheme: FX_SCHEME, network: NETWORK, payTo: PAY_TO, price: quote },
-          ],
-          description,
-          mimeType: "application/json",
-          serviceName: "Local402 demo",
-          tags: ["local-currency", "fx", "chile"],
-          extensions: declareDiscoveryExtension({ output: { example } }),
-        },
-      ]),
-    ),
+    Object.fromEntries(products.map(({ path, route }) => [`GET ${path}`, route])),
     server,
   ),
 );
