@@ -44,7 +44,7 @@ const oracle = new UfRateSource(new ReflectorFiatOracle(), ufValue);
 // USD value of the send assets, as the client checks them: XLM from Reflector's exchange feed, EURC at the euro rate.
 const exchanges = new ReflectorFiatOracle(REFLECTOR_CEX);
 const sendAssetRate = (symbol: string) => (symbol === "XLM" ? exchanges.getRate("XLM") : oracle.getRate("EUR"));
-const receipts = new ReceiptBook({ redis, file: process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)) });
+const receipts = new ReceiptBook({ redis, key: process.env.RECEIPTS_KEY || undefined, file: process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)) });
 const server = local402Server(FACILITATOR_URL, NETWORK).onAfterSettle(receipts.record);
 
 // The output examples are published through Bazaar so agents can find these routes before paying.
@@ -83,6 +83,21 @@ const products = [
 export const app = express();
 // Behind Vercel or another proxy, so paid resource URLs keep their https scheme.
 app.set("trust proxy", true);
+
+// Lets a dashboard on another origin (CORS_ORIGIN) pay here from the visitor's own wallet.
+const CORS_ORIGIN = process.env.CORS_ORIGIN;
+if (CORS_ORIGIN) {
+  app.use((req, res, next) => {
+    res.set({
+      "Access-Control-Allow-Origin": CORS_ORIGIN,
+      "Access-Control-Allow-Headers": "PAYMENT-SIGNATURE, Content-Type",
+      "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
+      Vary: "Origin",
+    });
+    if (req.method === "OPTIONS") res.sendStatus(204);
+    else next();
+  });
+}
 
 app.use(
   paymentMiddleware(

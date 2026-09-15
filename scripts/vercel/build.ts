@@ -36,6 +36,33 @@ writeFileSync(
   JSON.stringify({ runtime: "nodejs22.x", handler: "index.mjs", launcherType: "Nodejs", supportsResponseStreaming: true, maxDuration: 60 }),
 );
 cpSync("apps/demo-api/public", `${OUT}/static`, { recursive: true });
-writeFileSync(`${OUT}/config.json`, JSON.stringify({ version: 3, routes: [{ src: "^/$", dest: "/index.html" }, { handle: "filesystem" }, { src: "/(.*)", dest: "/index" }] }));
+
+// The dashboard's "pay from your wallet" button, loaded only when clicked. The Node-only modules it pulls in
+// (quote signing, settlement channels) are never called in the browser, so they resolve to empty stubs.
+await build({
+  entryPoints: ["apps/demo-api/src/wallet/index.ts"],
+  outfile: `${OUT}/static/wallet.js`,
+  bundle: true,
+  platform: "browser",
+  format: "esm",
+  target: "es2022",
+  minify: true,
+  plugins: [
+    {
+      name: "node-stubs",
+      setup(build) {
+        build.onResolve({ filter: /^node:(crypto|async_hooks)$/ }, (args) => ({ path: args.path, namespace: "node-stub" }));
+        build.onLoad({ filter: /.*/, namespace: "node-stub" }, () => ({
+          contents: "export class AsyncLocalStorage {}; export function createHmac() { throw new Error('unavailable in the browser'); }; export function timingSafeEqual() { return false; }",
+        }));
+      },
+    },
+  ],
+  logLevel: "warning",
+});
+
+// DASHBOARD_URL: a deployment that only serves the API (e.g. mainnet) sends its root page to the dashboard.
+const home = process.env.DASHBOARD_URL ? { src: "^/$", status: 302, headers: { Location: process.env.DASHBOARD_URL } } : { src: "^/$", dest: "/index.html" };
+writeFileSync(`${OUT}/config.json`, JSON.stringify({ version: 3, routes: [home, { handle: "filesystem" }, { src: "/(.*)", dest: "/index" }] }));
 
 console.log(`Built ${OUT}`);

@@ -56,7 +56,7 @@ for (const name of PACKAGES) {
     }),
   );
   const dependencies = Object.fromEntries(
-    Object.entries(source.dependencies as Record<string, string>).map(([dep, range]) => dep.startsWith("@local402/") ? [published(dep), `^${source.version}`] : [dep, range]),
+    Object.entries(source.dependencies as Record<string, string>).map(([dep, range]) => dep.startsWith("@local402/") ? [published(dep), `^${JSON.parse(readFileSync(`packages/${dep.slice(10)}/package.json`, "utf8")).version}`] : [dep, range]),
   );
   writeFileSync(
     join(dir, "package.json"),
@@ -71,6 +71,7 @@ for (const name of PACKAGES) {
         type: "module",
         exports,
         types: exports["."].types,
+        bin: source.bin && Object.fromEntries(Object.entries(source.bin as Record<string, string>).map(([cmd, file]) => [cmd, file.replace("./src/", "./dist/").replace(/\.ts$/, ".js")])),
         files: ["dist"],
         engines: { node: ">=20" },
         dependencies,

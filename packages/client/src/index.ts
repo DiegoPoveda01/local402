@@ -1,10 +1,13 @@
 import { x402Client, x402HTTPClient } from "@x402/core/client";
 import type { Network, PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import { Operation, scValToNative, Transaction } from "@stellar/stellar-sdk";
-import { createEd25519Signer, getNetworkPassphrase } from "@x402/stellar";
+import { createEd25519Signer, getNetworkPassphrase, type ClientStellarSigner } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/client";
 import { ExactFxClientScheme, fxNetwork } from "@local402/fx";
 import { quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource, type FiatRate, type FiatRateSource, type LocalQuote } from "@local402/pricing";
+
+/** Local402's FxPay deployment on Stellar mainnet (scripts/mainnet/deploy-fxpay.sh). */
+export const FXPAY_MAINNET = "CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV";
 
 export type PayAsset = "USDC" | "XLM" | "EURC";
 
@@ -21,7 +24,10 @@ export class SpendingBudget {
 }
 
 export interface Local402ClientOptions {
-  secret: string;
+  /** Payer secret key. Give either this or `signer`. */
+  secret?: string;
+  /** Signs the payer's authorization entries without exposing a key, e.g. a browser wallet. */
+  signer?: ClientStellarSigner;
   /** Default `stellar:testnet`. On `stellar:pubnet`, XLM and EURC payments also need `fxContract`. */
   network?: Network;
   /** Soroban RPC. Defaults to the public testnet RPC, or a public mainnet one. */
@@ -111,7 +117,8 @@ export class Local402Client {
 
   constructor(options: Local402ClientOptions) {
     this.network = options.network ?? "stellar:testnet";
-    const signer = createEd25519Signer(options.secret, this.network);
+    const signer = options.signer ?? (options.secret ? createEd25519Signer(options.secret, this.network) : undefined);
+    if (!signer) throw new Error("Local402Client needs a secret or a signer");
     this.address = signer.address;
     this.payWith = options.payWith ?? "USDC";
     const fx = fxNetwork(this.network, options.fxContract);

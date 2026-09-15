@@ -161,6 +161,10 @@
   .split .window { margin: 0; }
   pre.code { margin: 0; padding: 18px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.75; overflow-x: auto; color: var(--fg); }
   .k { color: var(--xlm); } .s { color: var(--green); } .c { color: var(--fg-dim); }
+  .wallet { margin: 8px 0 40px; }
+  .wallet h3 { margin: 10px 0; font-size: 22px; font-weight: 500; }
+  .wallet .buttons { margin-top: 14px; }
+  .wallet #wallet-status { margin-top: 10px; min-height: 1.5em; }
   .discovery { font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--green); }
 
   /* Tables */
@@ -283,7 +287,7 @@
     <ul>
       <li>Contrato FxPay: <span class="mono" id="judges-fxpay">—</span></li>
       <li>Último pago: <span class="mono" id="judges-tx">haz uno arriba</span></li>
-      <li><a href="#mainnet">3 pagos reales en mainnet</a> con FxPay <a class="mono" href="https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV" target="_blank" rel="noopener">CBMWKV…RSCV</a>; bug de comisión reportado a <a href="https://github.com/x402-foundation/x402/issues/3491" target="_blank" rel="noopener">x402</a></li>
+      <li><a href="#mainnet">Pagos reales en mainnet</a>, también desde tu wallet, con FxPay <a class="mono" href="https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV" target="_blank" rel="noopener">CBMWKV…RSCV</a>; bug de comisión reportado a <a href="https://github.com/x402-foundation/x402/issues/3491" target="_blank" rel="noopener">x402</a></li>
       <li><b>27</b> tests TypeScript y <b>8</b> del contrato; paquetes en <a href="https://www.npmjs.com/package/local402-server" target="_blank" rel="noopener">npm</a></li>
     </ul>
   </div>
@@ -410,6 +414,22 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
     <div class="eyebrow">08 — Mainnet</div>
     <h2>Lo mismo, con <em>dinero real</em>.</h2>
     <p class="sub">Pagos hechos en Stellar mainnet con el mismo código: USDC y EURC de Circle, Soroswap y Reflector reales. Con las guardias por defecto: 2% sobre el oráculo y 5% en el swap.</p>
+    <div class="split wallet">
+      <div>
+        <div class="label">Pruébalo tú</div>
+        <h3 id="wallet-title">Paga 50 pesos reales desde tu wallet.</h3>
+        <p id="wallet-text">Con <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a> en Mainnet, paga <code>GET /indicadores</code> (50 CLP ≈ 0,05 USDC) con USDC, XLM o EURC. Basta con tener XLM. Tú solo firmas la autorización: la comisión de red la paga el facilitador y el cliente rechaza cualquier cobro sobre 200 CLP.</p>
+        <p id="wallet-agents">¿Eres un agente? Lo mismo desde la terminal, con tu propia clave y un tope por pago.</p>
+        <div class="buttons">
+          <button class="pay usdc" data-asset="USDC">USDC</button><button class="pay xlm" data-asset="XLM">XLM</button><button class="pay eurc" data-asset="EURC">EURC</button>
+        </div>
+        <div class="meta" id="wallet-status"></div>
+      </div>
+      <div class="window">
+        <div class="window-bar"><i></i><i></i><i></i><span>tu-wallet@mainnet</span></div>
+        <div class="term" id="wallet-console"></div>
+      </div>
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Fecha</th><th>Precio</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Prima vs Reflector</th><th>Transacción</th></tr></thead>
@@ -701,11 +721,30 @@ async function loadReceipts() {
   renderReceipts(fresh?.id);
 }
 
-// Written by scripts/mainnet/pay.ts; the section stays hidden until there is at least one payment.
+// Mainnet deployment of the same API and facilitator, paid from the visitor's own wallet.
+const MAINNET_API = "https://local402-mainnet.vercel.app";
+const CLI = `STELLAR_SECRET=S… npx -y local402-client pay ${MAINNET_API}/indicadores --with XLM --max "100 CLP"`;
+
+// scripts/mainnet/pay.ts writes the first payments to a file; visitors' payments are receipts of the mainnet API.
 async function loadMainnet() {
-  const payments = await fetch("/mainnet-payments.json").then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  const [scripted, live] = await Promise.all([
+    fetch("/mainnet-payments.json").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    fetch(`${MAINNET_API}/receipts`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+  ]);
+  const known = new Set(scripted.map((p) => p.transaction));
+  const payments = [
+    ...scripted,
+    ...live.filter((r) => !known.has(r.transaction)).map((r) => ({
+      paidAt: r.paidAt,
+      local: r.local,
+      usdc: r.settled.amount,
+      payWith: r.spent ? symbolMainnet(r.spent.asset) : "USDC",
+      spent: r.spent ? r.spent.amount : r.settled.amount,
+      transaction: r.transaction,
+    })),
+  ].sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
   if (!payments.length) return;
-  $("mainnet-payments").innerHTML = payments.slice().reverse().map((p) => `<tr>
+  $("mainnet-payments").innerHTML = payments.map((p) => `<tr>
       <td class="mono">${new Date(p.paidAt).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}</td>
       <td><b>${local(p.local.amount)} ${currencyLabel(p.local.currency)}</b></td>
       <td>${fmt(p.usdc)} USDC</td>
@@ -717,6 +756,49 @@ async function loadMainnet() {
   mainnetPayments = payments.length;
   renderNetwork();
 }
+
+const MAINNET_SYMBOLS = { CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA: "XLM", CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV: "EURC" };
+const symbolMainnet = (asset) => MAINNET_SYMBOLS[asset] ?? short(asset);
+
+$("wallet-console").innerHTML = [span("c", "# desde tu wallet: elige USDC, XLM o EURC"), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`)].join("\n");
+let walletAddress;
+async function payFromWallet(asset) {
+  const term = $("wallet-console");
+  const buttons = document.querySelectorAll(".wallet button");
+  const lines = [];
+  const show = (...more) => { lines.push(...more); term.innerHTML = lines.join("\n"); term.scrollTop = term.scrollHeight; };
+  buttons.forEach((b) => (b.disabled = true));
+  try {
+    show(span("c", "cargando el cliente (≈500 KB)…"));
+    await import("/wallet.js");
+    const wallet = globalThis.local402Wallet;
+    walletAddress ??= await wallet.connect();
+    $("wallet-status").innerHTML = `Conectada: <a target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/account/${escape(walletAddress)}">${short(escape(walletAddress))}</a>`;
+    show(span("h", `$ GET ${MAINNET_API}/indicadores`), span("y", "HTTP/1.1 402 Payment Required"),
+      span("h", asset === "USDC" ? "→ Freighter firma una transferencia de USDC (exact)" : `→ Freighter firma FxPay.pay con ${asset} (exact-fx)`),
+      span("c", "  el cliente revisa la tasa con Reflector y el tope de 200 CLP antes de enviar…"));
+    const started = performance.now();
+    const data = await wallet.pay(`${MAINNET_API}/indicadores`, walletAddress, asset);
+    const seconds = ((performance.now() - started) / 1000).toLocaleString("es-CL", { maximumFractionDigits: 1 });
+    show(
+      span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${txLink(data.transaction, "public")}`),
+      data.spent ? `  gastaste ${span("v", `${fmt(data.spent.amount)} ${asset}`)} · el vendedor recibió ${fmt(data.price.amount)} USDC` : `  el vendedor recibió ${fmt(data.price.amount)} USDC`,
+      escape(JSON.stringify(data.body, null, 2)),
+    );
+    setTimeout(loadMainnet, 1500);
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    const hint = {
+      no_freighter: 'No se encontró Freighter. Instálala desde <a href="https://www.freighter.app" target="_blank" rel="noopener">freighter.app</a> y recarga la página.',
+      wrong_network: "Freighter está en otra red. Cámbiala a Mainnet (Public) e inténtalo de nuevo.",
+    }[message];
+    show(span("r", hint ?? `Error: ${escape(message)}`), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`));
+    if (/User declined|rejected/i.test(message)) walletAddress = undefined;
+  } finally {
+    buttons.forEach((b) => (b.disabled = false));
+  }
+}
+document.querySelectorAll(".wallet button[data-asset]").forEach((b) => (b.onclick = () => payFromWallet(b.dataset.asset)));
 
 // English copy for the static page, keyed by selector (and index when a selector matches several elements).
 // Live output (console, calculator, receipts) stays in Spanish.
@@ -736,7 +818,7 @@ const EN = [
     "Prices in <b>24 currencies</b> from the on-chain Reflector oracle (CLP, MXN, COP, PEN, BRL, EUR…) and in UF",
     "The agent <b>checks</b> the seller's rate and the swap's before signing",
     null, null,
-    '<a href="#mainnet">3 real mainnet payments</a> through FxPay <a class="mono" href="https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV" target="_blank" rel="noopener">CBMWKV…RSCV</a>; fee bug reported to <a href="https://github.com/x402-foundation/x402/issues/3491" target="_blank" rel="noopener">x402</a>',
+    '<a href="#mainnet">Real mainnet payments</a>, also from your own wallet, through FxPay <a class="mono" href="https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV" target="_blank" rel="noopener">CBMWKV…RSCV</a>; fee bug reported to <a href="https://github.com/x402-foundation/x402/issues/3491" target="_blank" rel="noopener">x402</a>',
     '<b>27</b> TypeScript tests and <b>8</b> contract tests; packages on <a href="https://www.npmjs.com/package/local402-server" target="_blank" rel="noopener">npm</a>',
     "Integrating is free: one line per route, and the seller still receives USDC",
     "The facilitator charges a few <b>basis points</b>, only on swap payments",
@@ -778,6 +860,10 @@ const EN = [
   ["#recibos th", ["Time", "Resource", "Price", "Rate (USD)", "Seller receives", "Payer paid", "Transaction"]],
   ["#mainnet h2", "The same, with <em>real money</em>."],
   ["#mainnet .sub", "Payments made on Stellar mainnet with the same code: Circle's USDC and EURC, real Soroswap and Reflector. With the default guards: 2% over the oracle and 5% on the swap."],
+  [".wallet .label", "Try it yourself"],
+  ["#wallet-title", "Pay 50 real pesos from your wallet."],
+  ["#wallet-text", 'With <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a> on Mainnet, pay <code>GET /indicadores</code> (50 CLP ≈ 0.05 USDC) with USDC, XLM or EURC. XLM alone is enough. You only sign the authorization: the facilitator pays the network fee, and the client refuses any charge above 200 CLP.'],
+  ["#wallet-agents", "An agent? The same from the terminal, with your own key and a per-payment cap."],
   ["#mainnet th", ["Date", "Price", "Seller receives", "Payer paid", "Premium vs Reflector", "Transaction"]],
   ["footer p", "x402 payments priced in local currency, settled in USDC on Stellar. Made in Chile for Find Your Way."],
   ["footer .label", ["Project", "Built with"]],

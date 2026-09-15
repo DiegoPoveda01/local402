@@ -19,6 +19,9 @@ if (!fx.fxContract) {
 const SEND_ASSETS = (process.env.SEND_ASSETS || `${fx.xlm},${fx.eurc}`).split(",");
 const rpcUrl = process.env.RPC_URL || fx.rpcUrl;
 const rpcConfig = rpcUrl ? { url: rpcUrl } : undefined;
+// On a public deployment every settlement spends our fees, so it can be limited to known sellers and a minimum price.
+const PAY_TO_ALLOWLIST = (process.env.PAY_TO_ALLOWLIST || "").split(",").filter(Boolean);
+const MIN_AMOUNT = BigInt(process.env.MIN_AMOUNT || "0");
 
 // Bazaar catalog: every resource that settles here and declares discovery info, keyed by URL.
 const catalog = new Map<string, DiscoveryResource>();
@@ -62,6 +65,13 @@ function withinLimit(route: keyof typeof LIMITS, client: string | undefined): bo
   return count <= LIMITS[route];
 }
 
+/** Why this facilitator refuses to handle the requirements, if it does. */
+function refusal(requirements: { payTo?: unknown; amount?: unknown } | undefined): string | undefined {
+  if (PAY_TO_ALLOWLIST.length && !PAY_TO_ALLOWLIST.includes(String(requirements?.payTo))) return "pay_to_not_allowed";
+  if (MIN_AMOUNT && !(/^\d+$/.test(String(requirements?.amount)) && BigInt(String(requirements?.amount)) >= MIN_AMOUNT)) return "amount_below_minimum";
+  return undefined;
+}
+
 export const app = express();
 app.set("trust proxy", true);
 app.use(express.json({ limit: "64kb" }));
@@ -83,6 +93,11 @@ app.post("/verify", async (req, res) => {
     return;
   }
   const { paymentPayload, paymentRequirements } = req.body ?? {};
+  const refused = refusal(paymentRequirements);
+  if (refused) {
+    res.json({ isValid: false, invalidReason: refused });
+    return;
+  }
   const result = await facilitator.verify(paymentPayload, paymentRequirements);
   console.log(`verify ${paymentRequirements?.scheme}: ${result.isValid ? "valid" : result.invalidReason}`);
   res.json(result);
@@ -92,6 +107,11 @@ app.post("/settle", async (req, res) => {
   const { paymentPayload, paymentRequirements } = req.body ?? {};
   if (!withinLimit("settle", req.ip)) {
     res.status(429).json({ success: false, network: paymentRequirements?.network, transaction: "", errorReason: "rate_limited" });
+    return;
+  }
+  const refused = refusal(paymentRequirements);
+  if (refused) {
+    res.json({ success: false, network: paymentRequirements?.network, transaction: "", errorReason: refused });
     return;
   }
   const settle = () => channels.run(() => facilitator.settle(paymentPayload, paymentRequirements));
