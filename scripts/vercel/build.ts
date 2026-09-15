@@ -36,6 +36,6 @@ writeFileSync(
   JSON.stringify({ runtime: "nodejs22.x", handler: "index.mjs", launcherType: "Nodejs", supportsResponseStreaming: true, maxDuration: 60 }),
 );
 cpSync("apps/demo-api/public", `${OUT}/static`, { recursive: true });
-writeFileSync(`${OUT}/config.json`, JSON.stringify({ version: 3, routes: [{ handle: "filesystem" }, { src: "/(.*)", dest: "/index" }] }));
+writeFileSync(`${OUT}/config.json`, JSON.stringify({ version: 3, routes: [{ src: "^/$", dest: "/index.html" }, { handle: "filesystem" }, { src: "/(.*)", dest: "/index" }] }));
 
 console.log(`Built ${OUT}`);
