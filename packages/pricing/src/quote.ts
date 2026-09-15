@@ -13,6 +13,8 @@ export interface LocalQuote {
   oracleTimestamp: number;
   /** Unix seconds after which the seller will no longer honor this quote. */
   expiresAt: number;
+  /** HMAC by the issuing seller, present when quotes are signed (see `localPrice`). */
+  signature?: string;
 }
 
 export interface QuoteOptions {

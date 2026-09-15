@@ -1,12 +1,19 @@
-import type { DynamicPrice } from "@x402/core/http";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { decodePaymentSignatureHeader, type DynamicPrice, type HTTPRequestContext } from "@x402/core/http";
 import type { AssetAmount, Network } from "@x402/core/types";
 import { ExactStellarScheme } from "@x402/stellar/exact/server";
+import { parseLocalPrice } from "./money.js";
 import { ReflectorFiatOracle, type FiatRateSource } from "./oracle.js";
 import { quoteLocalPrice, type LocalQuote, type QuoteOptions } from "./quote.js";
 
 export interface LocalPriceOptions extends Omit<QuoteOptions, "oracle" | "tokenDecimals"> {
   network: Network;
   oracle?: FiatRateSource;
+  /**
+   * Signs quotes so a paid retry can be honored by any server instance holding the same secret,
+   * not only the one that issued the 402. Defaults to `LOCAL402_QUOTE_SECRET`.
+   */
+  quoteSecret?: string;
 }
 
 /**
@@ -19,14 +26,40 @@ export interface LocalPriceOptions extends Omit<QuoteOptions, "oracle" | "tokenD
 export function localPrice(price: string, options: LocalPriceOptions): DynamicPrice {
   const oracle = options.oracle ?? new ReflectorFiatOracle();
   const now = options.now ?? (() => Math.floor(Date.now() / 1000));
+  const secret = options.quoteSecret ?? process.env.LOCAL402_QUOTE_SECRET;
+  const { amount, currency } = parseLocalPrice(price);
   let cached: { quote: LocalQuote; asset: string } | undefined;
 
-  return async (): Promise<AssetAmount> => {
+  const sign = (quote: LocalQuote, asset: string) =>
+    createHmac("sha256", secret!)
+      .update(JSON.stringify([options.network, asset, quote.currency, quote.localAmount, quote.usdPerUnit, quote.tokenAmount, quote.tokenDecimals, quote.oracleSource, quote.oracleTimestamp, quote.expiresAt]))
+      .digest("hex");
+
+  // The quote the payer accepted, if this server signed it for this price and it has not expired.
+  const signedQuote = (context: HTTPRequestContext | undefined, asset: string): LocalQuote | undefined => {
+    if (!secret || !context?.paymentHeader) return undefined;
+    try {
+      const { accepted } = decodePaymentSignatureHeader(context.paymentHeader);
+      const quote = accepted.extra?.local402 as LocalQuote | undefined;
+      if (!quote?.signature || accepted.asset !== asset || accepted.amount !== quote.tokenAmount) return undefined;
+      if (quote.currency !== currency || quote.localAmount !== amount || quote.expiresAt <= now()) return undefined;
+      const expected = Buffer.from(sign(quote, asset), "hex");
+      const given = Buffer.from(quote.signature, "hex");
+      return given.length === expected.length && timingSafeEqual(given, expected) ? quote : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  return async (context): Promise<AssetAmount> => {
+    // The default Stellar asset (USDC) and its decimals come from the official scheme.
+    const unit = await new ExactStellarScheme().parsePrice("1", options.network);
+    const honored = signedQuote(context, unit.asset);
+    if (honored) return { asset: unit.asset, amount: honored.tokenAmount, extra: { local402: honored } };
+
     if (!cached || cached.quote.expiresAt <= now()) {
-      // The default Stellar asset (USDC) and its decimals come from the official scheme.
-      const unit = await new ExactStellarScheme().parsePrice("1", options.network);
-      const tokenDecimals = unit.amount.length - 1;
-      const quote = await quoteLocalPrice(price, { ...options, oracle, tokenDecimals, now });
+      const quote = await quoteLocalPrice(price, { ...options, oracle, tokenDecimals: unit.amount.length - 1, now });
+      if (secret) quote.signature = sign(quote, unit.asset);
       cached = { quote, asset: unit.asset };
     }
     return {

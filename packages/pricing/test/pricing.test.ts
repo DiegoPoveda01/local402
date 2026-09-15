@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { encodePaymentSignatureHeader } from "@x402/core/http";
+import type { AssetAmount } from "@x402/core/types";
 import { localPrice, parseLocalPrice, quoteLocalPrice, UfRateSource, type FiatRateSource } from "../src/index.js";
 import { medianRecord } from "../src/oracle.js";
 
@@ -72,6 +74,36 @@ describe("localPrice", () => {
     now += 1;
     await price({} as never);
     expect(oracle.calls).toBe(2);
+  });
+
+  it("honors a signed quote on the paid retry, even from another instance with a newer rate", async () => {
+    const issuer = localPrice("50 CLP", { network: "stellar:testnet", oracle: fixedOracle(CLP_RATE), now: () => NOW, quoteSecret: "s" });
+    const other = localPrice("50 CLP", { network: "stellar:testnet", oracle: fixedOracle(CLP_RATE * 2n), now: () => NOW + 30, quoteSecret: "s" });
+    const offered = (await issuer({} as never)) as { asset: string; amount: string; extra: { local402: Record<string, unknown> } };
+    expect(offered.extra.local402.signature).toMatch(/^[0-9a-f]{64}$/);
+
+    const retry = (accepted: object) =>
+      ({ paymentHeader: encodePaymentSignatureHeader({ x402Version: 2, accepted, payload: {} } as never) }) as never;
+    const accepted = { scheme: "exact", network: "stellar:testnet", payTo: "G", maxTimeoutSeconds: 60, ...offered };
+    expect(await other(retry(accepted))).toEqual(offered);
+
+    // A cheaper amount, a quote for another price or an unsigned quote gets a fresh quote instead.
+    const fresh = await other({} as never);
+    expect(fresh).not.toEqual(offered);
+    expect(await other(retry({ ...accepted, amount: "1" }))).toEqual(fresh);
+    expect(await other(retry({ ...accepted, extra: { local402: { ...offered.extra.local402, localAmount: "5" } } }))).toEqual(fresh);
+    const tampered = { ...offered.extra.local402, tokenAmount: "1" };
+    expect(await other(retry({ ...accepted, amount: "1", extra: { local402: tampered } }))).toEqual(fresh);
+  });
+
+  it("does not honor an expired signed quote", async () => {
+    let now = NOW;
+    const price = localPrice("50 CLP", { network: "stellar:testnet", oracle: fixedOracle(CLP_RATE), now: () => now, quoteSecret: "s" });
+    const offered = (await price({} as never)) as AssetAmount;
+    now += 61;
+    const header = encodePaymentSignatureHeader({ x402Version: 2, accepted: { scheme: "exact", network: "stellar:testnet", payTo: "G", maxTimeoutSeconds: 60, ...offered }, payload: {} } as never);
+    const retried = (await price({ paymentHeader: header } as never)) as unknown as { extra: { local402: { expiresAt: number } } };
+    expect(retried.extra.local402.expiresAt).toBe(now + 60);
   });
 });
 
