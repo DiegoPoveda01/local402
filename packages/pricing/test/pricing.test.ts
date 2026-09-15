@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { encodePaymentSignatureHeader } from "@x402/core/http";
 import type { AssetAmount } from "@x402/core/types";
 import { localPrice, parseLocalPrice, quoteLocalPrice, UfRateSource, type FiatRateSource } from "../src/index.js";
@@ -139,6 +139,26 @@ describe("UfRateSource", () => {
     expect(quote.tokenAmount).toBe("4314857");
     await oracle.getRate("CLF");
     expect(lookups).toBe(1);
+  });
+
+  it("keeps the last UF value when the source goes down", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-09-15T12:00:00Z"));
+      let down = false;
+      const oracle = new UfRateSource(fixedOracle(CLP_RATE), async () => {
+        if (down) throw new Error("fetch failed");
+        return { clp: "40934.58", source: "uf-test" };
+      });
+      const first = await oracle.getRate("CLF");
+      down = true;
+      vi.setSystemTime(new Date("2026-09-16T12:00:00Z"));
+      expect((await oracle.getRate("CLF")).usdPerUnit).toBe(first.usdPerUnit);
+      vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+      await expect(oracle.getRate("CLF")).rejects.toThrow("fetch failed");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("passes other currencies through", async () => {

@@ -4,7 +4,7 @@ import { paymentMiddleware } from "@x402/express";
 import type { DynamicPrice, PaymentOption } from "@x402/core/http";
 import type { AssetAmount, Network } from "@x402/core/types";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
-import { quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
+import { mindicadorUf, quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource, type UfValueSource } from "@local402/pricing";
 import { fxNetwork, mainnetShadowQuote, quoteFx } from "@local402/fx";
 import { local402Server, localRoute } from "@local402/server";
 import { Local402Client, oracleSendAmount, type PayAsset } from "@local402/client";
@@ -23,12 +23,27 @@ const rpcUrl = process.env.RPC_URL || fxConfig.rpcUrl;
 // Symbols for the assets payers can spend through exact-fx, keyed by contract.
 const ASSET_SYMBOLS: Record<string, string> = { [fxConfig.xlm]: "XLM", [fxConfig.eurc]: "EURC" };
 
+const redis = Redis.fromEnv();
+// Serverless instances start without the UfRateSource cache, so the last UF value also lives in Redis
+// for when mindicador.cl is down. Like the cache, it is used for up to three days.
+const UF_KEY = "local402:uf";
+const ufValue: UfValueSource = async () => {
+  try {
+    const uf = await mindicadorUf();
+    await redis?.pipeline(["SET", UF_KEY, JSON.stringify({ ...uf, savedAt: Date.now() })]).catch(() => undefined);
+    return uf;
+  } catch (error) {
+    const [saved] = redis ? await redis.pipeline(["GET", UF_KEY]).catch(() => []) : [];
+    const last = typeof saved === "string" ? (JSON.parse(saved) as { clp: string; source: string; savedAt: number }) : undefined;
+    if (last && Date.now() - last.savedAt < 3 * 24 * 60 * 60 * 1000) return { clp: last.clp, source: last.source };
+    throw error;
+  }
+};
 // Reflector on-chain rates, plus UF (CLF) composed from its daily CLP value.
-const oracle = new UfRateSource(new ReflectorFiatOracle());
+const oracle = new UfRateSource(new ReflectorFiatOracle(), ufValue);
 // USD value of the send assets, as the client checks them: XLM from Reflector's exchange feed, EURC at the euro rate.
 const exchanges = new ReflectorFiatOracle(REFLECTOR_CEX);
 const sendAssetRate = (symbol: string) => (symbol === "XLM" ? exchanges.getRate("XLM") : oracle.getRate("EUR"));
-const redis = Redis.fromEnv();
 const receipts = new ReceiptBook({ redis, file: process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)) });
 const server = local402Server(FACILITATOR_URL, NETWORK).onAfterSettle(receipts.record);
 
@@ -115,14 +130,19 @@ app.get("/uf", async (_req, res) => {
 // --- Dashboard support: free, read-only views of prices and receipts. ---
 
 app.get("/catalog", async (_req, res) => {
+  // One product whose rate source is down (UF depends on mindicador.cl) must not take the others with it.
   const items = await Promise.all(
     products.map(async ({ path, price, description, quote }) => {
-      const { amount, extra } = (await quote({} as never)) as AssetAmount;
-      return { path, price, description, usdcAmount: amount, quote: extra?.local402 };
+      try {
+        const { amount, extra } = (await quote({} as never)) as AssetAmount;
+        return { path, price, description, usdcAmount: amount, quote: extra?.local402 };
+      } catch (error) {
+        return { path, price, description, error: (error instanceof Error ? error.message : String(error)).split("\n")[0] };
+      }
     }),
   );
   // How many resources agents can already find through the facilitator's Bazaar catalog.
-  const discovered = await fetch(`${FACILITATOR_URL}/discovery/resources?limit=1`)
+  const discovered = await fetch(`${FACILITATOR_URL}/discovery/resources?limit=1`, { signal: AbortSignal.timeout(5_000) })
     .then(async (r) => ((await r.json()) as { pagination: { total: number } }).pagination.total)
     .catch(() => null);
   res.json({ network: NETWORK, payTo: PAY_TO, fxContract: fxConfig.fxContract, demoAgent: Boolean(DEMO_AGENT_SECRET), payAssets: PAY_ASSETS, assetSymbols: ASSET_SYMBOLS, discovered, items });
@@ -228,5 +248,10 @@ app.post("/demo/pay", async (req, res) => {
 });
 
 app.use(express.static(fileURLToPath(new URL("../public", import.meta.url))));
+
+// A price that can't be quoted right now (for example, the UF source is down) is a temporary outage, not a bug.
+app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  res.status(503).json({ error: (error instanceof Error ? error.message : String(error)).split("\n")[0] });
+});
 
 export const config = { network: NETWORK, payTo: PAY_TO };
