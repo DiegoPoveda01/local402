@@ -4,7 +4,7 @@ import type { Network, SettleResponse } from "@x402/core/types";
 import { BAZAAR, extractDiscoveryInfo, type DiscoveryResource } from "@x402/extensions/bazaar";
 import { createEd25519Signer } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/facilitator";
-import { ChannelPool, ExactFxFacilitatorScheme, fxNetwork } from "@local402/fx";
+import { ChannelPool, ExactFxFacilitatorScheme, feeBumpSigner, fxNetwork } from "@local402/fx";
 
 const NETWORK = (process.env.NETWORK ?? "stellar:testnet") as Network;
 // Several fee-paying accounts ("channels") let settlements run in parallel without sequence number clashes.
@@ -26,7 +26,11 @@ const catalog = new Map<string, DiscoveryResource>();
 const signers = SECRETS.map((secret) => createEd25519Signer(secret, NETWORK));
 const channels = new ChannelPool(signers.map((signer) => signer.address));
 const facilitator = new x402Facilitator()
-  .register(NETWORK, new ExactStellarScheme(signers, { rpcConfig, selectSigner: channels.select }))
+  .register(NETWORK, new ExactStellarScheme(signers, {
+    rpcConfig,
+    selectSigner: channels.select,
+    feeBumpSigner: feeBumpSigner(signers[0], { network: NETWORK, rpcConfig }),
+  }))
   .register(
     NETWORK,
     new ExactFxFacilitatorScheme(signers, { fxContract: fx.fxContract, sendAssets: SEND_ASSETS, rpcConfig, selectSigner: channels.select }),

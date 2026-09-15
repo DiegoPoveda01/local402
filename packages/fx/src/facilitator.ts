@@ -1,6 +1,5 @@
 import {
   Address,
-  BASE_FEE,
   Operation,
   scValToNative,
   Transaction,
@@ -27,6 +26,7 @@ import {
   type RpcConfig,
 } from "@x402/stellar";
 import { FX_SCHEME, type FxExtra } from "./extra.js";
+import { inclusionFeeBid } from "./fees.js";
 
 export interface ExactFxFacilitatorOptions {
   fxContract: string;
@@ -35,7 +35,7 @@ export interface ExactFxFacilitatorOptions {
   rpcConfig?: RpcConfig;
   /** A swap costs more resources than a plain transfer. Default 1_000_000 stroops (0.1 XLM). */
   maxTransactionFeeStroops?: number;
-  /** Ceiling for the inclusion fee bid on top of resources, which follows the network's recent p90. Default 10_000 stroops. */
+  /** Ceiling for the inclusion fee bid on top of resources, see `inclusionFeeBid`. Default 10_000 stroops. */
   maxInclusionFeeStroops?: number;
   /** Picks the account that settles; see `ChannelPool.select`. Default: round-robin. */
   selectSigner?: (addresses: readonly string[]) => string;
@@ -272,13 +272,8 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
     return this.options.maxInclusionFeeStroops ?? 10_000;
   }
 
-  /** Bids the network's recent p90 inclusion fee, never below the base fee nor above the configured ceiling. */
-  private async inclusionFee(server: ReturnType<typeof getRpcClient>): Promise<number> {
-    const p90 = await server
-      .getFeeStats()
-      .then((stats) => Number(stats.sorobanInclusionFee.p90))
-      .catch(() => 0);
-    return Math.min(Math.max(Number(BASE_FEE), p90 || 0), this.maxInclusionFee);
+  private inclusionFee(server: ReturnType<typeof getRpcClient>): Promise<number> {
+    return inclusionFeeBid(server, this.maxInclusionFee);
   }
 
   /** Defense in depth: no simulated event may move tokens out of an account the facilitator signs for. */

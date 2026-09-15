@@ -1,0 +1,46 @@
+[
+  {
+    "paidAt": "2026-09-15T18:28:09.973Z",
+    "resource": "/indicadores",
+    "local": {
+      "amount": "50",
+      "currency": "CLP"
+    },
+    "usdc": "523675",
+    "payWith": "USDC",
+    "spent": "523675",
+    "payer": "GA4T526FYR5O6ICX63W4EUL7ZJL6RW23BAKY5F5CXKWJE4DSTNOG7HML",
+    "payTo": "GAOHHW4LH3BYI6JXIW2XKBVQXH6AA66DN2PXQHO67NMPTYL4JYBQ6J47",
+    "transaction": "a220bdf94128f547799ab2c18ebef8e6c66c39242203e80635bc953c55b7106e"
+  },
+  {
+    "paidAt": "2026-09-15T18:28:43.952Z",
+    "resource": "/indicadores",
+    "local": {
+      "amount": "50",
+      "currency": "CLP"
+    },
+    "usdc": "523675",
+    "payWith": "XLM",
+    "spent": "2770821",
+    "fxPremiumBps": 317,
+    "payer": "GA4T526FYR5O6ICX63W4EUL7ZJL6RW23BAKY5F5CXKWJE4DSTNOG7HML",
+    "payTo": "GAOHHW4LH3BYI6JXIW2XKBVQXH6AA66DN2PXQHO67NMPTYL4JYBQ6J47",
+    "transaction": "b90fa246fc09756f52e6c6227cec124dfb441de7e84766386c25d55c65ebf254"
+  },
+  {
+    "paidAt": "2026-09-15T18:29:00.827Z",
+    "resource": "/indicadores",
+    "local": {
+      "amount": "50",
+      "currency": "CLP"
+    },
+    "usdc": "523675",
+    "payWith": "EURC",
+    "spent": "458629",
+    "fxPremiumBps": 307,
+    "payer": "GA4T526FYR5O6ICX63W4EUL7ZJL6RW23BAKY5F5CXKWJE4DSTNOG7HML",
+    "payTo": "GAOHHW4LH3BYI6JXIW2XKBVQXH6AA66DN2PXQHO67NMPTYL4JYBQ6J47",
+    "transaction": "710c3c49935b2b17a0eb140f7bbebb170aeba2cb8ac162516e71fc47c6ede448"
+  }
+]
