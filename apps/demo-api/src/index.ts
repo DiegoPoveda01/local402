@@ -5,7 +5,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactStellarScheme } from "@x402/stellar/exact/server";
 import type { AssetAmount, Network } from "@x402/core/types";
 import { localPrice, ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
-import { ExactFxServerScheme, FX_SCHEME } from "@local402/fx";
+import { ExactFxServerScheme, FX_SCHEME, FX_TESTNET } from "@local402/fx";
 import { Local402Client, type PayAsset } from "@local402/client";
 import { ReceiptBook } from "./receipts.js";
 
@@ -17,6 +17,9 @@ if (!PAY_TO) {
   throw new Error("PAY_TO (seller Stellar address) is required. See .env.example");
 }
 const DEMO_AGENT_SECRET = process.env.DEMO_AGENT_SECRET;
+const PAY_ASSETS: PayAsset[] = ["USDC", "XLM", "EURC"];
+// Symbols for the assets payers can spend through exact-fx, keyed by contract.
+const ASSET_SYMBOLS: Record<string, string> = { [FX_TESTNET.xlm]: "XLM", [FX_TESTNET.eurc]: "EURC" };
 
 // Reflector on-chain rates, plus UF (CLF) composed from its daily CLP value.
 const oracle = new UfRateSource(new ReflectorFiatOracle());
@@ -26,7 +29,7 @@ const server = new x402ResourceServer(new HTTPFacilitatorClient({ url: FACILITAT
   .register(NETWORK, new ExactFxServerScheme())
   .onAfterSettle(receipts.record);
 
-// Each product shares one quote across both options, so USDC and XLM payers are charged the same USDC amount.
+// Each product shares one quote across both options, so USDC, XLM and EURC payers are charged the same USDC amount.
 const products = [
   { path: "/indicadores", price: "50 CLP", description: "Indicadores de mercado para Chile, cobrados en pesos chilenos" },
   { path: "/europa", price: "0.05 EUR", description: "Tipos de cambio del euro, cobrados en euros" },
@@ -99,7 +102,7 @@ app.get("/catalog", async (_req, res) => {
       return { path, price, description, usdcAmount: amount, quote: extra?.local402 };
     }),
   );
-  res.json({ network: NETWORK, payTo: PAY_TO, demoAgent: Boolean(DEMO_AGENT_SECRET), items });
+  res.json({ network: NETWORK, payTo: PAY_TO, demoAgent: Boolean(DEMO_AGENT_SECRET), payAssets: PAY_ASSETS, assetSymbols: ASSET_SYMBOLS, items });
 });
 
 app.get("/receipts", (_req, res) => {
@@ -118,7 +121,7 @@ app.get("/receipts.csv", (_req, res) => {
       r.rate.usdPerUnit,
       r.rate.source,
       Number(r.settled.amount) / 10 ** r.settled.decimals,
-      r.spent ? "XLM" : "USDC",
+      r.spent ? (ASSET_SYMBOLS[r.spent.asset] ?? r.spent.asset) : "USDC",
       r.spent ? Number(r.spent.amount) / 1e7 : Number(r.settled.amount) / 10 ** r.settled.decimals,
       r.scheme,
       r.payer ?? "",
@@ -138,7 +141,8 @@ app.post("/demo/pay", async (req, res) => {
     res.status(404).json({ error: "Set DEMO_AGENT_SECRET to enable demo payments" });
     return;
   }
-  const payWith = (String(req.query.with ?? "USDC").toUpperCase() === "XLM" ? "XLM" : "USDC") as PayAsset;
+  const requested = String(req.query.with ?? "USDC").toUpperCase() as PayAsset;
+  const payWith = PAY_ASSETS.includes(requested) ? requested : "USDC";
   const path = products.some((p) => p.path === req.query.path) ? String(req.query.path) : products[0].path;
   try {
     const client = new Local402Client({ secret: DEMO_AGENT_SECRET, payWith });

@@ -5,11 +5,14 @@ import { ExactStellarScheme } from "@x402/stellar/exact/client";
 import { ExactFxClientScheme, FX_TESTNET } from "@local402/fx";
 import { quoteLocalPrice, ReflectorFiatOracle, UfRateSource, type FiatRateSource, type LocalQuote } from "@local402/pricing";
 
-export type PayAsset = "USDC" | "XLM";
+export type PayAsset = "USDC" | "XLM" | "EURC";
+
+/** Assets paid through `exact-fx`, swapped to the seller's USDC by FxPay. */
+const FX_SEND_ASSETS: Record<Exclude<PayAsset, "USDC">, string> = { XLM: FX_TESTNET.xlm, EURC: FX_TESTNET.eurc };
 
 export interface Local402ClientOptions {
   secret: string;
-  /** Asset the payer spends. USDC uses stock `exact`; XLM uses `exact-fx` through FxPay. */
+  /** Asset the payer spends. USDC uses stock `exact`; XLM and EURC use `exact-fx` through FxPay. */
   payWith?: PayAsset;
   /** Refuse any single payment worth more than this local price, e.g. "500 CLP", whatever currency it is priced in. */
   maxPrice?: string;
@@ -34,7 +37,7 @@ export interface PaidResult {
   payWith: PayAsset;
   transaction: string;
   explorerUrl: string;
-  /** Send-asset amount the FX swap consumed, when paying with XLM. */
+  /** Send-asset amount the FX swap consumed, when paying with XLM or EURC. */
   spent?: { asset: string; amount: string };
   body: unknown;
 }
@@ -72,9 +75,9 @@ export class Local402Client {
     this.address = signer.address;
     this.payWith = options.payWith ?? "USDC";
     const scheme =
-      this.payWith === "XLM"
-        ? new ExactFxClientScheme(signer, { fxContract: FX_TESTNET.fxContract, sendAsset: FX_TESTNET.xlm })
-        : new ExactStellarScheme(signer);
+      this.payWith === "USDC"
+        ? new ExactStellarScheme(signer)
+        : new ExactFxClientScheme(signer, { fxContract: FX_TESTNET.fxContract, sendAsset: FX_SEND_ASSETS[this.payWith] });
     this.http = new x402HTTPClient(new x402Client().register("stellar:*", scheme));
     this.maxPrice = options.maxPrice;
     this.maxOverchargeBps = BigInt(options.maxOverchargeBps ?? 200);
@@ -117,7 +120,7 @@ export class Local402Client {
   }
 
   private get scheme(): string {
-    return this.payWith === "XLM" ? "exact-fx" : "exact";
+    return this.payWith === "USDC" ? "exact" : "exact-fx";
   }
 
   /** Checks the charge against the client's own oracle rather than trusting the seller's rate. */

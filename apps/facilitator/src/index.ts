@@ -12,7 +12,7 @@ if (!SECRET) {
   throw new Error("FACILITATOR_PRIVATE_KEY (fee-paying Stellar account) is required. See .env.example");
 }
 const FX_CONTRACT = process.env.FX_CONTRACT ?? FX_TESTNET.fxContract;
-const SEND_ASSETS = (process.env.SEND_ASSETS ?? FX_TESTNET.xlm).split(",");
+const SEND_ASSETS = (process.env.SEND_ASSETS ?? `${FX_TESTNET.xlm},${FX_TESTNET.eurc}`).split(",");
 
 const signer = createEd25519Signer(SECRET, NETWORK);
 const facilitator = new x402Facilitator()

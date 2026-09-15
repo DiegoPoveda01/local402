@@ -15,9 +15,10 @@ if (!SECRET) {
 const payWith = (process.env.PAY_WITH ?? "USDC").toUpperCase() as PayAsset;
 // Without an explicit limit an agent could be talked into paying anything, so default to a small one.
 const maxPrice = process.env.MAX_PRICE ?? "500 CLP";
-const clients = {
+const clients: Record<PayAsset, Local402Client> = {
   USDC: new Local402Client({ secret: SECRET, payWith: "USDC", maxPrice }),
   XLM: new Local402Client({ secret: SECRET, payWith: "XLM", maxPrice }),
+  EURC: new Local402Client({ secret: SECRET, payWith: "EURC", maxPrice }),
 };
 const client = clients[payWith];
 
@@ -51,8 +52,8 @@ server.registerTool(
   "local402_pay",
   {
     title: "Pay for and fetch an x402 resource",
-    description: `Fetches an HTTP resource and pays for it on Stellar testnet if it returns 402. Pays with ${payWith} unless payWith says otherwise (XLM is swapped to the seller's USDC in the same transaction); refuses prices above ${maxPrice}. Returns the response body, the price and the transaction link.`,
-    inputSchema: { url: z.string().url(), payWith: z.enum(["USDC", "XLM"]).optional() },
+    description: `Fetches an HTTP resource and pays for it on Stellar testnet if it returns 402. Pays with ${payWith} unless payWith says otherwise (XLM or EURC is swapped to the seller's USDC in the same transaction); refuses prices above ${maxPrice}. Returns the response body, the price and the transaction link.`,
+    inputSchema: { url: z.string().url(), payWith: z.enum(["USDC", "XLM", "EURC"]).optional() },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   },
   async ({ url, payWith: asset }) => {

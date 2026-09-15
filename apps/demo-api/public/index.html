@@ -7,7 +7,7 @@
 <style>
   :root {
     --bg: #0d1017; --panel: #151a24; --line: #232a38; --text: #e8ecf3; --muted: #8a94a8;
-    --accent: #f5c542; --usdc: #4d8dff; --xlm: #b58cff; --ok: #3ecf8e; --err: #ff6b6b;
+    --accent: #f5c542; --usdc: #4d8dff; --xlm: #b58cff; --eurc: #3ecfc4; --ok: #3ecf8e; --err: #ff6b6b;
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   * { box-sizing: border-box; }
@@ -36,6 +36,7 @@
   button { font: inherit; font-weight: 600; border-radius: 10px; border: 1px solid transparent; padding: 9px 14px; cursor: pointer; color: #0d1017; }
   button.usdc { background: var(--usdc); }
   button.xlm { background: var(--xlm); }
+  button.eurc { background: var(--eurc); }
   button:disabled { opacity: .45; cursor: not-allowed; }
   .result { background: #0f131b; border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 13px; overflow-x: auto; }
   .result.err { border-color: var(--err); color: var(--err); }
@@ -54,6 +55,7 @@
   .pill { border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
   .pill.usdc { background: rgba(77,141,255,.15); color: var(--usdc); }
   .pill.xlm { background: rgba(181,140,255,.15); color: var(--xlm); }
+  .pill.eurc { background: rgba(62,207,196,.15); color: var(--eurc); }
   .empty { color: var(--muted); padding: 24px; text-align: center; }
   .row-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
 </style>
@@ -71,7 +73,7 @@
   <div class="flow">
     <div class="step"><small>1 · Precio local</small><p>El vendedor fija <code>"50 CLP"</code> en su ruta x402.</p></div>
     <div class="step"><small>2 · Oráculo Reflector</small><p>Se convierte a USDC con la tasa on-chain, redondeando a favor del vendedor.</p></div>
-    <div class="step"><small>3 · Paga con USDC o XLM</small><p>USDC: esquema <code>exact</code>. XLM: <code>exact-fx</code> swapea en Soroswap dentro de la misma transacción.</p></div>
+    <div class="step"><small>3 · Paga con USDC, XLM o EURC</small><p>USDC: esquema <code>exact</code>. XLM y EURC: <code>exact-fx</code> busca la mejor ruta en Soroswap y swapea dentro de la misma transacción.</p></div>
     <div class="step"><small>4 · Recibo</small><p>El vendedor recibe el monto exacto y un recibo con tasa, fuente y transacción.</p></div>
   </div>
 
@@ -86,7 +88,7 @@
     <div class="stat"><div id="stat-count">0</div><span>ventas</span></div>
     <div class="stat"><div id="stat-local">—</div><span>vendido en moneda local</span></div>
     <div class="stat"><div id="stat-usdc">0 USDC</div><span>recibido por el vendedor</span></div>
-    <div class="stat"><div id="stat-xlm">0</div><span>pagos hechos con XLM</span></div>
+    <div class="stat"><div id="stat-xlm">0</div><span>pagos con otros activos (swap)</span></div>
   </div>
   <div class="table-wrap">
     <table>
@@ -102,6 +104,7 @@ const fmt = (units, decimals = 7) => (Number(units) / 10 ** decimals).toLocaleSt
 const local = (amount) => Number(amount).toLocaleString("es-CL", { maximumFractionDigits: 4 });
 const sourceLabel = (source) => source.startsWith("mindicador.cl") ? "UF de la CMF (mindicador.cl) × Reflector" : "Oráculo Reflector";
 const currencyLabel = (code) => (code === "CLF" ? "UF" : escape(code));
+const symbol = (asset) => escape(catalog?.assetSymbols?.[asset] ?? short(asset));
 const short = (s) => `${s.slice(0, 6)}…${s.slice(-6)}`;
 const txLink = (hash) => `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/tx/${hash}">${short(hash)}</a>`;
 const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -132,12 +135,15 @@ function renderProduct(item) {
       <div class="price"></div>
       <div class="meta rate"></div>
       <div class="buttons">
-        <button class="usdc">Pagar con USDC</button>
-        <button class="xlm">Pagar con XLM</button>
       </div>
       <div class="result" hidden></div>`;
-    card.querySelector(".usdc").onclick = () => pay(item.path, "USDC", card);
-    card.querySelector(".xlm").onclick = () => pay(item.path, "XLM", card);
+    for (const asset of catalog.payAssets) {
+      const button = document.createElement("button");
+      button.className = asset.toLowerCase();
+      button.textContent = `Pagar con ${asset}`;
+      button.onclick = () => pay(item.path, asset, card);
+      card.querySelector(".buttons").append(button);
+    }
     $("products").append(card);
   }
   const q = item.quote;
@@ -159,14 +165,14 @@ async function pay(path, asset, card) {
   buttons.forEach((b) => (b.disabled = true));
   box.hidden = false;
   box.className = "result";
-  box.textContent = asset === "XLM"
-    ? "El agente firma un pago en XLM; el facilitador verifica y FxPay swapea a USDC…"
+  box.textContent = asset !== "USDC"
+    ? `El agente firma un pago en ${asset}; el facilitador verifica y FxPay swapea a USDC${asset === "EURC" ? " pasando por XLM" : ""}…`
     : "El agente firma una transferencia de USDC; el facilitador verifica y liquida…";
   try {
     const response = await fetch(`/demo/pay?with=${asset}&path=${encodeURIComponent(path)}`, { method: "POST" });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
-    const spent = data.spent ? ` · gastó ${fmt(data.spent.amount)} XLM` : "";
+    const spent = data.spent ? ` · gastó ${fmt(data.spent.amount)} ${symbol(data.spent.asset)}` : "";
     box.innerHTML = `✓ Pagado con ${asset}${spent} · ${txLink(data.transaction)}<pre>${escape(JSON.stringify(data.body, null, 2))}</pre>`;
   } catch (error) {
     box.className = "result err";
@@ -181,7 +187,7 @@ function renderReceipts(newId) {
   if (!receipts.length) return;
   body.innerHTML = receipts.map((r) => {
     const paidWith = r.spent
-      ? `<span class="pill xlm">XLM</span> ${fmt(r.spent.amount)}`
+      ? `<span class="pill ${symbol(r.spent.asset).toLowerCase()}">${symbol(r.spent.asset)}</span> ${fmt(r.spent.amount)}`
       : `<span class="pill usdc">USDC</span> ${fmt(r.settled.amount, r.settled.decimals)}`;
     return `<tr class="${r.id === newId ? "new" : ""}">
       <td>${new Date(r.paidAt).toLocaleTimeString("es-CL")}</td>

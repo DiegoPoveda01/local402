@@ -2,8 +2,8 @@
 //! FxPay: settles an x402 payment in the seller's asset while the payer spends a different one.
 //!
 //! The payer signs `pay` plus one deterministic transfer of `max_send` into this contract.
-//! The contract swaps on Soroswap for exactly `dest_amount`, delivers it to `pay_to`,
-//! and refunds whatever part of `max_send` the swap did not use.
+//! The contract swaps on Soroswap for exactly `dest_amount` (directly or through a hub asset),
+//! delivers it to `pay_to`, and refunds whatever part of `max_send` the swap did not use.
 
 use soroban_sdk::{
     auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation},
@@ -32,6 +32,7 @@ pub enum Error {
     InvalidAmount = 1,
     SameAsset = 2,
     ExcessiveInput = 3,
+    NoRoute = 4,
 }
 
 #[contractevent]
@@ -47,24 +48,53 @@ pub struct FxPaid {
 }
 
 const ROUTER: Symbol = symbol_short!("ROUTER");
+const HUB: Symbol = symbol_short!("HUB");
 
 #[contract]
 pub struct FxPay;
 
+impl FxPay {
+    /// Cheapest Soroswap path from `send_asset` to `dest_amount` of `dest_asset`: the direct pool
+    /// or a hop through the hub asset (XLM), so assets without a pool against the seller's still pay.
+    fn route(env: &Env, send_asset: &Address, dest_asset: &Address, dest_amount: i128) -> (Vec<Address>, i128) {
+        let router = SoroswapRouterClient::new(env, &Self::router(env.clone()));
+        let hub = Self::hub(env.clone());
+        let mut candidates = vec![env, vec![env, send_asset.clone(), dest_asset.clone()]];
+        if hub != *send_asset && hub != *dest_asset {
+            candidates.push_back(vec![env, send_asset.clone(), hub, dest_asset.clone()]);
+        }
+        let mut best: Option<(Vec<Address>, i128)> = None;
+        for path in candidates.iter() {
+            if let Ok(Ok(amounts)) = router.try_router_get_amounts_in(&dest_amount, &path) {
+                let amount_in = amounts.get(0).unwrap();
+                if best.as_ref().map_or(true, |(_, current)| amount_in < *current) {
+                    best = Some((path, amount_in));
+                }
+            }
+        }
+        best.unwrap_or_else(|| panic_with_error!(env, Error::NoRoute))
+    }
+}
+
 #[contractimpl]
 impl FxPay {
-    pub fn __constructor(env: Env, router: Address) {
+    pub fn __constructor(env: Env, router: Address, hub: Address) {
         env.storage().instance().set(&ROUTER, &router);
+        env.storage().instance().set(&HUB, &hub);
     }
 
     pub fn router(env: Env) -> Address {
         env.storage().instance().get(&ROUTER).unwrap()
     }
 
+    /// Intermediate asset tried when it gives a cheaper route than the direct pool.
+    pub fn hub(env: Env) -> Address {
+        env.storage().instance().get(&HUB).unwrap()
+    }
+
     /// Amount of `send_asset` a `pay` for `dest_amount` of `dest_asset` would currently spend.
     pub fn quote(env: Env, send_asset: Address, dest_asset: Address, dest_amount: i128) -> i128 {
-        let router = SoroswapRouterClient::new(&env, &Self::router(env.clone()));
-        router.router_get_amounts_in(&dest_amount, &vec![&env, send_asset, dest_asset]).get(0).unwrap()
+        Self::route(&env, &send_asset, &dest_asset, dest_amount).1
     }
 
     /// Pays `dest_amount` of `dest_asset` to `pay_to`, spending at most `max_send` of `send_asset`.
@@ -89,9 +119,7 @@ impl FxPay {
 
         let this = env.current_contract_address();
         let router = SoroswapRouterClient::new(&env, &Self::router(env.clone()));
-        let path = vec![&env, send_asset.clone(), dest_asset.clone()];
-
-        let amount_in = router.router_get_amounts_in(&dest_amount, &path).get(0).unwrap();
+        let (path, amount_in) = Self::route(&env, &send_asset, &dest_asset, dest_amount);
         if amount_in > max_send {
             panic_with_error!(&env, Error::ExcessiveInput);
         }
@@ -99,9 +127,9 @@ impl FxPay {
         let send = TokenClient::new(&env, &send_asset);
         send.transfer(&from, &this, &max_send);
 
-        // The router pulls the input from `to` (this contract) through a nested token call,
-        // which the contract must authorize explicitly.
-        let pair = router.router_pair_for(&send_asset, &dest_asset);
+        // The router pulls the input from `to` (this contract) into the path's first pool through a
+        // nested token call, which the contract must authorize explicitly.
+        let pair = router.router_pair_for(&send_asset, &path.get(1).unwrap());
         env.authorize_as_current_contract(vec![
             &env,
             InvokerContractAuthEntry::Contract(SubContractInvocation {

@@ -6,20 +6,30 @@ use soroban_sdk::{
     token::StellarAssetClient,
 };
 
-/// Soroswap-like router with a fixed price: `price` units of path[0] per unit of path[1].
+/// Soroswap-like router with fixed prices: `price` units of the input per unit of output on the
+/// direct pool (0 means there is no direct pool) and `hub_price` through a hub hop.
 /// It acts as its own pair and holds the output liquidity.
 #[contract]
 struct MockRouter;
 
 #[contractimpl]
 impl MockRouter {
-    pub fn __constructor(env: Env, price: i128) {
+    pub fn __constructor(env: Env, price: i128, hub_price: i128) {
         env.storage().instance().set(&symbol_short!("PRICE"), &price);
+        env.storage().instance().set(&symbol_short!("HUBPRICE"), &hub_price);
     }
 
-    pub fn router_get_amounts_in(env: Env, amount_out: i128, _path: Vec<Address>) -> Vec<i128> {
-        let price: i128 = env.storage().instance().get(&symbol_short!("PRICE")).unwrap();
-        vec![&env, amount_out * price, amount_out]
+    pub fn router_get_amounts_in(env: Env, amount_out: i128, path: Vec<Address>) -> Vec<i128> {
+        let key = if path.len() == 2 { symbol_short!("PRICE") } else { symbol_short!("HUBPRICE") };
+        let price: i128 = env.storage().instance().get(&key).unwrap();
+        if price == 0 {
+            panic!("no pool");
+        }
+        let mut amounts = vec![&env, amount_out * price];
+        for _ in 1..path.len() {
+            amounts.push_back(amount_out);
+        }
+        amounts
     }
 
     pub fn router_pair_for(env: Env, _token_a: Address, _token_b: Address) -> Address {
@@ -39,7 +49,7 @@ impl MockRouter {
         assert!(amounts.get(0).unwrap() <= amount_in_max);
         let pair = env.current_contract_address();
         TokenClient::new(&env, &path.get(0).unwrap()).transfer(&to, &pair, &amounts.get(0).unwrap());
-        TokenClient::new(&env, &path.get(1).unwrap()).transfer(&pair, &to, &amount_out);
+        TokenClient::new(&env, &path.last().unwrap()).transfer(&pair, &to, &amount_out);
         amounts
     }
 }
@@ -55,15 +65,20 @@ struct Setup {
 }
 
 fn setup() -> Setup {
+    setup_with_prices(10, 20)
+}
+
+fn setup_with_prices(price: i128, hub_price: i128) -> Setup {
     let env = Env::default();
     env.mock_all_auths();
 
     let issuer = Address::generate(&env);
     let xlm = env.register_stellar_asset_contract_v2(issuer.clone()).address();
-    let usdc = env.register_stellar_asset_contract_v2(issuer).address();
+    let usdc = env.register_stellar_asset_contract_v2(issuer.clone()).address();
+    let hub = env.register_stellar_asset_contract_v2(issuer).address();
 
-    let router = env.register(MockRouter, (10_i128,));
-    let fx = env.register(FxPay, (router.clone(),));
+    let router = env.register(MockRouter, (price, hub_price));
+    let fx = env.register(FxPay, (router.clone(), hub));
 
     let payer = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -139,6 +154,33 @@ fn rejects_when_swap_needs_more_than_max_send() {
 
     assert_eq!(result, Err(Ok(soroban_sdk::Error::from_contract_error(Error::ExcessiveInput as u32))));
     assert_eq!(s.xlm.balance(&s.payer), 1_000);
+}
+
+#[test]
+fn routes_through_hub_when_there_is_no_direct_pool() {
+    let s = setup_with_prices(0, 12);
+    assert_eq!(s.fx.quote(&s.xlm.address, &s.usdc.address, &5), 60);
+    authorize_payer(&s, 66, 5);
+
+    let spent = s.fx.pay(&s.payer, &s.xlm.address, &66, &s.usdc.address, &5, &s.seller, &100);
+
+    assert_eq!(spent, 60);
+    assert_eq!(s.usdc.balance(&s.seller), 5);
+    assert_eq!(s.xlm.balance(&s.payer), 940);
+    assert_eq!(s.xlm.balance(&s.fx.address), 0);
+}
+
+#[test]
+fn picks_the_cheaper_route() {
+    let s = setup_with_prices(10, 8);
+    assert_eq!(s.fx.quote(&s.xlm.address, &s.usdc.address, &5), 40);
+}
+
+#[test]
+fn rejects_when_no_route_exists() {
+    let s = setup_with_prices(0, 0);
+    let result = s.fx.try_quote(&s.xlm.address, &s.usdc.address, &5);
+    assert_eq!(result, Err(Ok(soroban_sdk::Error::from_contract_error(Error::NoRoute as u32))));
 }
 
 #[test]

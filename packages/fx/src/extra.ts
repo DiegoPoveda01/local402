@@ -6,8 +6,10 @@ export const FX_SCHEME = "exact-fx";
 
 /** FxPay deployment and assets on Stellar testnet. */
 export const FX_TESTNET = {
-  fxContract: "CBFLBCRONSQLY2SCEK5RA5CHWYI73ZZFFIJSNYKC2BRKG4J5GHU27FAM",
+  fxContract: "CDLIJ3SXAYQDCIO4GLS3OQPUKT6JTWICRDTOB3F5ESG5TWYKRRPJ6IUC",
   xlm: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+  /** Soroswap's testnet EURC (tstEURC:GBB74VBG…). It has no USDC pool, so FxPay routes it through XLM. */
+  eurc: "CDHCVLBJWUA62CYRTTG46MBTPTXQ4VHKPTUTG6UNUPN4OTMK3FFJ77CE",
 } as const;
 
 /** Fields the facilitator advertises in `/supported` and that end up in the requirements' `extra`. */
