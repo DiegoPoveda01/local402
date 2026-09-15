@@ -1,0 +1,17 @@
+{
+  "name": "@local402/demo-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "start": "tsx --env-file-if-exists=.env src/index.ts"
+  },
+  "dependencies": {
+    "@local402/pricing": "*",
+    "@x402/core": "2.25.0",
+    "@x402/express": "2.25.0",
+    "@x402/stellar": "2.25.0",
+    "express": "^5.1.0"
+  }
+}

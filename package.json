@@ -1,0 +1,23 @@
+{
+  "name": "local402",
+  "private": true,
+  "description": "x402 on Stellar priced in local currency (CLP, EUR, BRL...) and payable with any asset",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "api": "npm run dev -w @local402/demo-api",
+    "agent": "npm run start -w @local402/agent"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.18.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

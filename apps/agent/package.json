@@ -1,0 +1,13 @@
+{
+  "name": "@local402/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx --env-file-if-exists=.env src/index.ts"
+  },
+  "dependencies": {
+    "@x402/core": "2.25.0",
+    "@x402/stellar": "2.25.0"
+  }
+}
