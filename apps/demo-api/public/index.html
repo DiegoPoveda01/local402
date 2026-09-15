@@ -488,6 +488,7 @@ async function pay(path, asset) {
       data.spent ? `  cliente gastó ${span("v", `${fmt(data.spent.amount)} ${symbol(data.spent.asset)}`)} · vendedor recibió ${fmt(data.price.amount)} USDC` : `  vendedor recibió ${fmt(data.price.amount)} USDC`,
       escape(JSON.stringify(data.body, null, 2)),
     );
+    loadReceipts();
   } catch (error) {
     show(span("r", `Error: ${escape(error.message)}`));
   } finally {
@@ -551,14 +552,24 @@ function renderReceipts(newId) {
   $("stat-xlm").textContent = receipts.filter((r) => r.spent).length;
 }
 
+// Receipts come from the shared list; the stream only makes this instance feel instant.
+async function loadReceipts() {
+  const latest = await (await fetch("/receipts")).json();
+  const known = new Set(receipts.map((r) => r.transaction));
+  const fresh = receipts.length ? latest.find((r) => !known.has(r.transaction)) : undefined;
+  receipts.splice(0, receipts.length, ...latest);
+  renderReceipts(fresh?.id);
+}
+
 async function start() {
   await loadCatalog();
   setInterval(loadCatalog, 30_000);
   calculate(PRESETS[0]);
-  receipts.push(...(await (await fetch("/receipts")).json()));
-  renderReceipts();
+  await loadReceipts();
+  setInterval(loadReceipts, 20_000);
   new EventSource("/receipts/stream").onmessage = (event) => {
     const receipt = JSON.parse(event.data);
+    if (receipts.some((r) => r.transaction === receipt.transaction)) return;
     receipts.unshift(receipt);
     renderReceipts(receipt.id);
   };

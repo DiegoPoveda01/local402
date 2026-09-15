@@ -8,7 +8,7 @@ import { quoteLocalPrice, ReflectorFiatOracle, UfRateSource } from "@local402/pr
 import { FX_TESTNET, quoteFx } from "@local402/fx";
 import { local402Server, localRoute } from "@local402/server";
 import { Local402Client, type PayAsset } from "@local402/client";
-import { ReceiptBook } from "./receipts.js";
+import { ReceiptBook, Redis } from "./receipts.js";
 
 const NETWORK = (process.env.NETWORK ?? "stellar:testnet") as Network;
 const FACILITATOR_URL = process.env.FACILITATOR_URL ?? "http://localhost:4022";
@@ -23,7 +23,8 @@ const ASSET_SYMBOLS: Record<string, string> = { [FX_TESTNET.xlm]: "XLM", [FX_TES
 
 // Reflector on-chain rates, plus UF (CLF) composed from its daily CLP value.
 const oracle = new UfRateSource(new ReflectorFiatOracle());
-const receipts = new ReceiptBook(process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)));
+const redis = Redis.fromEnv();
+const receipts = new ReceiptBook({ redis, file: process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)) });
 const server = local402Server(FACILITATOR_URL, NETWORK).onAfterSettle(receipts.record);
 
 // The output examples are published through Bazaar so agents can find these routes before paying.
@@ -60,6 +61,8 @@ const products = [
 });
 
 export const app = express();
+// Behind Vercel or another proxy, so paid resource URLs keep their https scheme.
+app.set("trust proxy", true);
 
 app.use(
   paymentMiddleware(
@@ -139,13 +142,13 @@ app.get("/demo/quote", async (req, res) => {
   }
 });
 
-app.get("/receipts", (_req, res) => {
-  res.json(receipts.list());
+app.get("/receipts", async (_req, res) => {
+  res.json(await receipts.list());
 });
 
-app.get("/receipts.csv", (_req, res) => {
+app.get("/receipts.csv", async (_req, res) => {
   const header = "id,fecha,recurso,monto_local,moneda,usd_por_unidad,fuente_tasa,usdc_recibido,activo_pagado,monto_pagado,esquema,pagador,transaccion";
-  const rows = receipts.list().map((r) =>
+  const rows = (await receipts.list()).map((r) =>
     [
       r.id,
       r.paidAt,
@@ -169,10 +172,29 @@ app.get("/receipts/stream", (_req, res) => {
   receipts.subscribe(res);
 });
 
+// Demo payments spend a shared testnet wallet, so they are capped per minute, per visitor and overall.
+const PAY_LIMITS = { perVisitor: 3, overall: 20 };
+const windows = new Map<string, number>();
+async function withinLimit(key: string, max: number): Promise<boolean> {
+  const bucket = `local402:limit:${key}:${Math.floor(Date.now() / 60_000)}`;
+  if (redis) {
+    const [count] = await redis.pipeline(["INCR", bucket], ["EXPIRE", bucket, 120]);
+    return Number(count) <= max;
+  }
+  if (windows.size > 10_000) windows.clear();
+  const count = (windows.get(bucket) ?? 0) + 1;
+  windows.set(bucket, count);
+  return count <= max;
+}
+
 // Demo only: lets the dashboard trigger a real agent payment against this API.
 app.post("/demo/pay", async (req, res) => {
   if (!DEMO_AGENT_SECRET) {
     res.status(404).json({ error: "Set DEMO_AGENT_SECRET to enable demo payments" });
+    return;
+  }
+  if (!(await withinLimit(`ip:${req.ip}`, PAY_LIMITS.perVisitor)) || !(await withinLimit("all", PAY_LIMITS.overall))) {
+    res.status(429).json({ error: "Demasiados pagos de demo por minuto. Espera un momento y vuelve a intentarlo." });
     return;
   }
   const requested = String(req.query.with ?? "USDC").toUpperCase() as PayAsset;
@@ -181,7 +203,7 @@ app.post("/demo/pay", async (req, res) => {
   try {
     const client = new Local402Client({ secret: DEMO_AGENT_SECRET, payWith });
     // The agent buys from this same API, at the address the dashboard was opened on.
-    const origin = `${req.get("x-forwarded-proto") ?? req.protocol}://${req.get("host")}`;
+    const origin = `${req.protocol}://${req.get("host")}`;
     res.json(await client.pay(`${origin}${path}`));
   } catch (error) {
     res.status(502).json({ error: error instanceof Error ? error.message : String(error) });
