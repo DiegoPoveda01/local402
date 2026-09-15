@@ -35,6 +35,10 @@ export interface ExactFxFacilitatorOptions {
   rpcConfig?: RpcConfig;
   /** A swap costs more resources than a plain transfer. Default 1_000_000 stroops (0.1 XLM). */
   maxTransactionFeeStroops?: number;
+  /** Ceiling for the inclusion fee bid on top of resources, which follows the network's recent p90. Default 10_000 stroops. */
+  maxInclusionFeeStroops?: number;
+  /** Picks the account that settles; see `ChannelPool.select`. Default: round-robin. */
+  selectSigner?: (addresses: readonly string[]) => string;
 }
 
 type Checked =
@@ -69,10 +73,19 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
   readonly scheme = FX_SCHEME;
   readonly caipFamily = STELLAR_WILDCARD_CAIP2;
 
+  private readonly signers: Map<string, FacilitatorStellarSigner>;
+  private readonly selectSigner: (addresses: readonly string[]) => string;
+
   constructor(
-    private readonly signer: FacilitatorStellarSigner,
+    signers: FacilitatorStellarSigner | FacilitatorStellarSigner[],
     private readonly options: ExactFxFacilitatorOptions,
-  ) {}
+  ) {
+    const list = Array.isArray(signers) ? signers : [signers];
+    if (!list.length) throw new Error("At least one signer is required");
+    this.signers = new Map(list.map((signer) => [signer.address, signer]));
+    let next = 0;
+    this.selectSigner = options.selectSigner ?? ((addresses) => addresses[next++ % addresses.length]);
+  }
 
   getExtra(): Record<string, unknown> {
     const extra: FxExtra = {
@@ -84,7 +97,7 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
   }
 
   getSigners(): string[] {
-    return [this.signer.address];
+    return [...this.signers.keys()];
   }
 
   async verify(payload: PaymentPayload, requirements: PaymentRequirements): Promise<VerifyResponse> {
@@ -104,9 +117,14 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
       const server = getRpcClient(requirements.network, this.options.rpcConfig);
       const networkPassphrase = getNetworkPassphrase(requirements.network);
       const invoke = checked.transaction.operations[0] as Operation.InvokeHostFunction;
-      const account = await server.getAccount(this.signer.address);
+      const signer = this.signers.get(this.selectSigner([...this.signers.keys()]));
+      if (!signer) {
+        return { success: false, network, transaction: "", errorReason: "settle_exact_fx_signer_selection_failed", payer };
+      }
+      const account = await server.getAccount(signer.address);
+      // The builder adds the simulated resource fee to this inclusion bid.
       const rebuilt = new TransactionBuilder(account, {
-        fee: BASE_FEE,
+        fee: String(await this.inclusionFee(server)),
         networkPassphrase,
         sorobanData: checked.simulation.transactionData.build(),
       })
@@ -114,7 +132,7 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
         .addOperation(Operation.invokeHostFunction({ func: invoke.func, auth: invoke.auth }))
         .build();
 
-      const { signedTxXdr, error } = await this.signer.signTransaction(rebuilt.toXDR(), { networkPassphrase });
+      const { signedTxXdr, error } = await signer.signTransaction(rebuilt.toXDR(), { networkPassphrase });
       if (error) {
         return { success: false, network, transaction: "", errorReason: "settle_exact_fx_signing_failed", payer };
       }
@@ -158,7 +176,7 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
     if (transaction.operations.length !== 1 || operation.type !== "invokeHostFunction") {
       return invalid("invalid_exact_fx_payload_wrong_operation");
     }
-    if (transaction.source === this.signer.address || operation.source === this.signer.address) {
+    if (this.signers.has(transaction.source) || (operation.source && this.signers.has(operation.source))) {
       return invalid("invalid_exact_fx_payload_unsafe_tx_or_op_source");
     }
     if (operation.func.switch() !== xdr.HostFunctionType.hostFunctionTypeInvokeContract()) {
@@ -176,7 +194,7 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
     }
 
     const [from, sendAsset, maxSend, destAsset, destAmount, payTo, deadline] = args.map((arg) => scValToNative(arg));
-    if (from === this.signer.address) return invalid("invalid_exact_fx_payload_facilitator_is_payer");
+    if (this.signers.has(from)) return invalid("invalid_exact_fx_payload_facilitator_is_payer");
     if (!sendAssets.includes(sendAsset)) return invalid("invalid_exact_fx_payload_unsupported_send_asset", from);
     if (destAsset !== requirements.asset) return invalid("invalid_exact_fx_payload_wrong_asset", from);
     if (destAmount !== BigInt(requirements.amount)) return invalid("invalid_exact_fx_payload_wrong_amount", from);
@@ -230,12 +248,15 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
       console.error("exact-fx simulation error:", simulation.error);
       return invalid("invalid_exact_fx_payload_simulation_failed", from);
     }
-    const fee = Number(simulation.minResourceFee) + Number(BASE_FEE);
+    const fee = Number(simulation.minResourceFee) + this.maxInclusionFee;
     if (fee > (this.options.maxTransactionFeeStroops ?? 1_000_000)) {
       return invalid("invalid_exact_fx_payload_fee_exceeds_maximum", from);
     }
     if (!this.deliversExactAmount(simulation, requirements, destAmount)) {
       return invalid("invalid_exact_fx_payload_no_delivery", from);
+    }
+    if (this.movesFacilitatorFunds(simulation)) {
+      return invalid("invalid_exact_fx_payload_moves_facilitator_funds", from);
     }
 
     const signatures = gatherAuthEntrySignatureStatus({ transaction, simulationResponse: simulation });
@@ -245,6 +266,31 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
     }
 
     return { response: { isValid: true, payer: from }, transaction, simulation };
+  }
+
+  private get maxInclusionFee(): number {
+    return this.options.maxInclusionFeeStroops ?? 10_000;
+  }
+
+  /** Bids the network's recent p90 inclusion fee, never below the base fee nor above the configured ceiling. */
+  private async inclusionFee(server: ReturnType<typeof getRpcClient>): Promise<number> {
+    const p90 = await server
+      .getFeeStats()
+      .then((stats) => Number(stats.sorobanInclusionFee.p90))
+      .catch(() => 0);
+    return Math.min(Math.max(Number(BASE_FEE), p90 || 0), this.maxInclusionFee);
+  }
+
+  /** Defense in depth: no simulated event may move tokens out of an account the facilitator signs for. */
+  private movesFacilitatorFunds(simulation: Api.SimulateTransactionSuccessResponse): boolean {
+    return simulation.events.some((diagnostic) => {
+      const event = diagnostic.event();
+      if (event.type().name !== "contract") return false;
+      const topics = event.body().v0().topics();
+      if (topics.length < 2 || topics[0].switch().name !== "scvSymbol") return false;
+      const name = topics[0].sym().toString();
+      return ["transfer", "burn", "approve"].includes(name) && this.signers.has(String(scValToNative(topics[1])));
+    });
   }
 
   /** Defense in depth: the simulated events must include FxPay delivering `amount` of the asset to `payTo`. */
