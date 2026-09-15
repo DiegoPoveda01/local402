@@ -5,3 +5,4 @@ target/
 *.local
 apps/demo-api/data/
 .vercel/
+.npm/
