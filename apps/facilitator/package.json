@@ -10,6 +10,7 @@
   "dependencies": {
     "@local402/fx": "*",
     "@x402/core": "2.25.0",
+    "@x402/extensions": "2.25.0",
     "@x402/stellar": "2.25.0",
     "express": "^5.1.0"
   }

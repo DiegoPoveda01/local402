@@ -4,6 +4,7 @@ import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactStellarScheme } from "@x402/stellar/exact/server";
 import type { AssetAmount, Network } from "@x402/core/types";
+import { bazaarResourceServerExtension, declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { localPrice, ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
 import { ExactFxServerScheme, FX_SCHEME, FX_TESTNET } from "@local402/fx";
 import { Local402Client, type PayAsset } from "@local402/client";
@@ -27,13 +28,30 @@ const receipts = new ReceiptBook(process.env.RECEIPTS_FILE ?? fileURLToPath(new 
 const server = new x402ResourceServer(new HTTPFacilitatorClient({ url: FACILITATOR_URL }))
   .register(NETWORK, new ExactStellarScheme())
   .register(NETWORK, new ExactFxServerScheme())
+  .registerExtension(bazaarResourceServerExtension)
   .onAfterSettle(receipts.record);
 
 // Each product shares one quote across both options, so USDC, XLM and EURC payers are charged the same USDC amount.
+// The output examples are published through Bazaar so agents can find these routes before paying.
 const products = [
-  { path: "/indicadores", price: "50 CLP", description: "Indicadores de mercado para Chile, cobrados en pesos chilenos" },
-  { path: "/europa", price: "0.05 EUR", description: "Tipos de cambio del euro, cobrados en euros" },
-  { path: "/uf", price: "0.01 UF", description: "Valor de la UF en pesos y dólares, cobrado en UF" },
+  {
+    path: "/indicadores",
+    price: "50 CLP",
+    description: "Indicadores de mercado para Chile, cobrados en pesos chilenos",
+    example: { dolarObservado: { clpPorUsd: 951.71, fuente: "reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC", timestamp: 1789450500 }, euro: { clpPorEur: 1098.49 }, real: { clpPorBrl: 175.86 } },
+  },
+  {
+    path: "/europa",
+    price: "0.05 EUR",
+    description: "Tipos de cambio del euro, cobrados en euros",
+    example: { usdPorEur: 1.1542, gbpPorEur: 0.8671, brlPorEur: 6.2464, clpPorEur: 1098.49, fuente: "reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC", timestamp: 1789450500 },
+  },
+  {
+    path: "/uf",
+    price: "0.01 UF",
+    description: "Valor de la UF en pesos y dólares, cobrado en UF",
+    example: { clpPorUf: 40934.18, usdPorUf: 43.0118, fuente: "mindicador.cl:uf*reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC", timestamp: 1789450500 },
+  },
 ].map((product) => ({ ...product, quote: localPrice(product.price, { network: NETWORK, oracle }) }));
 
 const app = express();
@@ -41,7 +59,7 @@ const app = express();
 app.use(
   paymentMiddleware(
     Object.fromEntries(
-      products.map(({ path, quote, description }) => [
+      products.map(({ path, quote, description, example }) => [
         `GET ${path}`,
         {
           accepts: [
@@ -50,6 +68,9 @@ app.use(
           ],
           description,
           mimeType: "application/json",
+          serviceName: "Local402 demo",
+          tags: ["local-currency", "fx", "chile"],
+          extensions: declareDiscoveryExtension({ output: { example } }),
         },
       ]),
     ),

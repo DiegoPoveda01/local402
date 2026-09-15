@@ -8,7 +8,10 @@
   },
   "dependencies": {
     "@local402/client": "*",
+    "@local402/pricing": "*",
     "@modelcontextprotocol/sdk": "1.30.0",
+    "@x402/core": "2.25.0",
+    "@x402/extensions": "2.25.0",
     "zod": "^3.25.0"
   }
 }

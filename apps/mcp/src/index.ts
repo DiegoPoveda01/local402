@@ -1,8 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+import { withBazaar } from "@x402/extensions/bazaar";
 import { z } from "zod";
 import { Local402Client, type PayAsset } from "@local402/client";
+import type { LocalQuote } from "@local402/pricing";
 
 // A stellar-cli identity keeps the secret out of MCP config files.
 const identity = process.env.STELLAR_IDENTITY;
@@ -21,6 +24,7 @@ const clients: Record<PayAsset, Local402Client> = {
   EURC: new Local402Client({ secret: SECRET, payWith: "EURC", maxPrice }),
 };
 const client = clients[payWith];
+const bazaar = withBazaar(new HTTPFacilitatorClient({ url: process.env.FACILITATOR_URL ?? "http://localhost:4022" }));
 
 const text = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] });
 const failure = (error: unknown) => ({
@@ -29,6 +33,36 @@ const failure = (error: unknown) => ({
 });
 
 const server = new McpServer({ name: "local402", version: "0.1.0" });
+
+server.registerTool(
+  "local402_discover",
+  {
+    title: "Find x402 resources priced in local currency",
+    description:
+      "Lists paid HTTP resources catalogued by the Local402 facilitator (x402 Bazaar): URL, description, local price (CLP, EUR, UF...), accepted payment assets and an example response. Call local402_quote or local402_pay next.",
+    annotations: { readOnlyHint: true, openWorldHint: true },
+  },
+  async () => {
+    try {
+      const { items } = await bazaar.extensions.bazaar.listResources({ type: "http" });
+      return text(
+        items.map((item) => {
+          const quote = item.accepts.find((a) => a.extra?.local402)?.extra?.local402 as LocalQuote | undefined;
+          const info = (item.extensions?.bazaar as { info?: { output?: { example?: unknown } } } | undefined)?.info;
+          return {
+            url: item.resource,
+            description: item.description,
+            price: quote ? `${quote.localAmount} ${quote.currency}` : undefined,
+            payWith: item.accepts.some((a) => a.scheme === "exact-fx") ? ["USDC", "XLM", "EURC"] : ["USDC"],
+            exampleResponse: info?.output?.example,
+          };
+        }),
+      );
+    } catch (error) {
+      return failure(error);
+    }
+  },
+);
 
 server.registerTool(
   "local402_quote",
