@@ -4,8 +4,8 @@ import { paymentMiddleware } from "@x402/express";
 import type { DynamicPrice, PaymentOption } from "@x402/core/http";
 import type { AssetAmount, Network } from "@x402/core/types";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
-import { ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
-import { FX_TESTNET } from "@local402/fx";
+import { quoteLocalPrice, ReflectorFiatOracle, UfRateSource } from "@local402/pricing";
+import { FX_TESTNET, quoteFx } from "@local402/fx";
 import { local402Server, localRoute } from "@local402/server";
 import { Local402Client, type PayAsset } from "@local402/client";
 import { ReceiptBook } from "./receipts.js";
@@ -119,6 +119,25 @@ app.get("/catalog", async (_req, res) => {
     .then(async (r) => ((await r.json()) as { pagination: { total: number } }).pagination.total)
     .catch(() => null);
   res.json({ network: NETWORK, payTo: PAY_TO, demoAgent: Boolean(DEMO_AGENT_SECRET), payAssets: PAY_ASSETS, assetSymbols: ASSET_SYMBOLS, discovered, items });
+});
+
+// Price calculator: what any local price costs in each payment asset right now, without paying.
+app.get("/demo/quote", async (req, res) => {
+  try {
+    const quote = await quoteLocalPrice(String(req.query.price ?? ""), { oracle });
+    const { asset } = (await products[0].quote({} as never)) as AssetAmount;
+    const pay = Object.fromEntries(
+      await Promise.all(
+        Object.entries(ASSET_SYMBOLS).map(async ([contract, symbol]) => [
+          symbol,
+          (await quoteFx({ fxContract: FX_TESTNET.fxContract, sendAsset: contract }, NETWORK, asset, quote.tokenAmount)).toString(),
+        ]),
+      ),
+    );
+    res.json({ quote, pay: { USDC: quote.tokenAmount, ...pay } });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
 });
 
 app.get("/receipts", (_req, res) => {

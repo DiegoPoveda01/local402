@@ -12,12 +12,16 @@ Pantalla: sección **Integración** del dashboard.
 
 > "Con Local402 el vendedor escribe `localRoute("50 CLP", { payTo })`. Nada más. El precio se convierte a USDC con el oráculo Reflector on-chain, redondeando a favor del vendedor, y la cotización viaja dentro del 402 estándar."
 
-Mostrar las tres tarjetas: 50 CLP, 0,05 EUR y 0,01 UF, con la tasa y la fuente.
+Mostrar las tres tarjetas: 50 CLP, 0,05 EUR y 0,01 UF, con la tasa y la fuente. Clic en **Ver el 402** en `/indicadores`: la consola muestra el 402 real decodificado, con la opción `exact` en USDC y `exact-fx` en XLM o EURC.
+
+> "Este es el 402 estándar que recibe cualquier cliente x402: sin wallet, sin pagar."
+
+Opcional (10 s): en **Pon tu precio**, escribir `0,5 UF` y ver cuánto USDC, XLM y EURC cuesta ahora.
 
 ## 0:55 – 1:40 · Cliente: paga con lo que tenga
 
-1. Clic en **USDC** en `/indicadores`. Aparece el recibo en vivo.
-2. Clic en **XLM** en `/uf`. Abrir la transacción en stellar.expert.
+1. Clic en **USDC** en `/indicadores`. La consola muestra 402 → firma → `200 OK` con el tiempo y la transacción, y aparece el recibo en vivo.
+2. Clic en **XLM** en `/uf`. Abrir la transacción en stellar.expert desde la consola.
 
 > "Esto es una sola transacción: el contrato FxPay en Soroban swapea XLM en Soroswap y entrega al vendedor el USDC exacto; el sobrante vuelve al cliente. Si no alcanza, todo se revierte. El vendedor nunca toca XLM."
 

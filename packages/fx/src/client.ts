@@ -1,5 +1,5 @@
 import { contract, nativeToScVal, scValToNative } from "@stellar/stellar-sdk";
-import type { PaymentPayloadResult, PaymentRequirements, SchemeNetworkClient } from "@x402/core/types";
+import type { Network, PaymentPayloadResult, PaymentRequirements, SchemeNetworkClient } from "@x402/core/types";
 import {
   findDefaultAsset,
   getEstimatedLedgerCloseTimeSeconds,
@@ -26,6 +26,25 @@ export interface ExactFxClientOptions {
 export function maxSendFor(quote: bigint, slippageBps: number): bigint {
   const scaled = quote * BigInt(10_000 + slippageBps);
   return (scaled + 9_999n) / 10_000n;
+}
+
+/** Simulates FxPay `quote`: how much `sendAsset` it currently takes to deliver `amount` of `asset`. */
+export async function quoteFx(
+  { fxContract, sendAsset, rpcConfig }: ExactFxClientOptions,
+  network: Network,
+  asset: string,
+  amount: string | bigint,
+): Promise<bigint> {
+  const quote = await contract.AssembledTransaction.build({
+    contractId: fxContract,
+    networkPassphrase: getNetworkPassphrase(network),
+    rpcUrl: getRpcUrl(network, rpcConfig),
+    method: "quote",
+    args: [nativeToScVal(sendAsset, { type: "address" }), nativeToScVal(asset, { type: "address" }), nativeToScVal(amount, { type: "i128" })],
+    parseResultXdr: (result) => scValToNative(result) as bigint,
+  });
+  handleSimulationResult(quote.simulation);
+  return quote.result;
 }
 
 /** Client side of `exact-fx`: signs an FxPay `pay` that spends `sendAsset` to deliver the required amount. */
@@ -58,14 +77,7 @@ export class ExactFxClientScheme implements SchemeNetworkClient {
     const address = (value: string) => nativeToScVal(value, { type: "address" });
     const i128 = (value: string | bigint) => nativeToScVal(value, { type: "i128" });
 
-    const quote = await contract.AssembledTransaction.build({
-      ...base,
-      method: "quote",
-      args: [address(sendAsset), address(asset), i128(amount)],
-      parseResultXdr: (result) => scValToNative(result) as bigint,
-    });
-    handleSimulationResult(quote.simulation);
-    const maxSend = maxSendFor(quote.result, this.options.slippageBps ?? 200);
+    const maxSend = maxSendFor(await quoteFx(this.options, network, asset, amount), this.options.slippageBps ?? 200);
 
     const latestLedger = await getRpcClient(network, rpcConfig).getLatestLedger();
     const ledgerSeconds = await getEstimatedLedgerCloseTimeSeconds(network);
