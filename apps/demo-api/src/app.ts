@@ -206,7 +206,8 @@ app.post("/demo/pay", async (req, res) => {
     const origin = `${req.protocol}://${req.get("host")}`;
     res.json(await client.pay(`${origin}${path}`));
   } catch (error) {
-    res.status(502).json({ error: error instanceof Error ? error.message : String(error) });
+    // Soroban simulation errors carry a full event log; the first line is the reason.
+    res.status(502).json({ error: (error instanceof Error ? error.message : String(error)).split("\n")[0] });
   }
 });
 
