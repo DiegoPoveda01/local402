@@ -10,6 +10,7 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "demo": "tsx scripts/demo.ts",
     "api": "npm run dev -w @local402/demo-api",
     "agent": "npm run start -w @local402/agent",
     "facilitator": "npm run start -w @local402/facilitator",
