@@ -57,5 +57,20 @@
     "payer": "GA4T526FYR5O6ICX63W4EUL7ZJL6RW23BAKY5F5CXKWJE4DSTNOG7HML",
     "payTo": "GAOHHW4LH3BYI6JXIW2XKBVQXH6AA66DN2PXQHO67NMPTYL4JYBQ6J47",
     "transaction": "11854d044dca911eeb9f4bdcb3f72c9e40c5c7097b634ca87daf17d754c2cf9b"
+  },
+  {
+    "paidAt": "2026-09-15T21:37:51.000Z",
+    "resource": "https://local402-mainnet.vercel.app/indicadores",
+    "local": {
+      "amount": "50",
+      "currency": "CLP"
+    },
+    "usdc": "523590",
+    "payWith": "XLM",
+    "spent": "2992605",
+    "spentPremiumBps": 13,
+    "via": "freighter",
+    "payTo": "GAOHHW4LH3BYI6JXIW2XKBVQXH6AA66DN2PXQHO67NMPTYL4JYBQ6J47",
+    "transaction": "e9114f04b41ccdd59e43bcbc0fc4deb87bea58d0603a9701e2c1b93bebe5c7ea"
   }
 ]

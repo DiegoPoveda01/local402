@@ -44,7 +44,14 @@ const oracle = new UfRateSource(new ReflectorFiatOracle(), ufValue);
 // USD value of the send assets, as the client checks them: XLM from Reflector's exchange feed, EURC at the euro rate.
 const exchanges = new ReflectorFiatOracle(REFLECTOR_CEX);
 const sendAssetRate = (symbol: string) => (symbol === "XLM" ? exchanges.getRate("XLM") : oracle.getRate("EUR"));
-const receipts = new ReceiptBook({ redis, key: process.env.RECEIPTS_KEY || undefined, file: process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)) });
+// Receipts record what a swap actually cost against those rates.
+const fxPremium = async (spent: { asset: string; amount: string }, settledAmount: string) => {
+  const symbol = ASSET_SYMBOLS[spent.asset];
+  if (!symbol) return undefined;
+  const oracleSend = oracleSendAmount(settledAmount, await sendAssetRate(symbol));
+  return Number(((BigInt(spent.amount) - oracleSend) * 10_000n) / oracleSend);
+};
+const receipts = new ReceiptBook({ redis, key: process.env.RECEIPTS_KEY || undefined, fxPremium, file: process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)) });
 const server = local402Server(FACILITATOR_URL, NETWORK).onAfterSettle(receipts.record);
 
 // The output examples are published through Bazaar so agents can find these routes before paying.
@@ -195,7 +202,7 @@ app.get("/receipts", async (_req, res) => {
 });
 
 app.get("/receipts.csv", async (_req, res) => {
-  const header = "id,fecha,recurso,monto_local,moneda,usd_por_unidad,fuente_tasa,usdc_recibido,activo_pagado,monto_pagado,esquema,pagador,transaccion";
+  const header = "id,fecha,recurso,monto_local,moneda,usd_por_unidad,fuente_tasa,usdc_recibido,activo_pagado,monto_pagado,prima_fx_bps,esquema,pagador,transaccion";
   const rows = (await receipts.list()).map((r) =>
     [
       r.id,
@@ -208,6 +215,7 @@ app.get("/receipts.csv", async (_req, res) => {
       Number(r.settled.amount) / 10 ** r.settled.decimals,
       r.spent ? (ASSET_SYMBOLS[r.spent.asset] ?? r.spent.asset) : "USDC",
       r.spent ? Number(r.spent.amount) / 1e7 : Number(r.settled.amount) / 10 ** r.settled.decimals,
+      r.fxPremiumBps ?? "",
       r.scheme,
       r.payer ?? "",
       r.transaction,

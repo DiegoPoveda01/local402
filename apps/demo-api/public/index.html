@@ -741,6 +741,7 @@ async function loadMainnet() {
       usdc: r.settled.amount,
       payWith: r.spent ? symbolMainnet(r.spent.asset) : "USDC",
       spent: r.spent ? r.spent.amount : r.settled.amount,
+      spentPremiumBps: r.fxPremiumBps,
       transaction: r.transaction,
     })),
   ].sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
@@ -750,7 +751,7 @@ async function loadMainnet() {
       <td><b>${local(p.local.amount)} ${currencyLabel(p.local.currency)}</b></td>
       <td>${fmt(p.usdc)} USDC</td>
       <td><span class="pill ${escape(p.payWith.toLowerCase())}">${escape(p.payWith)}</span> ${fmt(p.spent)}</td>
-      <td class="mono">${p.fxPremiumBps === undefined ? "—" : `${p.fxPremiumBps >= 0 ? "+" : "−"}${(Math.abs(p.fxPremiumBps) / 100).toLocaleString("es-CL", { minimumFractionDigits: 2 })}% máx.`}</td>
+      <td class="mono">${p.spentPremiumBps !== undefined ? bps(p.spentPremiumBps) : p.fxPremiumBps !== undefined ? `${bps(p.fxPremiumBps)} máx.` : "—"}</td>
       <td>${txLink(p.transaction, "public")}</td>
     </tr>`).join("");
   $("mainnet").hidden = false;
@@ -758,11 +759,12 @@ async function loadMainnet() {
   renderNetwork();
 }
 
+// Swap premium over the oracle: what was spent, or for the first scripted payments the most the swap could spend.
+const bps = (value) => `${value >= 0 ? "+" : "−"}${(Math.abs(value) / 100).toLocaleString("es-CL", { minimumFractionDigits: 2 })}%`;
 const MAINNET_SYMBOLS = { CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA: "XLM", CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV: "EURC" };
 const symbolMainnet = (asset) => MAINNET_SYMBOLS[asset] ?? short(asset);
 
 $("wallet-console").innerHTML = [span("c", "# desde tu wallet: elige USDC, XLM o EURC"), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`)].join("\n");
-let walletAddress;
 async function payFromWallet(asset) {
   const term = $("wallet-console");
   const buttons = document.querySelectorAll(".wallet button");
@@ -773,17 +775,20 @@ async function payFromWallet(asset) {
     show(span("c", "cargando el cliente (≈500 KB)…"));
     await import("/wallet.js");
     const wallet = globalThis.local402Wallet;
-    walletAddress ??= await wallet.connect();
+    // Asked on every payment, so switching accounts in Freighter needs no reload.
+    const walletAddress = await wallet.connect();
     $("wallet-status").innerHTML = `Conectada: <a target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/account/${escape(walletAddress)}">${short(escape(walletAddress))}</a>`;
     show(span("h", `$ GET ${MAINNET_API}/indicadores`), span("y", "HTTP/1.1 402 Payment Required"),
       span("h", asset === "USDC" ? "→ Freighter firma una transferencia de USDC (exact)" : `→ Freighter firma FxPay.pay con ${asset} (exact-fx)`),
-      span("c", "  el cliente revisa la tasa con Reflector y el tope de 200 CLP antes de enviar…"));
+      span("c", "  el cliente revisa la tasa con Reflector y el tope de 200 CLP antes de enviar…"),
+      span("c", "  si Freighter dice «Unable to scan site»: Blockaid aún no conoce este contrato nuevo"));
     const started = performance.now();
     const data = await wallet.pay(`${MAINNET_API}/indicadores`, walletAddress, asset);
     const seconds = ((performance.now() - started) / 1000).toLocaleString("es-CL", { maximumFractionDigits: 1 });
     show(
       span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${txLink(data.transaction, "public")}`),
       data.spent ? `  gastaste ${span("v", `${fmt(data.spent.amount)} ${asset}`)} · el vendedor recibió ${fmt(data.price.amount)} USDC` : `  el vendedor recibió ${fmt(data.price.amount)} USDC`,
+      ...(data.spent && data.fx ? [`  prima vs Reflector: ${span("g", bps(Number(((BigInt(data.spent.amount) - BigInt(data.fx.oracleSend)) * 10000n) / BigInt(data.fx.oracleSend))))} (tope firmado ${bps(data.fx.premiumBps)})`] : []),
       escape(JSON.stringify(data.body, null, 2)),
     );
     setTimeout(loadMainnet, 1500);
@@ -794,7 +799,6 @@ async function payFromWallet(asset) {
       wrong_network: "Freighter está en otra red. Cámbiala a Mainnet (Public) e inténtalo de nuevo.",
     }[message];
     show(span("r", hint ?? `Error: ${escape(message)}`), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`));
-    if (/User declined|rejected/i.test(message)) walletAddress = undefined;
   } finally {
     buttons.forEach((b) => (b.disabled = false));
   }

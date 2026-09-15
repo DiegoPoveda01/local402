@@ -21,8 +21,13 @@ export interface Receipt {
   settled: { asset: string; amount: string; decimals: number };
   /** Asset the payer spent when it differs from the settled one (exact-fx). */
   spent?: { asset: string; amount: string };
+  /** How much more the payer spent than the oracle value of the settled USDC, in basis points (exact-fx). */
+  fxPremiumBps?: number;
   transaction: string;
 }
+
+/** Premium of an exact-fx payment over the oracle, or undefined when it cannot be priced. */
+export type FxPremium = (spent: { asset: string; amount: string }, settledAmount: string) => Promise<number | undefined>;
 
 /** Most recent receipts kept in Redis. */
 const REDIS_LIMIT = 500;
@@ -61,7 +66,7 @@ export class ReceiptBook {
    * otherwise in memory and, when given a file, across restarts.
    */
   constructor(
-    private readonly options: { file?: string; redis?: Redis; key?: string } = {},
+    private readonly options: { file?: string; redis?: Redis; key?: string; fxPremium?: FxPremium } = {},
   ) {
     if (options.redis || !options.file) return;
     try {
@@ -80,9 +85,13 @@ export class ReceiptBook {
     const { requirements, result } = ctx;
     const quote = requirements.extra?.local402 as LocalQuote | undefined;
     if (!quote) return;
-    const { redis, file } = this.options;
-    const count = redis ? Number((await redis.pipeline(["INCR", `${this.key}:count`]))[0]) : this.receipts.length + 1;
+    const { redis, file, fxPremium } = this.options;
     const extra = result.extra as { sendAsset?: string; sendAmount?: string } | undefined;
+    const spent = extra?.sendAsset && extra.sendAmount ? { asset: extra.sendAsset, amount: extra.sendAmount } : undefined;
+    const [count, fxPremiumBps] = await Promise.all([
+      redis ? redis.pipeline(["INCR", `${this.key}:count`]).then(([value]) => Number(value)) : this.receipts.length + 1,
+      spent && fxPremium ? fxPremium(spent, requirements.amount).catch(() => undefined) : undefined,
+    ]);
     const receipt: Receipt = {
       id: `${count}`.padStart(6, "0"),
       resource: ctx.paymentPayload.resource?.url ?? "",
@@ -94,7 +103,8 @@ export class ReceiptBook {
       local: { amount: quote.localAmount, currency: quote.currency },
       rate: { usdPerUnit: quote.usdPerUnit, source: quote.oracleSource, oracleTimestamp: quote.oracleTimestamp },
       settled: { asset: requirements.asset, amount: requirements.amount, decimals: quote.tokenDecimals },
-      spent: extra?.sendAsset && extra.sendAmount ? { asset: extra.sendAsset, amount: extra.sendAmount } : undefined,
+      spent,
+      fxPremiumBps,
       transaction: result.transaction,
     };
     if (redis) {
