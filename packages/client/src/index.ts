@@ -16,6 +16,9 @@ type FxAsset = Exclude<PayAsset, "USDC">;
 /** Oracle symbol that prices each send asset in USD. EURC is valued at the euro rate, being redeemable 1:1 for euros. */
 const FX_ORACLE_SYMBOLS: Record<FxAsset, string> = { XLM: "XLM", EURC: "EUR" };
 
+/** A cached copy of an earlier purchase would hide the 402 and look like a free resource. */
+const NO_CACHE = { cache: "no-store" } as const;
+
 /** A running spending cap in local currency, e.g. "5000 CLP". Share one across clients that pay with different assets. */
 export class SpendingBudget {
   /** USDC units spent or reserved by in-flight payments. */
@@ -141,7 +144,7 @@ export class Local402Client {
 
   /** Reads a resource's price without paying. Returns undefined if the resource is free. */
   async quote(url: string): Promise<Price | undefined> {
-    const response = await fetch(url);
+    const response = await fetch(url, NO_CACHE);
     if (response.status !== 402) return undefined;
     const required = this.http.getPaymentRequiredResponse((name) => response.headers.get(name), await response.json());
     const option = required.accepts.find((accept) => accept.scheme === this.scheme) ?? required.accepts[0];
@@ -150,7 +153,7 @@ export class Local402Client {
 
   /** Fetches a resource, paying for it if it returns 402. */
   async pay(url: string): Promise<PaidResult | { free: true; body: unknown }> {
-    const first = await fetch(url);
+    const first = await fetch(url, NO_CACHE);
     if (first.status !== 402) return { free: true, body: await readBody(first) };
 
     const required = this.http.getPaymentRequiredResponse((name) => first.headers.get(name), await first.json());
@@ -162,7 +165,7 @@ export class Local402Client {
     // Reserve the amount so concurrent payments cannot overrun the budget together.
     const charged = BigInt(price.amount);
     if (this.budget) this.budget.spent += charged;
-    const paid = await fetch(url, { headers: this.http.encodePaymentSignatureHeader(payload) }).catch((error) => {
+    const paid = await fetch(url, { ...NO_CACHE, headers: this.http.encodePaymentSignatureHeader(payload) }).catch((error) => {
       if (this.budget) this.budget.spent -= charged;
       throw error;
     });

@@ -106,6 +106,13 @@ if (CORS_ORIGIN) {
   });
 }
 
+// A paid response must never come from a cache: the next visit has to reach the 402 again.
+const paidPaths = new Set(products.map(({ path }) => path));
+app.use((req, res, next) => {
+  if (paidPaths.has(req.path)) res.set("Cache-Control", "no-store");
+  next();
+});
+
 app.use(
   paymentMiddleware(
     Object.fromEntries(products.map(({ path, route }) => [`GET ${path}`, route])),
