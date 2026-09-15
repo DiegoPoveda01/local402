@@ -81,7 +81,7 @@
   .stat .value { font-family: var(--serif); font-size: 38px; line-height: 1.1; margin-top: 10px; overflow-wrap: anywhere; }
   .stat .note { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--fg-dim); margin-top: 4px; }
 
-  .lang { cursor: pointer; font: inherit; background: transparent; color: inherit; margin-left: auto; margin-right: 8px; }
+  .lang { cursor: pointer; font: inherit; background: transparent; color: inherit; margin-left: auto; margin-right: 8px; flex-shrink: 0; }
   .lang + .badge { margin-left: 0; }
 
   /* Judges strip */
@@ -231,7 +231,7 @@
 <nav>
   <div class="wrap">
     <a class="logo" href="#"><img src="/logo.svg" alt=""><span>Local<i>402</i></span></a>
-    <div class="links"><a href="#probar">Probar</a><a href="#calculadora">Calculadora</a><a href="#integracion">Integración</a><a href="#recibos">Recibos</a></div>
+    <div class="links"><a href="#probar">Probar</a><a href="#calculadora">Calculadora</a><a href="#integracion">Integración</a><a href="#recibos">Recibos</a><a href="#mainnet">Mainnet</a></div>
     <button class="badge lang" id="lang" type="button" aria-label="Switch to English">EN</button>
     <div class="badge" id="network">Conectando…</div>
   </div>
@@ -250,7 +250,8 @@
       <p class="problem">Hoy x402 solo cobra en dólares y en un único activo. Pero el comercio real factura en pesos, soles, reales, euros o UF.</p>
       <p class="lead">Tus clientes, personas o agentes de IA, pagan con USDC, XLM o EURC. Una sola transacción, tasa de un oráculo on-chain, y el vendedor recibe siempre el monto justo.</p>
       <div class="cta">
-        <a class="btn primary" href="#probar">Probar un pago real →</a>
+        <a class="btn primary" href="#probar">Probar gratis en testnet →</a>
+        <a class="btn" href="#mainnet">Pagar en mainnet con tu wallet</a>
         <a class="btn" href="#calculadora">Calcular un precio</a>
       </div>
     </div>
@@ -410,7 +411,7 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
     </div>
   </section>
 
-  <section id="mainnet" hidden>
+  <section id="mainnet">
     <div class="eyebrow">08 — Mainnet</div>
     <h2>Lo mismo, con <em>dinero real</em>.</h2>
     <p class="sub">Pagos hechos en Stellar mainnet con el mismo código: USDC y EURC de Circle, Soroswap y Reflector reales. Con las guardias por defecto: 2% sobre el oráculo y 5% en el swap.</p>
@@ -803,12 +804,12 @@ document.querySelectorAll(".wallet button[data-asset]").forEach((b) => (b.onclic
 // English copy for the static page, keyed by selector (and index when a selector matches several elements).
 // Live output (console, calculator, receipts) stays in Spanish.
 const EN = [
-  [".links a", ["Try it", "Calculator", "Integrate", "Receipts"]],
+  [".links a", ["Try it", "Calculator", "Integrate", "Receipts", "Mainnet"]],
   [".hero .eyebrow", '<span class="dot"></span>x402 on Stellar · local-currency prices'],
   [".hero h1", "Charge in <em>pesos</em>.<br>Receive exact USDC."],
   [".hero .problem", "Today x402 only charges in dollars, in a single asset. But real businesses invoice in pesos, soles, reais, euros or UF."],
   [".hero .lead", "Your customers, people or AI agents, pay with USDC, XLM or EURC. One transaction, an on-chain oracle rate, and the seller always receives the exact amount."],
-  [".cta .btn", ["Try a real payment →", "Price something"]],
+  [".cta .btn", ["Try it free on testnet →", "Pay on mainnet with your wallet", "Price something"]],
   [".ticket .row span:first-child", [null, "rate", "source", "pay with"]],
   [".stats .label", ["Payments", "Sold", "Received", "Swapped"]],
   [".stats .note", ["on testnet, on-chain", "in local currency", "by the seller", "paid with XLM or EURC"]],
