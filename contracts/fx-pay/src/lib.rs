@@ -61,6 +61,12 @@ impl FxPay {
         env.storage().instance().get(&ROUTER).unwrap()
     }
 
+    /// Amount of `send_asset` a `pay` for `dest_amount` of `dest_asset` would currently spend.
+    pub fn quote(env: Env, send_asset: Address, dest_asset: Address, dest_amount: i128) -> i128 {
+        let router = SoroswapRouterClient::new(&env, &Self::router(env.clone()));
+        router.router_get_amounts_in(&dest_amount, &vec![&env, send_asset, dest_asset]).get(0).unwrap()
+    }
+
     /// Pays `dest_amount` of `dest_asset` to `pay_to`, spending at most `max_send` of `send_asset`.
     /// Returns the amount of `send_asset` actually spent.
     pub fn pay(

@@ -125,6 +125,12 @@ fn delivers_exact_amount_and_refunds_unused_input() {
 }
 
 #[test]
+fn quote_matches_amount_spent() {
+    let s = setup();
+    assert_eq!(s.fx.quote(&s.xlm.address, &s.usdc.address, &5), 50);
+}
+
+#[test]
 fn rejects_when_swap_needs_more_than_max_send() {
     let s = setup();
     authorize_payer(&s, 40, 5);

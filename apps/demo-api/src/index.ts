@@ -4,20 +4,23 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactStellarScheme } from "@x402/stellar/exact/server";
 import type { Network } from "@x402/core/types";
 import { localPrice, ReflectorFiatOracle } from "@local402/pricing";
+import { ExactFxServerScheme, FX_SCHEME } from "@local402/fx";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const NETWORK = (process.env.NETWORK ?? "stellar:testnet") as Network;
-const FACILITATOR_URL = process.env.FACILITATOR_URL ?? "https://x402.org/facilitator";
+const FACILITATOR_URL = process.env.FACILITATOR_URL ?? "http://localhost:4022";
 const PAY_TO = process.env.PAY_TO;
 if (!PAY_TO) {
   throw new Error("PAY_TO (seller Stellar address) is required. See .env.example");
 }
 
 const oracle = new ReflectorFiatOracle();
-const server = new x402ResourceServer(new HTTPFacilitatorClient({ url: FACILITATOR_URL })).register(
-  NETWORK,
-  new ExactStellarScheme(),
-);
+const server = new x402ResourceServer(new HTTPFacilitatorClient({ url: FACILITATOR_URL }))
+  .register(NETWORK, new ExactStellarScheme())
+  .register(NETWORK, new ExactFxServerScheme());
+
+// One shared quote, so both options charge the same USDC amount for the same 50 CLP.
+const price = localPrice("50 CLP", { network: NETWORK, oracle });
 
 const app = express();
 
@@ -25,7 +28,10 @@ app.use(
   paymentMiddleware(
     {
       "GET /indicadores": {
-        accepts: [{ scheme: "exact", network: NETWORK, payTo: PAY_TO, price: localPrice("50 CLP", { network: NETWORK, oracle }) }],
+        accepts: [
+          { scheme: "exact", network: NETWORK, payTo: PAY_TO, price },
+          { scheme: FX_SCHEME, network: NETWORK, payTo: PAY_TO, price },
+        ],
         description: "Indicadores de mercado para Chile, cobrados en pesos chilenos",
         mimeType: "application/json",
       },
