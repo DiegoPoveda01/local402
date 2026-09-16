@@ -14,6 +14,8 @@ ruta de su API en su propia moneda — `"50 CLP"`, `"0.05 EUR"`, `"0.01 UF"` —
 que tenga: USDC, XLM o EURC. El vendedor siempre recibe el monto exacto en USDC, en una sola transacción,
 sin que ninguna de las dos partes tenga que cambiar moneda a mano.
 
+![Un agente paga 50 CLP con XLM en testnet: el 402, el swap firmado en FxPay y el vendedor recibiendo USDC exacto](docs/img/pay.gif)
+
 | | |
 | --- | --- |
 | Dashboard (testnet) | **<https://local402.vercel.app>** |
