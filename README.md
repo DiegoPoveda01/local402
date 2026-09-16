@@ -2,6 +2,8 @@
 
 **Charge in pesos. Receive exact USDC.**
 
+**English** · [Español](README.es.md)
+
 Local402 is [x402](https://x402.org) on Stellar for the rest of the world: a seller prices an API route
 in their own currency — `"50 CLP"`, `"0.05 EUR"`, `"0.01 UF"` — and a payer settles it with whatever
 they hold: USDC, XLM or EURC. The seller always receives the exact USDC amount, in one transaction, with
@@ -14,6 +16,7 @@ no manual currency swap on either side.
 | Scheme spec | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
 | npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) |
 | FxPay on mainnet | [`CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV`](https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV) |
+| Bug found and reported upstream | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rejects the fee the SDK bids |
 
 ---
 
