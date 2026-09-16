@@ -2,7 +2,7 @@
 
 **Charge in pesos. Receive exact USDC.**
 
-**English** · [Español](README.es.md)
+### English · [Español](README.es.md)
 
 Local402 is [x402](https://x402.org) on Stellar for the rest of the world: a seller prices an API route
 in their own currency — `"50 CLP"`, `"0.05 EUR"`, `"0.01 UF"` — and a payer settles it with whatever

@@ -2,7 +2,7 @@
 
 **Cobra en pesos. Recibe USDC exacto.**
 
-[English](README.md) · **Español**
+### [English](README.md) · Español
 
 Local402 es [x402](https://x402.org) sobre Stellar para el resto del mundo: quien vende le pone precio a una
 ruta de su API en su propia moneda — `"50 CLP"`, `"0.05 EUR"`, `"0.01 UF"` — y quien paga lo liquida con lo
