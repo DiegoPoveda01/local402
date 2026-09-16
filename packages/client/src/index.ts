@@ -182,7 +182,7 @@ export class Local402Client {
     });
     if (!paid.ok) {
       if (this.budget) this.budget.spent -= charged;
-      throw new Error(`Payment failed (HTTP ${paid.status}): ${await paid.text()}`);
+      throw new Error(`Payment failed (HTTP ${paid.status}): ${await refusalReason(paid)}`);
     }
     const settlement = this.http.getPaymentSettleResponse((name) => paid.headers.get(name));
     const extra = settlement.extra as { sendAsset?: string; sendAmount?: string } | undefined;
@@ -257,6 +257,24 @@ export function fxMaxSend(payload: PaymentPayload): bigint {
   const transaction = new Transaction(String((payload.payload as { transaction?: unknown }).transaction), getNetworkPassphrase(payload.accepted.network));
   const operation = transaction.operations[0] as Operation.InvokeHostFunction;
   return scValToNative(operation.func.invokeContract().args()[2]) as bigint;
+}
+
+/**
+ * Why a paid request was refused. The x402 body is `{}` — the middleware puts everything, the refusal
+ * included, in the `PAYMENT-REQUIRED` header — so a payer reading the body alone is told nothing.
+ */
+async function refusalReason(response: Response): Promise<string> {
+  const header = response.headers.get("PAYMENT-REQUIRED");
+  if (header) {
+    try {
+      const { error } = JSON.parse(atob(header)) as { error?: unknown };
+      if (typeof error === "string" && error) return error;
+    } catch {
+      // Not a header this client can read; the body below is all there is.
+    }
+  }
+  const text = (await response.text()).trim();
+  return text && text !== "{}" ? text : "no reason given";
 }
 
 async function readBody(response: Response): Promise<unknown> {
