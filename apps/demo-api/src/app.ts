@@ -88,19 +88,26 @@ const products = [
 });
 
 export const app = express();
-// Behind Vercel or another proxy, so paid resource URLs keep their https scheme.
-app.set("trust proxy", true);
+// Behind exactly one proxy (Vercel's edge), so paid resource URLs keep their https scheme. Not `true`:
+// that takes the leftmost `X-Forwarded-For` entry, which the caller writes, and `req.ip` buckets the
+// demo payment limit below.
+app.set("trust proxy", 1);
 
-// Lets a dashboard on another origin (CORS_ORIGIN) pay here from the visitor's own wallet.
-const CORS_ORIGIN = process.env.CORS_ORIGIN;
-if (CORS_ORIGIN) {
+// Lets a dashboard on another origin (CORS_ORIGIN, comma-separated) pay here from the visitor's own wallet.
+const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? "").split(",").map((origin) => origin.trim().replace(/\/$/, "")).filter(Boolean);
+if (CORS_ORIGINS.length) {
   app.use((req, res, next) => {
-    res.set({
-      "Access-Control-Allow-Origin": CORS_ORIGIN,
-      "Access-Control-Allow-Headers": "PAYMENT-SIGNATURE, Content-Type",
-      "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
-      Vary: "Origin",
-    });
+    // Echoed back, not sent as a fixed string: a browser only accepts an exact match, so naming the
+    // preview deployment as well as the production one silently denied every origin but the first.
+    const origin = req.get("origin");
+    res.set("Vary", "Origin");
+    if (origin && CORS_ORIGINS.includes(origin)) {
+      res.set({
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Headers": "PAYMENT-SIGNATURE, Content-Type",
+        "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
+      });
+    }
     if (req.method === "OPTIONS") res.sendStatus(204);
     else next();
   });
@@ -208,10 +215,22 @@ app.get("/receipts", async (_req, res) => {
   res.json(await receipts.list());
 });
 
+/** XLM and every Stellar asset contract this demo accepts publish 7 decimals. */
+const SEND_ASSET_DECIMALS = 7;
+
+const PLAIN_NUMBER = /^-?\d+(\.\d+)?$/;
+/** RFC 4180 quoting, plus the guard a spreadsheet needs: a cell starting with `=` is a formula, not text. */
+function csvCell(value: string | number): string {
+  const text = String(value);
+  const safe = /^[=+\-@\t\r]/.test(text) && !PLAIN_NUMBER.test(text) ? `'${text}` : text;
+  return /[",\n\r]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
+}
+
 app.get("/receipts.csv", async (_req, res) => {
   const header = "id,fecha,recurso,monto_local,moneda,usd_por_unidad,fuente_tasa,usdc_recibido,activo_pagado,monto_pagado,prima_fx_bps,esquema,pagador,transaccion";
-  const rows = (await receipts.list()).map((r) =>
-    [
+  const rows = (await receipts.list()).map((r) => {
+    const received = Number(r.settled.amount) / 10 ** r.settled.decimals;
+    return [
       r.id,
       r.paidAt,
       r.resource,
@@ -219,15 +238,17 @@ app.get("/receipts.csv", async (_req, res) => {
       r.local.currency,
       r.rate.usdPerUnit,
       r.rate.source,
-      Number(r.settled.amount) / 10 ** r.settled.decimals,
+      received,
       r.spent ? (ASSET_SYMBOLS[r.spent.asset] ?? r.spent.asset) : "USDC",
-      r.spent ? Number(r.spent.amount) / 1e7 : Number(r.settled.amount) / 10 ** r.settled.decimals,
+      r.spent ? Number(r.spent.amount) / 10 ** SEND_ASSET_DECIMALS : received,
       r.fxPremiumBps ?? "",
       r.scheme,
       r.payer ?? "",
       r.transaction,
-    ].join(","),
-  );
+    ]
+      .map(csvCell)
+      .join(",");
+  });
   res.type("text/csv").attachment("local402-recibos.csv").send([header, ...rows].join("\n"));
 });
 
@@ -237,6 +258,17 @@ app.get("/receipts/stream", (_req, res) => {
 
 // Demo payments spend a shared testnet wallet, so they are capped per minute, per visitor and overall.
 const PAY_LIMITS = { perVisitor: 3, overall: 20 };
+// No demo route costs more than 0.01 UF (~43 USD is the UF; the route charges a hundredth of it).
+const DEMO_MAX_PRICE = process.env.DEMO_MAX_PRICE ?? "1000 CLP";
+/** Where this API answers, for the demo agent that buys from it. */
+const SELF_URL = (process.env.SELF_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")).replace(/\/+$/, "");
+function selfOrigin(req: express.Request): string {
+  if (SELF_URL) return SELF_URL;
+  // `Host` is whatever the caller wrote. Reading it on a public deployment would let anyone aim the
+  // demo agent's wallet at their own 402, so it is only trusted when it names this machine.
+  const host = req.get("host") ?? "";
+  return /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host) ? `${req.protocol}://${host}` : "";
+}
 const windows = new Map<string, number>();
 async function withinLimit(key: string, max: number): Promise<boolean> {
   const bucket = `local402:limit:${key}:${Math.floor(Date.now() / 60_000)}`;
@@ -264,12 +296,16 @@ app.post("/demo/pay", async (req, res) => {
   const requested = String(req.query.with ?? "USDC").toUpperCase() as PayAsset;
   const payWith = PAY_ASSETS.includes(requested) ? requested : "USDC";
   const path = products.some((p) => p.path === req.query.path) ? String(req.query.path) : products[0].path;
+  const origin = selfOrigin(req);
+  if (!origin) {
+    res.status(500).json({ error: "Demo payments need SELF_URL (or VERCEL_URL) so the agent knows where this API answers" });
+    return;
+  }
   try {
     // The client refuses swaps more than 5% above the oracle. Testnet pools are seeded with arbitrary prices
     // (tstEURC trades near 0.74 USD), so the demo allows more there and shows the premium next to each payment.
-    const client = new Local402Client({ secret: DEMO_AGENT_SECRET, payWith, maxFxPremiumBps: 10_000 });
-    // The agent buys from this same API, at the address the dashboard was opened on.
-    const origin = `${req.protocol}://${req.get("host")}`;
+    // `maxPrice` is the second guard: whatever a 402 asks for, the shared demo wallet never pays more.
+    const client = new Local402Client({ secret: DEMO_AGENT_SECRET, payWith, maxFxPremiumBps: 10_000, maxPrice: DEMO_MAX_PRICE });
     res.json(await client.pay(`${origin}${path}`));
   } catch (error) {
     // Soroban simulation errors carry a full event log; the first line is the reason.
