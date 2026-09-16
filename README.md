@@ -202,13 +202,14 @@ money, needs these — each `.env.example` lists the rest.
 ```bash
 npm test        # 31 unit tests across pricing, fx and client
 npm run typecheck
-cd contracts && cargo test    # 8 contract tests against a mock Soroswap router
+cd contracts && cargo test    # 10 contract tests against a mock Soroswap router
 ```
 
 The contract tests cover the cases that matter: exact delivery with a refund of the unused input,
 `quote` agreeing with what `pay` actually spends, rejection when the route needs more than `max_send`,
 routing through the hub asset when there is no direct pool, picking the cheaper of two routes, and
-refusal without the payer's authorization.
+refusal without the payer's authorization. Two cover a router that answers with no amounts at all: the
+hub route still wins if it exists, and otherwise the payer gets `NoRoute` rather than a trap.
 
 Four further tests build a real `exact-fx` payload against testnet and run it through the facilitator's
 verification, including the rejections. They only run when `FX_PAYER_SECRET` is set, so a clean

@@ -208,13 +208,14 @@ necesita esto — cada `.env.example` lista el resto.
 ```bash
 npm test        # 31 tests unitarios entre pricing, fx y client
 npm run typecheck
-cd contracts && cargo test    # 8 tests del contrato contra un router Soroswap simulado
+cd contracts && cargo test    # 10 tests del contrato contra un router Soroswap simulado
 ```
 
 Los tests del contrato cubren lo que importa: entrega exacta con devolución de lo no usado, que `quote`
 coincida con lo que `pay` gasta de verdad, rechazo cuando la ruta necesita más que `max_send`, ruteo por el
 activo hub cuando no hay pool directa, elegir la más barata entre dos rutas, y negarse sin la autorización
-del pagador.
+del pagador. Dos cubren un router que responde sin montos: la ruta por el hub gana igual si existe, y si no
+el pagador recibe `NoRoute` en vez de un trap.
 
 Otros cuatro tests construyen un payload `exact-fx` real contra testnet y lo pasan por la verificación del
 facilitador, incluyendo los rechazos. Solo corren cuando `FX_PAYER_SECRET` está definido, así que un

@@ -7,8 +7,8 @@ use soroban_sdk::{
 };
 
 /// Soroswap-like router with fixed prices: `price` units of the input per unit of output on the
-/// direct pool (0 means there is no direct pool) and `hub_price` through a hub hop.
-/// It acts as its own pair and holds the output liquidity.
+/// direct pool (0 means there is no direct pool, a negative one answers with no amounts at all) and
+/// `hub_price` through a hub hop. It acts as its own pair and holds the output liquidity.
 #[contract]
 struct MockRouter;
 
@@ -24,6 +24,9 @@ impl MockRouter {
         let price: i128 = env.storage().instance().get(&key).unwrap();
         if price == 0 {
             panic!("no pool");
+        }
+        if price < 0 {
+            return vec![&env];
         }
         let mut amounts = vec![&env, amount_out * price];
         for _ in 1..path.len() {
@@ -181,6 +184,20 @@ fn rejects_when_no_route_exists() {
     let s = setup_with_prices(0, 0);
     let result = s.fx.try_quote(&s.xlm.address, &s.usdc.address, &5);
     assert_eq!(result, Err(Ok(soroban_sdk::Error::from_contract_error(Error::NoRoute as u32))));
+}
+
+#[test]
+fn rejects_a_router_that_answers_with_no_amounts() {
+    let s = setup_with_prices(-1, -1);
+    let result = s.fx.try_quote(&s.xlm.address, &s.usdc.address, &5);
+    assert_eq!(result, Err(Ok(soroban_sdk::Error::from_contract_error(Error::NoRoute as u32))));
+}
+
+/// The direct pool answering with nothing must not hide a hub route that does exist.
+#[test]
+fn falls_back_to_the_hub_when_the_direct_pool_answers_with_no_amounts() {
+    let s = setup_with_prices(-1, 12);
+    assert_eq!(s.fx.quote(&s.xlm.address, &s.usdc.address, &5), 60);
 }
 
 #[test]

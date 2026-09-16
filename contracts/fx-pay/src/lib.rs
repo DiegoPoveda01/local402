@@ -66,9 +66,13 @@ impl FxPay {
         let mut best: Option<(Vec<Address>, i128)> = None;
         for path in candidates.iter() {
             if let Ok(Ok(amounts)) = router.try_router_get_amounts_in(&dest_amount, &path) {
-                let amount_in = amounts.get(0).unwrap();
-                if best.as_ref().map_or(true, |(_, current)| amount_in < *current) {
-                    best = Some((path, amount_in));
+                // A router that answers without amounts has no route on this path. Skipping it lets
+                // the other candidate win, or `NoRoute` below say so — an error the payer can read,
+                // rather than a trap from inside the contract.
+                if let Some(amount_in) = amounts.get(0) {
+                    if best.as_ref().map_or(true, |(_, current)| amount_in < *current) {
+                        best = Some((path, amount_in));
+                    }
                 }
             }
         }
