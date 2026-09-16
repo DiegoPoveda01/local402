@@ -52,6 +52,12 @@ export interface Local402ClientOptions {
    * Covers slippage (2%), pool fees and spread. Default 500 (5%).
    */
   maxFxPremiumBps?: number;
+  /**
+   * Slippage the swap itself authorizes above its quote, in basis points. Default 200 (2%).
+   * Unused input is refunded, so this is a ceiling, not a cost; raise it for thin pools, but keep it
+   * under `maxFxPremiumBps` or every FX payment is refused before it is signed.
+   */
+  fxSlippageBps?: number;
   /** USD rates for the send assets, asked for `XLM` and `EUR`. Defaults to Reflector's exchange feed for XLM and `oracle` for EUR. */
   assetOracle?: FiatRateSource;
 }
@@ -131,7 +137,12 @@ export class Local402Client {
     const scheme =
       this.payWith === "USDC"
         ? new ExactStellarScheme(signer, rpcConfig)
-        : new ExactFxClientScheme(signer, { fxContract: fx.fxContract!, sendAsset: this.payWith === "XLM" ? fx.xlm : fx.eurc, rpcConfig });
+        : new ExactFxClientScheme(signer, {
+            fxContract: fx.fxContract!,
+            sendAsset: this.payWith === "XLM" ? fx.xlm : fx.eurc,
+            rpcConfig,
+            slippageBps: options.fxSlippageBps,
+          });
     this.http = new x402HTTPClient(new x402Client().register("stellar:*", scheme));
     this.maxPrice = options.maxPrice;
     this.budget = options.budget;
