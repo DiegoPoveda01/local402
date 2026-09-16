@@ -25,7 +25,7 @@ import {
   type FacilitatorStellarSigner,
   type RpcConfig,
 } from "@x402/stellar";
-import { FX_SCHEME, type FxExtra } from "./extra.js";
+import { FX_SCHEME, SIGNING_GRACE_SECONDS, type FxExtra } from "./extra.js";
 import { inclusionFeeBid } from "./fees.js";
 
 export interface ExactFxFacilitatorOptions {
@@ -39,6 +39,15 @@ export interface ExactFxFacilitatorOptions {
   maxInclusionFeeStroops?: number;
   /** Picks the account that settles; see `ChannelPool.select`. Default: round-robin. */
   selectSigner?: (addresses: readonly string[]) => string;
+  /**
+   * Wall-clock seconds a whole `settle` may take, confirmation included. Default 45.
+   *
+   * It must stay below the host's request limit (Vercel functions are capped at 60 s), because being
+   * killed mid-confirmation is the one outcome with no recovery: the transaction is on the ledger and
+   * the buyer is told the payment failed. Running out returns `settle_exact_fx_confirmation_pending`
+   * with the hash instead.
+   */
+  settleBudgetSeconds?: number;
 }
 
 type Checked =
@@ -50,10 +59,29 @@ type Checked =
     };
 
 const SIGNATURE_EXPIRATION_LEDGER_TOLERANCE = 2;
-const DEADLINE_TOLERANCE_SECONDS = 30;
+// The payer sets the deadline before signing, so it may sit up to a signing grace ahead of the window
+// this facilitator would compute now. Clock skew between the two machines gets the extra 30 s.
+const DEADLINE_TOLERANCE_SECONDS = SIGNING_GRACE_SECONDS + 30;
+/** Longest `maxTimeoutSeconds` the facilitator will work with; see `timeoutSeconds`. */
+const MAX_TIMEOUT_SECONDS = 300;
+const DEFAULT_SETTLE_BUDGET_SECONDS = 45;
+const POLL_INTERVAL_MS = 1_000;
 
 function invalid(invalidReason: string, payer?: string): Checked {
   return { response: { isValid: false, invalidReason, payer } };
+}
+
+/**
+ * `maxTimeoutSeconds` as a usable number, or undefined.
+ *
+ * The x402 facilitator passes `paymentRequirements` straight from the request body without schema
+ * validation, so a missing field would turn the deadline and expiration comparisons below into
+ * `NaN` tests — which are always false, quietly removing both bounds.
+ */
+function timeoutSeconds(requirements: PaymentRequirements): number | undefined {
+  const seconds = Number(requirements.maxTimeoutSeconds);
+  if (!Number.isFinite(seconds) || seconds <= 0 || seconds > MAX_TIMEOUT_SECONDS) return undefined;
+  return Math.floor(seconds);
 }
 
 function contractFn(fn: xdr.SorobanAuthorizedFunction) {
@@ -106,6 +134,8 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
 
   async settle(payload: PaymentPayload, requirements: PaymentRequirements): Promise<SettleResponse> {
     const network = payload.accepted.network;
+    // Everything below shares one wall-clock budget, so the answer always beats the host's request limit.
+    const budgetEndsAt = Date.now() + (this.options.settleBudgetSeconds ?? DEFAULT_SETTLE_BUDGET_SECONDS) * 1_000;
     const checked = await this.check(payload, requirements);
     const payer = checked.response.payer;
     if (!("transaction" in checked)) {
@@ -128,7 +158,7 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
         networkPassphrase,
         sorobanData: checked.simulation.transactionData.build(),
       })
-        .setTimeout(requirements.maxTimeoutSeconds)
+        .setTimeout(timeoutSeconds(requirements) ?? MAX_TIMEOUT_SECONDS)
         .addOperation(Operation.invokeHostFunction({ func: invoke.func, auth: invoke.auth }))
         .build();
 
@@ -141,7 +171,10 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
         return { success: false, network, transaction: "", errorReason: "settle_exact_fx_submission_failed", payer };
       }
       hash = sent.hash;
-      const result = await server.pollTransaction(hash, { attempts: requirements.maxTimeoutSeconds });
+      const result = await this.awaitTransaction(server, hash, budgetEndsAt);
+      if (!result) {
+        return { success: false, network, transaction: hash, errorReason: "settle_exact_fx_confirmation_pending", payer };
+      }
       if (result.status !== Api.GetTransactionStatus.SUCCESS) {
         return { success: false, network, transaction: hash, errorReason: "settle_exact_fx_transaction_failed", payer };
       }
@@ -151,7 +184,27 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
       return { success: true, network, transaction: hash, payer, extra: { sendAsset, sendAmount } };
     } catch (error) {
       console.error("exact-fx settlement error:", error);
-      return { success: false, network, transaction: hash, errorReason: "unexpected_settle_error", payer };
+      // With a hash the transaction reached the network, so its fate is unknown rather than failed.
+      const errorReason = hash ? "settle_exact_fx_confirmation_pending" : "unexpected_settle_error";
+      return { success: false, network, transaction: hash, errorReason, payer };
+    }
+  }
+
+  /**
+   * Waits for a submitted transaction until `deadlineMs`, and returns undefined if it is still
+   * unconfirmed by then. The SDK's `pollTransaction` counts attempts rather than time, so it cannot
+   * promise to return before the host kills the request.
+   */
+  private async awaitTransaction(
+    server: ReturnType<typeof getRpcClient>,
+    hash: string,
+    deadlineMs: number,
+  ): Promise<Api.GetTransactionResponse | undefined> {
+    for (;;) {
+      const response = await server.getTransaction(hash);
+      if (response.status !== Api.GetTransactionStatus.NOT_FOUND) return response;
+      if (Date.now() + POLL_INTERVAL_MS >= deadlineMs) return undefined;
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     }
   }
 
@@ -163,6 +216,8 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
     }
     if (payload.accepted.network !== requirements.network) return invalid("network_mismatch");
     if (!isStellarNetwork(requirements.network)) return invalid("invalid_network");
+    const maxTimeoutSeconds = timeoutSeconds(requirements);
+    if (maxTimeoutSeconds === undefined) return invalid("invalid_exact_fx_requirements_bad_timeout");
 
     const networkPassphrase = getNetworkPassphrase(requirements.network);
     let transaction: Transaction;
@@ -200,14 +255,19 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
     if (destAmount !== BigInt(requirements.amount)) return invalid("invalid_exact_fx_payload_wrong_amount", from);
     if (payTo !== requirements.payTo) return invalid("invalid_exact_fx_payload_wrong_recipient", from);
     const now = Math.floor(Date.now() / 1000);
-    if (Number(deadline) <= now || Number(deadline) > now + requirements.maxTimeoutSeconds + DEADLINE_TOLERANCE_SECONDS) {
-      return invalid("invalid_exact_fx_payload_bad_deadline", from);
+    // Two separate failures, because the payer can act on one of them: an expired deadline means the
+    // payload took too long between signing and arriving here, and signing again fixes it.
+    if (Number(deadline) <= now) return invalid("invalid_exact_fx_payload_deadline_expired", from);
+    if (Number(deadline) > now + maxTimeoutSeconds + DEADLINE_TOLERANCE_SECONDS) {
+      return invalid("invalid_exact_fx_payload_deadline_too_far", from);
     }
 
     const server = getRpcClient(requirements.network, rpcConfig);
     const latestLedger = await server.getLatestLedger();
     const ledgerSeconds = await getEstimatedLedgerCloseTimeSeconds(requirements.network);
-    const maxLedger = latestLedger.sequence + Math.ceil(requirements.maxTimeoutSeconds / ledgerSeconds);
+    const maxLedger = latestLedger.sequence + Math.ceil(maxTimeoutSeconds / ledgerSeconds);
+    // The signature expiration was fixed before the wallet prompt too, so it gets the same grace.
+    const ledgerTolerance = SIGNATURE_EXPIRATION_LEDGER_TOLERANCE + Math.ceil(DEADLINE_TOLERANCE_SECONDS / ledgerSeconds);
 
     // The payer must authorize exactly `pay(args)` and, inside it, the transfer of `maxSend` into FxPay.
     const auth = operation.auth ?? [];
@@ -217,7 +277,7 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
     if (Address.fromScAddress(credentials.address()).toString() !== from) {
       return invalid("invalid_exact_fx_payload_auth_not_from_payer", from);
     }
-    if (credentials.signatureExpirationLedger() > maxLedger + SIGNATURE_EXPIRATION_LEDGER_TOLERANCE) {
+    if (credentials.signatureExpirationLedger() > maxLedger + ledgerTolerance) {
       return invalid("invalid_exact_fx_signature_expiration_too_far", from);
     }
     const root = auth[0].rootInvocation();

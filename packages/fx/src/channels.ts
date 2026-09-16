@@ -8,7 +8,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
  */
 export class ChannelPool {
   private readonly busy = new Set<string>();
-  private readonly waiters: (() => void)[] = [];
+  private readonly waiters: ((address: string) => void)[] = [];
   private readonly slot = new AsyncLocalStorage<string>();
   // Separate server instances start at different accounts, making cross-instance collisions less likely.
   private next: number;
@@ -27,8 +27,12 @@ export class ChannelPool {
     try {
       return await this.slot.run(address, fn);
     } finally {
-      this.busy.delete(address);
-      this.waiters.shift()?.();
+      // Hand the account straight to the longest-waiting settlement instead of releasing it: freeing it
+      // first would let a caller that arrives in the same tick take it and send that one to the back
+      // of the queue again, which under sustained load starves it.
+      const waiter = this.waiters.shift();
+      if (waiter) waiter(address);
+      else this.busy.delete(address);
     }
   }
 
@@ -37,17 +41,16 @@ export class ChannelPool {
     this.slot.getStore() ?? addresses[this.next++ % addresses.length];
 
   private async acquire(): Promise<string> {
-    for (;;) {
-      for (let i = 0; i < this.addresses.length; i++) {
-        const address = this.addresses[(this.next + i) % this.addresses.length];
-        if (!this.busy.has(address)) {
-          this.next += i + 1;
-          this.busy.add(address);
-          return address;
-        }
+    for (let i = 0; i < this.addresses.length; i++) {
+      const address = this.addresses[(this.next + i) % this.addresses.length];
+      if (!this.busy.has(address)) {
+        this.next += i + 1;
+        this.busy.add(address);
+        return address;
       }
-      if (this.waiters.length >= this.maxQueued) throw new Error("All facilitator accounts are busy");
-      await new Promise<void>((resolve) => this.waiters.push(resolve));
     }
+    if (this.waiters.length >= this.maxQueued) throw new Error("All facilitator accounts are busy");
+    // The account arrives already reserved for this caller, so there is nothing to retry.
+    return new Promise<string>((resolve) => this.waiters.push(resolve));
   }
 }

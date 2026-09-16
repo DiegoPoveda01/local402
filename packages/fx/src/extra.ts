@@ -6,6 +6,16 @@ import { FX_MAINNET } from "./mainnet.js";
  */
 export const FX_SCHEME = "exact-fx";
 
+/**
+ * Extra validity the payer gives the swap deadline and the signature expiration, on top of
+ * `maxTimeoutSeconds`, to cover the time a human spends reading and approving the wallet prompt.
+ *
+ * Both sides need the same number: the payer computes the deadline before asking for the signature,
+ * so a prompt left open for a minute would otherwise produce a payload the facilitator rejects as
+ * expired. The facilitator allows the same window when checking how far ahead a deadline may be.
+ */
+export const SIGNING_GRACE_SECONDS = 180;
+
 /** FxPay deployment and assets on Stellar testnet. */
 export const FX_TESTNET = {
   fxContract: "CDLIJ3SXAYQDCIO4GLS3OQPUKT6JTWICRDTOB3F5ESG5TWYKRRPJ6IUC",

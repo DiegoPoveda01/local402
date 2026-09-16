@@ -10,7 +10,7 @@ import {
   type ClientStellarSigner,
   type RpcConfig,
 } from "@x402/stellar";
-import { FX_SCHEME, parseFxExtra } from "./extra.js";
+import { FX_SCHEME, parseFxExtra, SIGNING_GRACE_SECONDS } from "./extra.js";
 
 export interface ExactFxClientOptions {
   /** FxPay contract this client trusts with its funds. */
@@ -19,6 +19,8 @@ export interface ExactFxClientOptions {
   sendAsset: string;
   /** Extra input allowed over the current quote; unused input is refunded. Default 200 (2%). */
   slippageBps?: number;
+  /** Seconds of signing time the deadline allows for beyond `maxTimeoutSeconds`. Default `SIGNING_GRACE_SECONDS`. */
+  signingGraceSeconds?: number;
   rpcConfig?: RpcConfig;
 }
 
@@ -81,8 +83,11 @@ export class ExactFxClientScheme implements SchemeNetworkClient {
 
     const latestLedger = await getRpcClient(network, rpcConfig).getLatestLedger();
     const ledgerSeconds = await getEstimatedLedgerCloseTimeSeconds(network);
-    const maxLedger = latestLedger.sequence + Math.ceil(maxTimeoutSeconds / ledgerSeconds);
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + maxTimeoutSeconds);
+    // Both are fixed here, before `signAuthEntries` opens the wallet prompt, so they must also cover
+    // however long the payer takes to approve it. The facilitator allows the same grace.
+    const validSeconds = maxTimeoutSeconds + (this.options.signingGraceSeconds ?? SIGNING_GRACE_SECONDS);
+    const maxLedger = latestLedger.sequence + Math.ceil(validSeconds / ledgerSeconds);
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + validSeconds);
 
     const tx = await contract.AssembledTransaction.build({
       ...base,
