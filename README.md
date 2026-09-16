@@ -128,7 +128,11 @@ never receive 49.999 CLP worth of USDC because of integer truncation.
 
 **Quotes are median-of-five, not last-price.** Reflector's CLP feed has published single 5-minute
 prints 0.65% away from their neighbours. `ReflectorFiatOracle` takes the median of the last five
-records, so one outlier tick cannot set a price. Stale rates (>15 min by default) are rejected outright.
+records, so one outlier tick cannot set a price. Stale rates (>15 min by default) are rejected
+outright. When the feed skipped periods, the history is cut at the gap first (`recentRun`): those five
+records would otherwise span hours while still reporting the newest timestamp, and the median would
+smooth in prices that are no longer relevant. A price backed by a single record says so, with a
+`#single` suffix on its source — that is one raw print, exactly the tick the median exists to absorb.
 
 **Quotes are HMAC-signed and frozen.** x402 rebuilds the payment requirements when the paid retry
 arrives — and the oracle may have moved in between, which would make the amount the payer signed no
@@ -136,11 +140,17 @@ longer match. `localPrice` signs the quote it issued; any server instance holdin
 honours it while it is valid. This is what makes the flow correct behind a load balancer, not just on
 one process.
 
-**The client trusts no one.** `Local402Client` re-derives the price from its *own* oracle and refuses a
-quote more than 2% above it (`maxOverchargeBps`), and refuses an FX payment whose `max_send` is more
-than 5% above the oracle value of the price (`maxFxPremiumBps`). The FxPay contract address is pinned
-client-side and never taken from the server's response — a malicious contract could spend up to
-`max_send`.
+**The client re-derives the price instead of trusting it.** `Local402Client` quotes the same local
+price from its own oracle and refuses a quote more than 2% above it (`maxOverchargeBps`), and refuses
+an FX payment whose `max_send` is more than 5% above the oracle value of the price
+(`maxFxPremiumBps`). The FxPay contract address is pinned client-side and never taken from the
+server's response — a malicious contract could spend up to `max_send`.
+
+Be precise about what that buys: by default both sides read the *same* Reflector feed, so this catches
+a seller who misquotes, not a feed that is wrong. Pass your own `oracle` to `Local402Client` for an
+independent reading. The UF adds a second shared dependency — the SII, or its two mirrors — and a
+stale UF is why a quote also carries `oracleValueDate`: the day the value is actually from, which the
+CLP timestamp cannot tell you.
 
 **The agent's budget is reserved, not checked.** `SpendingBudget` is debited *before* the request and
 credited back on failure, so two concurrent payments cannot both pass a check-then-spend test and
@@ -158,7 +168,11 @@ bump with a bid of twice the network's recent p99, capped — without touching t
 its signatures. Reported upstream as [x402#3491](https://github.com/x402-foundation/x402/issues/3491).
 
 **Parallel settlement needs separate accounts.** Two settlements from one Stellar account collide on
-the sequence number. `ChannelPool` hands each concurrent settlement its own fee-paying account.
+the sequence number. `ChannelPool` hands each concurrent settlement its own fee-paying account, and
+queues the rest until one is free. It is an in-process lock, so it only separates settlements running
+in the *same* facilitator instance: two instances sharing one key still collide. That is why `/settle`
+retries once on a `submission_failed` that never reached the ledger, and why a horizontally scaled
+facilitator needs a disjoint `FACILITATOR_PRIVATE_KEYS` per instance.
 
 **The UF is a date, not a rate.** It is defined per calendar day in Chile's timezone. `UfRateSource`
 reads the SII (the tax service), falls back to two other sources, times out at 4 s and keeps the last
@@ -168,10 +182,25 @@ priced on yesterday's UF.
 **A paid resource is never cached.** Both the client probe and the API send `no-store`. A cached 200
 would hand out a paid response for free; a cached 402 would hand out an expired quote.
 
+## Deploying it somewhere real
+
+`npm run demo` needs nothing. A deployment that more than one process serves, or that spends real
+money, needs these — each `.env.example` lists the rest.
+
+| Variable | Where | Why it matters |
+| --- | --- | --- |
+| `LOCAL402_QUOTE_SECRET` | seller | Signs quotes. Without it, a paid retry that lands on another instance re-quotes and rejects a payment the payer already signed. Same value on every instance. The server logs a warning when it is missing. |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | seller | Receipts, the demo payment caps and the last known UF value. Without them each serverless instance keeps its own, and they disappear when it does. |
+| `SELF_URL` | seller | Where the demo agent buys from. Falls back to `VERCEL_URL`, and to the request's `Host` only when that is localhost, because `Host` is whatever the caller wrote. |
+| `CORS_ORIGIN` | seller | Dashboard origins allowed to pay from the visitor's wallet, comma-separated. |
+| `PAY_TO_ALLOWLIST`, `MIN_AMOUNT` | facilitator | Every settlement spends the facilitator's own fees. On `stellar:pubnet` these default to `PAY_TO` and 100000 (0.01 USDC); set them explicitly to serve other sellers. |
+| `FACILITATOR_PRIVATE_KEYS` | facilitator | One key per concurrent settlement. `ChannelPool` separates them within an instance only, so give each instance its own keys. |
+| `FX_CONTRACT` | both | Required on mainnet: the FxPay deployment the payer's authorization is pinned to. |
+
 ## Testing
 
 ```bash
-npm test        # 27 unit tests across pricing, fx and client
+npm test        # 31 unit tests across pricing, fx and client
 npm run typecheck
 cd contracts && cargo test    # 8 contract tests against a mock Soroswap router
 ```

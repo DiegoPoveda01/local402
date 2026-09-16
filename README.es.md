@@ -131,7 +131,11 @@ Estos son los lugares donde la implementación obvia está mal.
 **Las cotizaciones son la mediana de cinco, no el último precio.** El feed de CLP de Reflector ha publicado
 prints individuales de 5 minutos a 0.65% de sus vecinos. `ReflectorFiatOracle` toma la mediana de los
 últimos cinco registros, así que un tick atípico no puede fijar un precio. Las tasas rancias (>15 min por
-defecto) se rechazan de plano.
+defecto) se rechazan de plano. Si al feed le faltaron períodos, primero se corta el historial en el hueco
+(`recentRun`): si no, esos cinco registros abarcan horas mientras siguen reportando el timestamp más
+nuevo, y la mediana termina promediando precios que ya no vienen al caso. Un precio respaldado por un solo
+registro lo dice, con el sufijo `#single` en su fuente — eso es un print crudo, justo el tick que la
+mediana existe para absorber.
 
 **Las cotizaciones se firman con HMAC y quedan congeladas.** x402 reconstruye los payment requirements cuando
 llega el reintento pagado — y el oráculo se pudo haber movido en el intertanto, lo que haría que el monto que
@@ -139,11 +143,17 @@ el pagador firmó ya no calce. `localPrice` firma la cotización que emitió; cu
 que tenga el mismo secreto la honra mientras siga vigente. Esto es lo que hace que el flujo sea correcto
 detrás de un balanceador de carga, y no solo en un proceso.
 
-**El cliente no confía en nadie.** `Local402Client` vuelve a derivar el precio desde su *propio* oráculo y
-rechaza una cotización más de 2% por encima (`maxOverchargeBps`), y rechaza un pago FX cuyo `max_send` esté
-más de 5% por sobre el valor de oráculo del precio (`maxFxPremiumBps`). La dirección del contrato FxPay está
-fijada del lado del cliente y nunca se toma de la respuesta del servidor — un contrato malicioso podría
-gastar hasta `max_send`.
+**El cliente vuelve a derivar el precio en vez de creerle.** `Local402Client` cotiza el mismo precio local
+desde su propio oráculo y rechaza una cotización más de 2% por encima (`maxOverchargeBps`), y rechaza un
+pago FX cuyo `max_send` esté más de 5% por sobre el valor de oráculo del precio (`maxFxPremiumBps`). La
+dirección del contrato FxPay está fijada del lado del cliente y nunca se toma de la respuesta del
+servidor — un contrato malicioso podría gastar hasta `max_send`.
+
+Vale la pena ser preciso con lo que eso compra: por defecto ambos lados leen el *mismo* feed de Reflector,
+así que esto atrapa a un vendedor que cotiza mal, no a un feed que está equivocado. Pásale tu propio
+`oracle` a `Local402Client` para una lectura independiente. La UF agrega una segunda dependencia
+compartida — el SII, o sus dos espejos — y una UF rancia es la razón de que la cotización además lleve
+`oracleValueDate`: el día del que realmente viene el valor, que el timestamp del CLP no puede decirte.
 
 **El presupuesto del agente se reserva, no se consulta.** `SpendingBudget` se debita *antes* del request y se
 acredita de vuelta si falla, así que dos pagos concurrentes no pueden pasar ambos un check-then-spend y
@@ -164,7 +174,11 @@ transacción interna ni sus firmas. Reportado upstream como
 
 **La liquidación en paralelo necesita cuentas separadas.** Dos liquidaciones desde una misma cuenta Stellar
 chocan en el número de secuencia. `ChannelPool` le entrega a cada liquidación concurrente su propia cuenta
-pagadora de comisiones.
+pagadora de comisiones, y encola las demás hasta que se libere una. Es un lock en proceso, así que solo
+separa liquidaciones que corren en la *misma* instancia del facilitador: dos instancias que comparten una
+llave siguen chocando. Por eso `/settle` reintenta una vez ante un `submission_failed` que nunca llegó al
+ledger, y por eso un facilitador escalado horizontalmente necesita `FACILITATOR_PRIVATE_KEYS` disjuntas
+por instancia.
 
 **La UF es una fecha, no una tasa.** Está definida por día calendario en la zona horaria de Chile.
 `UfRateSource` lee del SII, cae a otras dos fuentes, se rinde a los 4 s y conserva el último valor conocido
@@ -174,10 +188,25 @@ ayer.
 **Un recurso pagado nunca se cachea.** Tanto el probe del cliente como la API mandan `no-store`. Un 200
 cacheado entregaría gratis una respuesta pagada; un 402 cacheado entregaría una cotización vencida.
 
+## Desplegarlo en algo real
+
+`npm run demo` no necesita nada. Un despliegue servido por más de un proceso, o que gasta plata de verdad,
+necesita esto — cada `.env.example` lista el resto.
+
+| Variable | Dónde | Por qué importa |
+| --- | --- | --- |
+| `LOCAL402_QUOTE_SECRET` | vendedor | Firma las cotizaciones. Sin esto, un reintento pagado que cae en otra instancia vuelve a cotizar y rechaza un pago que el pagador ya firmó. El mismo valor en todas las instancias. El servidor avisa por consola cuando falta. |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | vendedor | Recibos, los topes de pagos de demo y el último valor conocido de la UF. Sin esto cada instancia serverless guarda los suyos, y desaparecen con ella. |
+| `SELF_URL` | vendedor | Dónde compra el agente de demo. Cae a `VERCEL_URL`, y al `Host` del request solo si es localhost, porque el `Host` lo escribe quien llama. |
+| `CORS_ORIGIN` | vendedor | Orígenes del dashboard autorizados a pagar desde la billetera del visitante, separados por coma. |
+| `PAY_TO_ALLOWLIST`, `MIN_AMOUNT` | facilitador | Cada liquidación gasta las comisiones del propio facilitador. En `stellar:pubnet` estos vienen por defecto en `PAY_TO` y 100000 (0.01 USDC); ponlos explícitos para atender a otros vendedores. |
+| `FACILITATOR_PRIVATE_KEYS` | facilitador | Una llave por liquidación concurrente. `ChannelPool` las separa solo dentro de una instancia, así que dale a cada instancia las suyas. |
+| `FX_CONTRACT` | ambos | Obligatorio en mainnet: el despliegue de FxPay al que queda fijada la autorización del pagador. |
+
 ## Tests
 
 ```bash
-npm test        # 27 tests unitarios entre pricing, fx y client
+npm test        # 31 tests unitarios entre pricing, fx y client
 npm run typecheck
 cd contracts && cargo test    # 8 tests del contrato contra un router Soroswap simulado
 ```
