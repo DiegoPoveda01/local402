@@ -200,7 +200,7 @@ money, needs these — each `.env.example` lists the rest.
 ## Testing
 
 ```bash
-npm test        # 31 unit tests across pricing, fx and client
+npm test        # 32 unit tests across pricing, fx and client
 npm run typecheck
 cd contracts && cargo test    # 10 contract tests against a mock Soroswap router
 ```

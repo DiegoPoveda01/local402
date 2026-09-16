@@ -7,6 +7,7 @@ import {
   ExactFxFacilitatorScheme,
   FX_SCHEME,
   FX_TESTNET,
+  formatUnits,
   maxSendFor,
   parseFxExtra,
 } from "../src/index.js";
@@ -16,6 +17,16 @@ describe("maxSendFor", () => {
     expect(maxSendFor(4_996_678n, 200)).toBe(5_096_612n);
     expect(maxSendFor(1n, 1)).toBe(2n);
     expect(maxSendFor(10_000n, 0)).toBe(10_000n);
+  });
+});
+
+describe("formatUnits", () => {
+  it("reads 7-decimal amounts back as the payer sees them", () => {
+    expect(formatUnits(5_040_983n)).toBe("0.5040983");
+    expect(formatUnits(10_000_000n)).toBe("1");
+    expect(formatUnits(12_345_000_000n)).toBe("1234.5");
+    expect(formatUnits(1n)).toBe("0.0000001");
+    expect(formatUnits(0n)).toBe("0");
   });
 });
 

@@ -1,4 +1,4 @@
-import { contract, nativeToScVal, scValToNative } from "@stellar/stellar-sdk";
+import { Asset, contract, nativeToScVal, scValToNative } from "@stellar/stellar-sdk";
 import type { Network, PaymentPayloadResult, PaymentRequirements, SchemeNetworkClient } from "@x402/core/types";
 import {
   findDefaultAsset,
@@ -49,6 +49,59 @@ export async function quoteFx(
   return quote.result;
 }
 
+/** Send assets on Stellar carry 7 decimals. For reading, not for arithmetic. */
+export function formatUnits(value: bigint): string {
+  const digits = value.toString().padStart(8, "0");
+  const fraction = digits.slice(-7).replace(/0+$/, "");
+  return fraction ? `${digits.slice(0, -7)}.${fraction}` : digits.slice(0, -7);
+}
+
+/** The payer's `sendAsset` balance, or undefined if it cannot be read — this only ever explains a failure. */
+async function readBalance(
+  { sendAsset, rpcConfig }: ExactFxClientOptions,
+  network: Network,
+  who: string,
+): Promise<bigint | undefined> {
+  try {
+    const call = await contract.AssembledTransaction.build({
+      contractId: sendAsset,
+      networkPassphrase: getNetworkPassphrase(network),
+      rpcUrl: getRpcUrl(network, rpcConfig),
+      method: "balance",
+      args: [nativeToScVal(who, { type: "address" })],
+      parseResultXdr: (result) => scValToNative(result) as bigint,
+    });
+    handleSimulationResult(call.simulation);
+    return call.result;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Why the `pay` simulation failed, when the reason is the payer's balance. Simulating already runs the
+ * transfer of `max_send` into FxPay, so a payer who does not hold it fails here — with whatever opaque
+ * error the token contract raised. `max_send` is the quote plus slippage and the unused part comes back,
+ * but the whole of it has to be there to sign, and no token error says that.
+ */
+async function explainShortBalance(
+  options: ExactFxClientOptions,
+  network: Network,
+  from: string,
+  maxSend: bigint,
+  failure: unknown,
+): Promise<unknown> {
+  const balance = await readBalance(options, network, from);
+  if (balance === undefined || balance >= maxSend) return failure;
+  const native = options.sendAsset === Asset.native().contractId(getNetworkPassphrase(network));
+  const reserve = native ? " On XLM the account reserve keeps part of the balance unspendable." : "";
+  return new Error(
+    `This payment needs ${formatUnits(maxSend)} available to sign (the quote plus slippage), but ${from} ` +
+      `holds ${formatUnits(balance)}. Whatever the swap does not use is refunded, but the full amount must ` +
+      `be there first.${reserve}`,
+  );
+}
+
 /** Client side of `exact-fx`: signs an FxPay `pay` that spends `sendAsset` to deliver the required amount. */
 export class ExactFxClientScheme implements SchemeNetworkClient {
   readonly scheme = FX_SCHEME;
@@ -89,21 +142,29 @@ export class ExactFxClientScheme implements SchemeNetworkClient {
     const maxLedger = latestLedger.sequence + Math.ceil(validSeconds / ledgerSeconds);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + validSeconds);
 
-    const tx = await contract.AssembledTransaction.build({
-      ...base,
-      method: "pay",
-      args: [
-        address(from),
-        address(sendAsset),
-        i128(maxSend),
-        address(asset),
-        i128(amount),
-        address(payTo),
-        nativeToScVal(deadline, { type: "u64" }),
-      ],
-      parseResultXdr: (result) => result,
-    });
-    handleSimulationResult(tx.simulation);
+    const build = () =>
+      contract.AssembledTransaction.build({
+        ...base,
+        method: "pay",
+        args: [
+          address(from),
+          address(sendAsset),
+          i128(maxSend),
+          address(asset),
+          i128(amount),
+          address(payTo),
+          nativeToScVal(deadline, { type: "u64" }),
+        ],
+        parseResultXdr: (result) => result,
+      });
+
+    let tx: Awaited<ReturnType<typeof build>>;
+    try {
+      tx = await build();
+      handleSimulationResult(tx.simulation);
+    } catch (failure) {
+      throw await explainShortBalance(this.options, network, from, maxSend, failure);
+    }
 
     let missingSigners = tx.needsNonInvokerSigningBy();
     if (missingSigners.length !== 1 || missingSigners[0] !== from) {

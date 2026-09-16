@@ -206,7 +206,7 @@ necesita esto — cada `.env.example` lista el resto.
 ## Tests
 
 ```bash
-npm test        # 31 tests unitarios entre pricing, fx y client
+npm test        # 32 tests unitarios entre pricing, fx y client
 npm run typecheck
 cd contracts && cargo test    # 10 tests del contrato contra un router Soroswap simulado
 ```
