@@ -15,7 +15,7 @@ in their own currency — `"50 CLP"`, `"0.05 EUR"`, `"0.01 UF"` — and a payer 
 they hold: USDC, XLM or EURC. The seller always receives the exact USDC amount, in one transaction, with
 no manual currency swap on either side.
 
-![An agent pays 50 CLP with XLM on testnet: the 402, the signed FxPay swap, and the seller receiving exact USDC](docs/img/pay.gif)
+![An agent pays 50 CLP with XLM on testnet: the 402, the signed FxPay swap, and the seller receiving exact USDC](docs/img/pay-en.gif)
 
 | | |
 | --- | --- |
