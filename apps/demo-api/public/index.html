@@ -455,11 +455,14 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const fmt = (units, decimals = 7) => (Number(units) / 10 ** decimals).toLocaleString("es-CL", { maximumFractionDigits: 7 });
-const local = (amount) => Number(amount).toLocaleString("es-CL", { maximumFractionDigits: 4 });
-const rate = (usdPerUnit) => Number(Number(usdPerUnit).toPrecision(6)).toLocaleString("es-CL", { maximumFractionDigits: 8 });
+// The live output (cards, console, network badge) follows the language toggle too.
+const tr = (es, en) => (document.documentElement.lang === "en" ? en : es);
+const locale = () => tr("es-CL", "en-US");
+const fmt = (units, decimals = 7) => (Number(units) / 10 ** decimals).toLocaleString(locale(), { maximumFractionDigits: 7 });
+const local = (amount) => Number(amount).toLocaleString(locale(), { maximumFractionDigits: 4 });
+const rate = (usdPerUnit) => Number(Number(usdPerUnit).toPrecision(6)).toLocaleString(locale(), { maximumFractionDigits: 8 });
 // UF sources are named "<site>:uf*reflector:…"; everything else comes straight from Reflector.
-const sourceLabel = (source) => (source.includes(":uf*") ? `UF de ${escape(source.split(":")[0])} × Reflector` : "Oráculo Reflector");
+const sourceLabel = (source) => (source.includes(":uf*") ? `${tr("UF de", "UF from")} ${escape(source.split(":")[0])} × Reflector` : tr("Oráculo Reflector", "Reflector oracle"));
 const currencyLabel = (code) => (code === "CLF" ? "UF" : escape(code));
 const symbol = (asset) => escape(catalog?.assetSymbols?.[asset] ?? short(asset));
 const short = (s) => `${s.slice(0, 6)}…${s.slice(-6)}`;
@@ -470,7 +473,7 @@ const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": 
 // Premium of a send amount over its oracle value, as a signed percentage.
 const premium = (units, oracle) => {
   const pct = (Number(units) / Number(oracle) - 1) * 100;
-  return `${pct >= 0 ? "+" : "−"}${Math.abs(pct).toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  return `${pct >= 0 ? "+" : "−"}${Math.abs(pct).toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 const span = (cls, text) => `<span class="${cls}">${text}</span>`;
 let catalog;
@@ -480,9 +483,9 @@ const receipts = [];
 let mainnetPayments = 0;
 function renderNetwork() {
   if (!catalog) return;
-  const net = catalog.network === "stellar:testnet" ? "demo en testnet" : escape(catalog.network);
-  const mainnet = mainnetPayments ? ` · <a href="#mainnet">${mainnetPayments} pagos en mainnet</a>` : "";
-  $("network").innerHTML = `<span class="dot"></span>${net}${mainnet} · vendedor ${idLink(catalog.payTo)}`;
+  const net = catalog.network === "stellar:testnet" ? tr("demo en testnet", "testnet demo") : escape(catalog.network);
+  const mainnet = mainnetPayments ? ` · <a href="#mainnet">${mainnetPayments} ${tr("pagos en mainnet", "mainnet payments")}</a>` : "";
+  $("network").innerHTML = `<span class="dot"></span>${net}${mainnet} · ${tr("vendedor", "seller")} ${idLink(catalog.payTo)}`;
 }
 
 async function loadCatalog() {
@@ -493,20 +496,26 @@ async function loadCatalog() {
   } catch {
     // Keeps the last catalog on screen if there is one; the 30 s refresh retries, sooner on the first load.
     if (!catalog) {
-      $("network").textContent = "API no disponible · reintentando";
+      $("network").textContent = tr("API no disponible · reintentando", "API unavailable · retrying");
       setTimeout(loadCatalog, 5_000);
     }
     return;
   }
-  renderNetwork();
   const first = !$("products").children.length;
+  renderCatalog();
+  const quoted = catalog.items.find((item) => !item.error);
+  if (first && quoted) peek(quoted.path);
+  if (catalog.fxContract) $("judges-fxpay").innerHTML = idLink(catalog.fxContract);
+}
+
+function renderCatalog() {
+  renderNetwork();
   for (const item of catalog.items) renderProduct(item);
   const quoted = catalog.items.find((item) => !item.error);
   if (quoted) renderTicket(quoted);
-  if (first && quoted) peek(quoted.path);
-  if (catalog.fxContract) $("judges-fxpay").innerHTML = idLink(catalog.fxContract);
   // Serverless facilitators start with an empty catalog; only show the count once there is something to find.
-  $("discovery-count").textContent = catalog.discovered ? `● ${catalog.discovered} ${catalog.discovered === 1 ? "recurso" : "recursos"} en el catálogo Bazaar` : "";
+  const found = catalog.discovered === 1 ? tr("recurso en el catálogo Bazaar", "resource in the Bazaar catalog") : tr("recursos en el catálogo Bazaar", "resources in the Bazaar catalog");
+  $("discovery-count").textContent = catalog.discovered ? `● ${catalog.discovered} ${found}` : "";
 }
 
 // Hero ticket: the live quote of the first product, as a client would see it in the 402.
@@ -514,10 +523,17 @@ function renderTicket(item) {
   const q = item.quote;
   $("ticket-path").textContent = `GET ${item.path}`;
   $("ticket-price").innerHTML = `${local(q.localAmount)} ${currencyLabel(q.currency)}`;
-  $("ticket-usdc").textContent = `≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC para el vendedor`;
+  $("ticket-usdc").textContent = `≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC ${tr("para el vendedor", "for the seller")}`;
   $("ticket-rate").innerHTML = `1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD`;
   $("ticket-source").innerHTML = sourceLabel(q.oracleSource);
 }
+
+// The API publishes its descriptions in Spanish (they also go to Bazaar); these are for the English page.
+const DESCRIPTIONS_EN = {
+  "/indicadores": "Chilean market rates, charged in Chilean pesos",
+  "/europa": "Euro exchange rates, charged in euros",
+  "/uf": "The UF in pesos and dollars, charged in UF",
+};
 
 function renderProduct(item) {
   const id = `product-${item.path.slice(1)}`;
@@ -531,8 +547,8 @@ function renderProduct(item) {
       <div class="meta desc"></div>
       <div class="price"></div>
       <div class="rate"></div>
-      <button class="ghost peek">Ver el 402 · gratis, sin wallet</button>
-      <div class="label">Pagar con</div>
+      <button class="ghost peek"></button>
+      <div class="label"></div>
       <div class="buttons"></div>`;
     card.querySelector(".peek").onclick = () => { peek(item.path); $("console").scrollIntoView({ behavior: "smooth", block: "nearest" }); };
     for (const asset of catalog.payAssets) {
@@ -545,13 +561,15 @@ function renderProduct(item) {
     $("products").append(card);
   }
   card.querySelector("h3").textContent = `GET ${item.path}`;
-  card.querySelector(".desc").textContent = item.description;
+  card.querySelector(".peek").textContent = tr("Ver el 402 · gratis, sin wallet", "See the 402 · free, no wallet");
+  card.querySelector(".label").textContent = tr("Pagar con", "Pay with");
+  card.querySelector(".desc").textContent = tr(item.description, DESCRIPTIONS_EN[item.path] ?? item.description);
   // A rate source can be down (the UF comes from off-chain sites); the other products keep working.
   card.querySelector(".peek").disabled = Boolean(item.error);
   if (item.error) {
-    card.querySelector(".price").innerHTML = `${escape(item.price.replace(".", ","))}<small>cotización no disponible</small>`;
+    card.querySelector(".price").innerHTML = `${escape(item.price.replace(".", ","))}<small>${tr("cotización no disponible", "quote unavailable")}</small>`;
     card.querySelector(".rate").textContent = /UF source|fetch failed|abort/i.test(item.error)
-      ? "Las fuentes de la UF (SII, findic.cl, mindicador.cl) no responden ahora. Se reintenta sola."
+      ? tr("Las fuentes de la UF (SII, findic.cl, mindicador.cl) no responden ahora. Se reintenta sola.", "The UF sources (SII, findic.cl, mindicador.cl) are not answering right now. It retries on its own.")
       : `Error: ${item.error}`;
     for (const button of card.querySelectorAll("button.pay")) button.disabled = true;
     return;
@@ -560,10 +578,10 @@ function renderProduct(item) {
   const age = Math.max(0, Math.round(Date.now() / 1000 - q.oracleTimestamp));
   card.querySelector(".price").innerHTML = `${local(q.localAmount)} ${currencyLabel(q.currency)}<small>≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC</small>`;
   card.querySelector(".rate").innerHTML =
-    `1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD · ${sourceLabel(q.oracleSource)}, hace ${Math.round(age / 60)} min · válida hasta ${new Date(q.expiresAt * 1000).toLocaleTimeString("es-CL")}`;
+    `1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD · ${sourceLabel(q.oracleSource)}, ${tr(`hace ${Math.round(age / 60)} min`, `${Math.round(age / 60)} min ago`)} · ${tr("válida hasta", "valid until")} ${new Date(q.expiresAt * 1000).toLocaleTimeString(locale())}`;
   for (const button of card.querySelectorAll("button.pay")) {
     button.disabled = !catalog.demoAgent;
-    button.title = catalog.demoAgent ? "" : "Define DEMO_AGENT_SECRET en la API para activar pagos de demo";
+    button.title = catalog.demoAgent ? "" : tr("Define DEMO_AGENT_SECRET en la API para activar pagos de demo", "Set DEMO_AGENT_SECRET on the API to enable demo payments");
   }
 }
 
@@ -571,7 +589,7 @@ function renderProduct(item) {
 async function fetch402(path) {
   const response = await fetch(path, { headers: { accept: "application/json" } });
   const header = response.headers.get("payment-required");
-  if (response.status !== 402 || !header) throw new Error(`Se esperaba 402 y llegó ${response.status}`);
+  if (response.status !== 402 || !header) throw new Error(tr(`Se esperaba 402 y llegó ${response.status}`, `Expected 402, got ${response.status}`));
   const bytes = Uint8Array.from(atob(header), (c) => c.charCodeAt(0));
   return JSON.parse(new TextDecoder().decode(bytes));
 }
@@ -583,17 +601,20 @@ function describe402(path, required) {
   const lines = [
     span("h", `$ curl -i ${location.origin}${escape(path)}`),
     span("y", "HTTP/1.1 402 Payment Required"),
-    span("c", "PAYMENT-REQUIRED (base64, decodificado):"),
-    `  precio    ${span("h", `${local(q.localAmount)} ${currencyLabel(q.currency)}`)}  1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD`,
-    `  fuente    ${sourceLabel(q.oracleSource)}, ${new Date(q.oracleTimestamp * 1000).toLocaleTimeString("es-CL")}`,
+    span("c", tr("PAYMENT-REQUIRED (base64, decodificado):", "PAYMENT-REQUIRED (base64, decoded):")),
+    `  ${tr("precio", "price ")}    ${span("h", `${local(q.localAmount)} ${currencyLabel(q.currency)}`)}  1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD`,
+    `  ${tr("fuente", "source")}    ${sourceLabel(q.oracleSource)}, ${new Date(q.oracleTimestamp * 1000).toLocaleTimeString(locale())}`,
   ];
   if (exact) lines.push(`  exact     ${span("h", `${fmt(exact.amount)} USDC`)} → ${idLink(exact.payTo)}`);
-  if (fx) lines.push(`  exact-fx  ${span("v", fx.extra.sendAssets.map(symbol).join(" o "))} → FxPay ${idLink(fx.extra.fxContract)} → mismo USDC`);
-  lines.push(`  válido    hasta ${new Date(q.expiresAt * 1000).toLocaleTimeString("es-CL")}`);
+  if (fx) lines.push(`  exact-fx  ${span("v", fx.extra.sendAssets.map(symbol).join(tr(" o ", " or ")))} → FxPay ${idLink(fx.extra.fxContract)} → ${tr("mismo USDC", "same USDC")}`);
+  lines.push(`  ${tr("válido    hasta", "valid     until")} ${new Date(q.expiresAt * 1000).toLocaleTimeString(locale())}`);
   return lines;
 }
 
+// The path the console shows a 402 for, so a language switch can redraw it; a payment clears it.
+let peeked;
 async function peek(path) {
+  peeked = path;
   const term = $("console");
   try {
     term.innerHTML = describe402(path, await fetch402(path)).join("\n");
@@ -603,6 +624,7 @@ async function peek(path) {
 }
 
 async function pay(path, asset) {
+  peeked = undefined;
   const term = $("console");
   const buttons = document.querySelectorAll("#products button");
   buttons.forEach((b) => (b.disabled = true));
@@ -612,24 +634,27 @@ async function pay(path, asset) {
   try {
     show(...describe402(path, await fetch402(path)), "");
     show(asset === "USDC"
-      ? span("h", `→ el agente firma una transferencia de USDC (exact)`)
-      : span("h", `→ el agente firma FxPay.pay con ${asset} (exact-fx)${asset === "EURC" ? ", ruta EURC → XLM → USDC" : ""}`));
-    show(span("c", "  reintenta con PAYMENT-SIGNATURE; el facilitador verifica, simula y liquida…"));
+      ? span("h", tr("→ el agente firma una transferencia de USDC (exact)", "→ the agent signs a USDC transfer (exact)"))
+      : span("h", `${tr(`→ el agente firma FxPay.pay con ${asset}`, `→ the agent signs FxPay.pay with ${asset}`)} (exact-fx)${asset === "EURC" ? tr(", ruta EURC → XLM → USDC", ", route EURC → XLM → USDC") : ""}`));
+    show(span("c", tr("  reintenta con PAYMENT-SIGNATURE; el facilitador verifica, simula y liquida…", "  retries with PAYMENT-SIGNATURE; the facilitator verifies, simulates and settles…")));
     const started = performance.now();
     // A settlement takes several seconds; a live counter shows the demo is working.
-    show(span("y", "  esperando confirmación on-chain · 0 s"));
+    const waitingLabel = tr("  esperando confirmación on-chain", "  waiting for on-chain confirmation");
+    show(span("y", `${waitingLabel} · 0 s`));
     const waiting = setInterval(() => {
-      lines[lines.length - 1] = span("y", `  esperando confirmación on-chain · ${Math.floor((performance.now() - started) / 1000)} s`);
+      lines[lines.length - 1] = span("y", `${waitingLabel} · ${Math.floor((performance.now() - started) / 1000)} s`);
       term.innerHTML = lines.join("\n");
     }, 1000);
     const response = await fetch(`/demo/pay?with=${asset}&path=${encodeURIComponent(path)}`, { method: "POST" }).finally(() => { clearInterval(waiting); lines.pop(); });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
-    const seconds = ((performance.now() - started) / 1000).toLocaleString("es-CL", { maximumFractionDigits: 1 });
+    const seconds = ((performance.now() - started) / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 });
     show(
       span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${txLink(data.transaction)}`),
-      data.spent ? `  cliente gastó ${span("v", `${fmt(data.spent.amount)} ${symbol(data.spent.asset)}`)} · vendedor recibió ${fmt(data.price.amount)} USDC` : `  vendedor recibió ${fmt(data.price.amount)} USDC`,
-      ...(data.fx ? [`  guardia FX: gasto máx. ${fmt(data.fx.maxSend)} ${asset} · Reflector ${fmt(data.fx.oracleSend)} · prima ${span(data.fx.premiumBps > 500 ? "y" : "g", premium(data.fx.maxSend, data.fx.oracleSend))}${data.fx.premiumBps > 500 ? span("y", " (pool de testnet; en mainnet el cliente rechaza > 5%)") : span("g", " ✓ bajo el límite de 5%")}`] : []),
+      data.spent
+        ? `  ${tr("cliente gastó", "client spent")} ${span("v", `${fmt(data.spent.amount)} ${symbol(data.spent.asset)}`)} · ${tr("vendedor recibió", "seller received")} ${fmt(data.price.amount)} USDC`
+        : `  ${tr("vendedor recibió", "seller received")} ${fmt(data.price.amount)} USDC`,
+      ...(data.fx ? [`  ${tr("guardia FX: gasto máx.", "FX guard: max spend")} ${fmt(data.fx.maxSend)} ${asset} · Reflector ${fmt(data.fx.oracleSend)} · ${tr("prima", "premium")} ${span(data.fx.premiumBps > 500 ? "y" : "g", premium(data.fx.maxSend, data.fx.oracleSend))}${data.fx.premiumBps > 500 ? span("y", tr(" (pool de testnet; en mainnet el cliente rechaza > 5%)", " (testnet pool; on mainnet the client refuses > 5%)")) : span("g", tr(" ✓ bajo el límite de 5%", " ✓ under the 5% limit"))}`] : []),
       escape(JSON.stringify(data.body, null, 2)),
     );
     loadReceipts().catch(() => {});
@@ -690,7 +715,7 @@ function renderReceipts(newId) {
       ? `<span class="pill ${symbol(r.spent.asset).toLowerCase()}">${symbol(r.spent.asset)}</span> ${fmt(r.spent.amount)}`
       : `<span class="pill usdc">USDC</span> ${fmt(r.settled.amount, r.settled.decimals)}`;
     return `<tr class="${r.id === newId ? "new" : ""}">
-      <td class="mono">${new Date(r.paidAt).toLocaleTimeString("es-CL")}</td>
+      <td class="mono">${new Date(r.paidAt).toLocaleTimeString(locale())}</td>
       <td class="mono">${escape(new URL(r.resource || "http://x/").pathname)}</td>
       <td><b>${local(r.local.amount)} ${currencyLabel(r.local.currency)}</b></td>
       <td class="mono">${rate(r.rate.usdPerUnit)}</td>
@@ -707,8 +732,8 @@ function renderReceipts(newId) {
     usdc += Number(r.settled.amount) / 10 ** r.settled.decimals;
   }
   $("stat-count").textContent = receipts.length;
-  $("stat-local").textContent = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString("es-CL", { maximumFractionDigits: 4 })} ${c === "CLF" ? "UF" : c}`).join(" · ");
-  $("stat-usdc").textContent = `${usdc.toLocaleString("es-CL", { maximumFractionDigits: 4 })} USDC`;
+  $("stat-local").textContent = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString(locale(), { maximumFractionDigits: 4 })} ${c === "CLF" ? "UF" : c}`).join(" · ");
+  $("stat-usdc").textContent = `${usdc.toLocaleString(locale(), { maximumFractionDigits: 4 })} USDC`;
   $("stat-xlm").textContent = receipts.filter((r) => r.spent).length;
   $("judges-tx").innerHTML = txLink(receipts[0].transaction);
 }
@@ -747,7 +772,7 @@ async function loadMainnet() {
   ].sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
   if (!payments.length) return;
   $("mainnet-payments").innerHTML = payments.map((p) => `<tr>
-      <td class="mono">${new Date(p.paidAt).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}</td>
+      <td class="mono">${new Date(p.paidAt).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" })}</td>
       <td><b>${local(p.local.amount)} ${currencyLabel(p.local.currency)}</b></td>
       <td>${fmt(p.usdc)} USDC</td>
       <td><span class="pill ${escape(p.payWith.toLowerCase())}">${escape(p.payWith)}</span> ${fmt(p.spent)}</td>
@@ -760,7 +785,7 @@ async function loadMainnet() {
 }
 
 // Swap premium over the oracle: what was spent, or for the first scripted payments the most the swap could spend.
-const bps = (value) => `${value >= 0 ? "+" : "−"}${(Math.abs(value) / 100).toLocaleString("es-CL", { minimumFractionDigits: 2 })}%`;
+const bps = (value) => `${value >= 0 ? "+" : "−"}${(Math.abs(value) / 100).toLocaleString(locale(), { minimumFractionDigits: 2 })}%`;
 const MAINNET_SYMBOLS = { CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA: "XLM", CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV: "EURC" };
 const symbolMainnet = (asset) => MAINNET_SYMBOLS[asset] ?? short(asset);
 
@@ -784,7 +809,7 @@ async function payFromWallet(asset) {
       span("c", "  si Freighter dice «Unable to scan site»: Blockaid aún no conoce este contrato nuevo"));
     const started = performance.now();
     const data = await wallet.pay(`${MAINNET_API}/indicadores`, walletAddress, asset);
-    const seconds = ((performance.now() - started) / 1000).toLocaleString("es-CL", { maximumFractionDigits: 1 });
+    const seconds = ((performance.now() - started) / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 });
     show(
       span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${txLink(data.transaction, "public")}`),
       data.spent ? `  gastaste ${span("v", `${fmt(data.spent.amount)} ${asset}`)} · el vendedor recibió ${fmt(data.price.amount)} USDC` : `  el vendedor recibió ${fmt(data.price.amount)} USDC`,
@@ -806,7 +831,8 @@ async function payFromWallet(asset) {
 document.querySelectorAll(".wallet button[data-asset]").forEach((b) => (b.onclick = () => payFromWallet(b.dataset.asset)));
 
 // English copy for the static page, keyed by selector (and index when a selector matches several elements).
-// Live output (console, calculator, receipts) stays in Spanish.
+// The product cards, the 402 console and the network badge follow it through `tr`; the calculator,
+// receipts and wallet console stay in Spanish.
 const EN = [
   [".links a", ["Try it", "Calculator", "Integrate", "Receipts", "Mainnet"]],
   [".hero .eyebrow", '<span class="dot"></span>x402 on Stellar · local-currency prices'],
@@ -830,7 +856,8 @@ const EN = [
     "Next: Latin American APIs and agents, where MXN, COP and PEN already quote",
   ]],
   ["#probar h2", "Three APIs, three currencies. <em>One</em> USDC on the other side."],
-  ["#probar .sub", "“Ver el 402” shows what any x402 client receives, with no wallet or payment. The colored buttons make a real testnet payment with a demo wallet, free for anyone. Payments with real money, from the same code, are under <a href=\"#mainnet\">mainnet</a>."],
+  ["#probar .window-bar span", "agent@local402"],
+  ["#probar .sub", "“See the 402” shows what any x402 client receives, with no wallet or payment. The colored buttons make a real testnet payment with a demo wallet, free for anyone. Payments with real money, from the same code, are under <a href=\"#mainnet\">mainnet</a>."],
   ["#calculadora h2", "Set your price. <em>We</em> handle the exchange."],
   ["#calculadora .sub", "Any amount in UF, USD or Reflector's 24 currencies (CLP, MXN, COP, PEN, BRL, EUR…), converted with the oracle, and what paying it with each asset would cost right now through FxPay."],
   ["#calculadora .card > .label", "Seller's price"],
@@ -888,6 +915,9 @@ function setLang(lang) {
   $("lang").textContent = lang === "en" ? "ES" : "EN";
   $("lang").setAttribute("aria-label", lang === "en" ? "Cambiar a español" : "Switch to English");
   try { localStorage.setItem("lang", lang); } catch {}
+  if (catalog) renderCatalog();
+  if (peeked) peek(peeked);
+  if (receipts.length) renderReceipts();
 }
 $("lang").addEventListener("click", () => setLang(document.documentElement.lang === "en" ? "es" : "en"));
 try { if (localStorage.getItem("lang") === "en") setLang("en"); } catch {}
