@@ -2,6 +2,11 @@
 
 **Charge in pesos. Receive exact USDC.**
 
+[![npm](https://img.shields.io/npm/v/local402-server?label=local402-server&color=e38b5a)](https://www.npmjs.com/package/local402-server)
+[![Stellar mainnet](https://img.shields.io/badge/Stellar-mainnet%20live-e38b5a)](https://local402-mainnet.vercel.app)
+[![tests](https://img.shields.io/badge/tests-32%20TS%20%2B%2010%20Soroban-3fb950)](#testing)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 ### English · [Español](README.es.md)
 
 Local402 is [x402](https://x402.org) on Stellar for the rest of the world: a seller prices an API route
@@ -57,6 +62,24 @@ payer's limit, the whole transaction reverts and nothing moves.
 
 The seller never touches XLM. The facilitator pays the network fee. The payer signs once.
 
+## Try it in 60 seconds
+
+No install, no wallet, no key. Ask the mainnet API for something and read what it answers:
+
+```bash
+# The 402 itself: the price is in pesos, the requirement is in USDC
+curl -si https://local402-mainnet.vercel.app/indicadores \
+  | grep -i '^payment-required' | cut -d' ' -f2 | tr -d '\r' | base64 -d
+
+# The same through the published client, which re-derives the price from its own oracle
+npx -y local402-client quote https://local402-mainnet.vercel.app/indicadores
+npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with XLM
+```
+
+To pay for real, use the Freighter button in section 08 of the [dashboard](https://local402.vercel.app), or
+`STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "200 CLP"`. The `--max` limit is in
+pesos, and the client refuses anything above it.
+
 ## Quick start
 
 ```bash
@@ -98,6 +121,20 @@ sequenceDiagram
     F-->>S: tx hash → receipt
     S-->>P: 200 + the data
 ```
+
+## Measured, not estimated
+
+Eight real payments on Stellar mainnet on 15–16 September 2026, all of them successful. The latest ones are
+in the [receipts](https://local402-mainnet.vercel.app/receipts).
+
+| | |
+| --- | --- |
+| What the seller received | The exact USDC amount the 402 asked for, in all eight payments. |
+| Network fee, paid by the facilitator | 0.0024 XLM for a USDC payment. About 0.0055 XLM for the last five `exact-fx` payments; the first two paid 0.081 and 0.044. |
+| What the swap actually spent | 0.21–0.39% above the Reflector value of the price (last three payments). |
+| The most the payer authorized | 2.55–3.17% above it. That includes the 2% slippage allowance, and whatever the swap does not use is refunded. |
+| A 402 carrying a live quote | About 0.41 s, warm. |
+| A full payment on testnet: 402 → quote → sign → settle → 200 | 5.6 s with XLM, 6.8 s with USDC, 9.4 s with EURC (which routes through XLM). |
 
 ## Repository map
 
@@ -182,6 +219,26 @@ priced on yesterday's UF.
 **A paid resource is never cached.** Both the client probe and the API send `no-store`. A cached 200
 would hand out a paid response for free; a cached 402 would hand out an expired quote.
 
+## When something goes wrong
+
+Each of these fails before any money moves, or reverts the whole transaction. The facilitator codes below
+drop their `invalid_exact_fx_payload_` prefix.
+
+| Situation | What happens |
+| --- | --- |
+| The oracle rate is more than 15 minutes old, dated in the future, or zero | The server refuses to quote. No requirement is issued, so nobody pays on a bad price. |
+| The seller quotes more than 2% above the payer's own oracle | `Local402Client` refuses before signing. |
+| The swap could spend more than 5% above the oracle value | The client refuses before signing (`maxFxPremiumBps`). |
+| The payer does not hold `max_send` | The client says how much has to be available and how much is there, before the wallet opens. |
+| The pools moved and the route now needs more than `max_send` | FxPay reverts with `ExcessiveInput`. Nothing moves. |
+| No pool can deliver the seller's asset | FxPay fails with `NoRoute`, a readable error rather than a trap. |
+| The amount, recipient or asset differs from the 402 | The facilitator rejects it: `wrong_amount`, `wrong_recipient`, `wrong_asset`. |
+| The signature authorizes anything beyond `pay` and one transfer | `wrong_auth_root`, `wrong_auth_subinvocation` or `unexpected_auth_entries`. |
+| The transaction would move the facilitator's own funds | `moves_facilitator_funds`, checked against the simulated events. |
+| The deadline passes while the payer approves in the wallet | `deadline_expired`. The client already allows 180 s of signing time. |
+| Two settlements race for one account | `ChannelPool` gives each its own. A submission that never reached the ledger is retried once. |
+| All three UF sources are down | The last known UF is used for up to three days. After that only the UF route stops quoting; the others keep working. |
+
 ## Deploying it somewhere real
 
 `npm run demo` needs nothing. A deployment that more than one process serves, or that spends real
@@ -214,6 +271,30 @@ hub route still wins if it exists, and otherwise the payer gets `NoRoute` rather
 Four further tests build a real `exact-fx` payload against testnet and run it through the facilitator's
 verification, including the rejections. They only run when `FX_PAYER_SECRET` is set, so a clean
 checkout needs no funded account to go green.
+
+## What it does not do
+
+- **It does not make the oracle right.** By default the seller and the payer read the same Reflector feed, so
+  Local402 catches a seller who misquotes, not a feed that is wrong. Pass your own `oracle` to
+  `Local402Client` for an independent reading.
+- **It does not hedge.** The seller receives USDC. Turning it into pesos is still their job: Local402 fixes
+  the amount of the sale, not the exchange rate after it.
+- **It does not search every venue.** FxPay routes on Soroswap only, through the direct pool or through XLM.
+  The SDEX quote on the dashboard is there for comparison and is never used to pay.
+- **It does not hold funds.** Input sits in FxPay only inside the transaction that swaps it. The contract
+  keeps no balance between payments and has no admin or upgrade function.
+- **It is not audited.** The contract has 10 tests and has settled real payments, but no external audit. That
+  is why the mainnet facilitator only settles for the demo seller and for at least 0.01 USDC.
+- **`exact-fx` is not part of x402 yet.** It is a draft. A stock x402 client pays the `exact` option of the
+  same 402, not the FX one.
+
+### Who trusts whom
+
+| Party | Relies on | Protected by |
+| --- | --- | --- |
+| Seller | The oracle to price fairly, and the facilitator to submit. | The signed authorization fixes the amount, asset and recipient, and FxPay reverts unless it delivers that exact amount. |
+| Payer | The seller's quote, within 2% of its own oracle, and an FxPay address it pinned itself. | It signs one bounded transfer (`max_send`) with a deadline, and the unused part comes back. |
+| Facilitator | Nothing the payer says. | Eleven verification rules on the simulation, a refusal to act as the payer, and on mainnet an allowlisted seller and a minimum amount. |
 
 ## Status
 

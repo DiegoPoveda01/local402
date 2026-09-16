@@ -2,6 +2,11 @@
 
 **Cobra en pesos. Recibe USDC exacto.**
 
+[![npm](https://img.shields.io/npm/v/local402-server?label=local402-server&color=e38b5a)](https://www.npmjs.com/package/local402-server)
+[![Stellar mainnet](https://img.shields.io/badge/Stellar-mainnet%20live-e38b5a)](https://local402-mainnet.vercel.app)
+[![tests](https://img.shields.io/badge/tests-32%20TS%20%2B%2010%20Soroban-3fb950)](#tests)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 ### [English](README.md) · Español
 
 Local402 es [x402](https://x402.org) sobre Stellar para el resto del mundo: quien vende le pone precio a una
@@ -59,6 +64,24 @@ límite del pagador, la transacción entera se revierte y no se mueve nada.
 
 El vendedor nunca toca XLM. El facilitador paga la comisión de red. El pagador firma una sola vez.
 
+## Pruébalo en 60 segundos
+
+Sin instalar nada, sin billetera, sin llave. Pídele algo a la API de mainnet y lee lo que responde:
+
+```bash
+# El 402 en sí: el precio está en pesos, el requirement en USDC
+curl -si https://local402-mainnet.vercel.app/indicadores \
+  | grep -i '^payment-required' | cut -d' ' -f2 | tr -d '\r' | base64 -d
+
+# Lo mismo con el cliente publicado, que vuelve a derivar el precio desde su propio oráculo
+npx -y local402-client quote https://local402-mainnet.vercel.app/indicadores
+npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with XLM
+```
+
+Para pagar de verdad, usa el botón de Freighter en la sección 08 del [dashboard](https://local402.vercel.app), o
+`STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "200 CLP"`. El límite `--max` va en
+pesos, y el cliente rechaza cualquier cosa por encima.
+
 ## Para partir
 
 ```bash
@@ -100,6 +123,20 @@ sequenceDiagram
     F-->>S: hash de la tx → recibo
     S-->>P: 200 + los datos
 ```
+
+## Medido, no estimado
+
+Ocho pagos reales en Stellar mainnet el 15 y 16 de septiembre de 2026, todos exitosos. Los más recientes
+están en los [recibos](https://local402-mainnet.vercel.app/receipts).
+
+| | |
+| --- | --- |
+| Lo que recibió el vendedor | El monto exacto en USDC que pedía el 402, en los ocho pagos. |
+| Comisión de red, pagada por el facilitador | 0.0024 XLM en un pago con USDC. Cerca de 0.0055 XLM en los últimos cinco pagos `exact-fx`; los dos primeros pagaron 0.081 y 0.044. |
+| Lo que el swap gastó de verdad | 0.21–0.39% por sobre el valor Reflector del precio (últimos tres pagos). |
+| Lo máximo que autorizó el pagador | 2.55–3.17% por sobre ese valor. Eso incluye el margen de slippage de 2%, y lo que el swap no usa se devuelve. |
+| Un 402 con cotización en vivo | Cerca de 0.41 s, en caliente. |
+| Un pago completo en testnet: 402 → cotización → firma → liquidación → 200 | 5.6 s con XLM, 6.8 s con USDC, 9.4 s con EURC (que rutea por XLM). |
 
 ## Mapa del repositorio
 
@@ -188,6 +225,26 @@ ayer.
 **Un recurso pagado nunca se cachea.** Tanto el probe del cliente como la API mandan `no-store`. Un 200
 cacheado entregaría gratis una respuesta pagada; un 402 cacheado entregaría una cotización vencida.
 
+## Cuando algo sale mal
+
+Cada uno de estos casos falla antes de que se mueva un peso, o revierte la transacción completa. Los códigos
+del facilitador de abajo van sin su prefijo `invalid_exact_fx_payload_`.
+
+| Situación | Qué pasa |
+| --- | --- |
+| La tasa del oráculo tiene más de 15 minutos, viene fechada en el futuro o es cero | El servidor se niega a cotizar. No se emite requirement, así que nadie paga con un precio malo. |
+| El vendedor cotiza más de 2% por sobre el oráculo propio del pagador | `Local402Client` se niega antes de firmar. |
+| El swap podría gastar más de 5% por sobre el valor del oráculo | El cliente se niega antes de firmar (`maxFxPremiumBps`). |
+| El pagador no tiene `max_send` | El cliente dice cuánto tiene que haber disponible y cuánto hay, antes de abrir la billetera. |
+| Las pools se movieron y la ruta ahora necesita más que `max_send` | FxPay revierte con `ExcessiveInput`. No se mueve nada. |
+| Ninguna pool puede entregar el activo del vendedor | FxPay falla con `NoRoute`, un error legible en vez de un trap. |
+| El monto, el destinatario o el activo no calzan con el 402 | El facilitador lo rechaza: `wrong_amount`, `wrong_recipient`, `wrong_asset`. |
+| La firma autoriza algo más que `pay` y una transferencia | `wrong_auth_root`, `wrong_auth_subinvocation` o `unexpected_auth_entries`. |
+| La transacción movería fondos del propio facilitador | `moves_facilitator_funds`, revisado contra los eventos simulados. |
+| El plazo vence mientras el pagador aprueba en la billetera | `deadline_expired`. El cliente ya da 180 s para firmar. |
+| Dos liquidaciones compiten por una cuenta | `ChannelPool` le da a cada una la suya. Un envío que nunca llegó al ledger se reintenta una vez. |
+| Las tres fuentes de la UF están caídas | Se usa la última UF conocida hasta por tres días. Después solo deja de cotizar la ruta en UF; las demás siguen funcionando. |
+
 ## Desplegarlo en algo real
 
 `npm run demo` no necesita nada. Un despliegue servido por más de un proceso, o que gasta plata de verdad,
@@ -220,6 +277,30 @@ el pagador recibe `NoRoute` en vez de un trap.
 Otros cuatro tests construyen un payload `exact-fx` real contra testnet y lo pasan por la verificación del
 facilitador, incluyendo los rechazos. Solo corren cuando `FX_PAYER_SECRET` está definido, así que un
 checkout limpio pasa en verde sin necesidad de una cuenta fondeada.
+
+## Lo que no hace
+
+- **No hace que el oráculo tenga la razón.** Por defecto el vendedor y el pagador leen el mismo feed de
+  Reflector, así que Local402 atrapa a un vendedor que cotiza mal, no a un feed que está equivocado. Pásale
+  tu propio `oracle` a `Local402Client` para una lectura independiente.
+- **No cubre el riesgo cambiario.** El vendedor recibe USDC. Pasarlo a pesos sigue siendo cosa suya: Local402
+  fija el monto de la venta, no el tipo de cambio de después.
+- **No busca en todos los mercados.** FxPay rutea solo en Soroswap, por la pool directa o pasando por XLM. La
+  cotización de SDEX del dashboard está para comparar y nunca se usa para pagar.
+- **No custodia fondos.** El input queda en FxPay solo dentro de la transacción que lo cambia. El contrato no
+  guarda saldo entre pagos y no tiene funciones de administración ni de actualización.
+- **No está auditado.** El contrato tiene 10 tests y ha liquidado pagos reales, pero no tiene auditoría
+  externa. Por eso el facilitador de mainnet solo liquida para el vendedor de demo y desde 0.01 USDC.
+- **`exact-fx` todavía no es parte de x402.** Es un borrador. Un cliente x402 estándar paga la opción `exact`
+  del mismo 402, no la de FX.
+
+### Quién confía en quién
+
+| Parte | Depende de | La protege |
+| --- | --- | --- |
+| Vendedor | Que el oráculo cotice bien, y que el facilitador envíe la transacción. | La autorización firmada fija el monto, el activo y el destinatario, y FxPay revierte si no entrega exactamente ese monto. |
+| Pagador | La cotización del vendedor, dentro de 2% de su propio oráculo, y una dirección de FxPay que fijó él mismo. | Firma una sola transferencia acotada (`max_send`) con plazo, y lo que no se usa vuelve. |
+| Facilitador | Nada de lo que diga el pagador. | Once reglas de verificación sobre la simulación, negarse a actuar como pagador, y en mainnet un vendedor en allowlist y un monto mínimo. |
 
 ## Estado
 
