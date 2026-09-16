@@ -49,13 +49,21 @@ const seriesUf = (host: string): UfValueSource => async () => {
 export const mindicadorUf = seriesUf("mindicador.cl");
 export const findicUf = seriesUf("findic.cl");
 
-/** Tries each source in order and returns the first value; fails only if all of them do. */
+/**
+ * Returns the first value in order of preference, failing only if every source does.
+ *
+ * All of them start at once, so a slow source costs one timeout for the whole call rather than one
+ * each: three sources answering in series took up to 12 s before giving up.
+ */
 export function firstUf(...sources: UfValueSource[]): UfValueSource {
   return async () => {
+    const attempts = sources.map((source) => source());
+    // Rejections are read in the loop below, but only until one attempt succeeds.
+    attempts.forEach((attempt) => attempt.catch(() => undefined));
     const errors: string[] = [];
-    for (const source of sources) {
+    for (const attempt of attempts) {
       try {
-        return await source();
+        return await attempt;
       } catch (error) {
         errors.push(error instanceof Error ? error.message : String(error));
       }
@@ -88,11 +96,15 @@ export class UfRateSource implements FiatRateSource {
     if (currency !== "CLF") return this.inner.getRate(currency);
     const [clp, uf] = await Promise.all([this.inner.getRate("CLP"), this.dailyUf()]);
     const scaled = toScaled(uf.clp);
+    const divisor = 10n ** BigInt(scaled.decimals);
     return {
-      usdPerUnit: (clp.usdPerUnit * scaled.value) / 10n ** BigInt(scaled.decimals),
+      // Rounded up, like every other conversion here, so the seller is never paid less than the price.
+      usdPerUnit: (clp.usdPerUnit * scaled.value + divisor - 1n) / divisor,
       decimals: clp.decimals,
       // The UF changes once a day and is known in advance, so freshness is the CLP rate's.
       timestamp: clp.timestamp,
+      // Which day's UF this is. The timestamp above cannot say it, and a cached value may be days old.
+      valueDate: uf.day,
       source: `${uf.source}:uf*${clp.source}`,
     };
   }

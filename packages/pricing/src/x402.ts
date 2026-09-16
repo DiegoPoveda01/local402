@@ -16,6 +16,23 @@ export interface LocalPriceOptions extends Omit<QuoteOptions, "oracle" | "tokenD
   quoteSecret?: string;
 }
 
+let warnedUnsignedQuotes = false;
+
+/**
+ * Without a secret, a quote can only be honored by the instance that issued the 402, through the
+ * in-memory cache below. That is fine for one process and silently wrong behind a load balancer or on
+ * serverless, where the paid retry usually lands elsewhere, re-quotes, and rejects the payment the
+ * payer already signed. It works in local development and in the tests, so say it out loud instead.
+ */
+function warnUnsignedQuotes() {
+  if (warnedUnsignedQuotes) return;
+  warnedUnsignedQuotes = true;
+  console.warn(
+    "LOCAL402_QUOTE_SECRET is not set: quotes are unsigned and only honored by the instance that issued them. " +
+      "Set it (the same value on every instance) before running more than one.",
+  );
+}
+
 /**
  * x402 route price expressed in local currency, e.g. `price: localPrice("50 CLP", { network })`.
  *
@@ -27,12 +44,13 @@ export function localPrice(price: string, options: LocalPriceOptions): DynamicPr
   const oracle = options.oracle ?? new ReflectorFiatOracle();
   const now = options.now ?? (() => Math.floor(Date.now() / 1000));
   const secret = options.quoteSecret ?? process.env.LOCAL402_QUOTE_SECRET;
+  if (!secret) warnUnsignedQuotes();
   const { amount, currency } = parseLocalPrice(price);
   let cached: { quote: LocalQuote; asset: string } | undefined;
 
   const sign = (quote: LocalQuote, asset: string) =>
     createHmac("sha256", secret!)
-      .update(JSON.stringify([options.network, asset, quote.currency, quote.localAmount, quote.usdPerUnit, quote.tokenAmount, quote.tokenDecimals, quote.oracleSource, quote.oracleTimestamp, quote.expiresAt]))
+      .update(JSON.stringify([options.network, asset, quote.currency, quote.localAmount, quote.usdPerUnit, quote.tokenAmount, quote.tokenDecimals, quote.oracleSource, quote.oracleValueDate ?? null, quote.oracleTimestamp, quote.expiresAt]))
       .digest("hex");
 
   // The quote the payer accepted, if this server signed it for this price and it has not expired.

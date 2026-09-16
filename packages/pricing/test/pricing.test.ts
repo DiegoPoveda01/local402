@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { encodePaymentSignatureHeader } from "@x402/core/http";
 import type { AssetAmount } from "@x402/core/types";
 import { localPrice, parseLocalPrice, quoteLocalPrice, UfRateSource, type FiatRateSource } from "../src/index.js";
-import { firstUf, parseSiiUf } from "../src/uf.js";
-import { medianRecord } from "../src/oracle.js";
+import { chileDate, firstUf, parseSiiUf } from "../src/uf.js";
+import { medianRecord, recentRun } from "../src/oracle.js";
 
 // 1 USD = 948.6902 CLP  =>  1 CLP ≈ 0.00105408 USD (14 decimals, as Reflector publishes)
 const CLP_RATE = 105408590567n;
@@ -123,6 +123,39 @@ describe("medianRecord", () => {
   });
 });
 
+describe("recentRun", () => {
+  it("cuts the history at a gap, so the median stays inside one run of periods", () => {
+    const records = [
+      { price: 3n, timestamp: 1789447500n },
+      { price: 1n, timestamp: 1789447200n },
+      // A missing period: everything older belongs to a different stretch of the day.
+      { price: 100n, timestamp: 1789445400n },
+      { price: 200n, timestamp: 1789445100n },
+    ];
+    expect(recentRun(records).map((r) => r.price)).toEqual([3n, 1n]);
+    expect(medianRecord(recentRun(records)).price).toBe(2n);
+  });
+
+  it("keeps an evenly spaced history whole, newest first", () => {
+    const records = [
+      { price: 1n, timestamp: 1789446900n },
+      { price: 2n, timestamp: 1789447500n },
+      { price: 3n, timestamp: 1789447200n },
+    ];
+    expect(recentRun(records).map((r) => r.price)).toEqual([2n, 3n, 1n]);
+  });
+});
+
+describe("quoteLocalPrice guards", () => {
+  it("refuses a rate a feed reports as zero", async () => {
+    await expect(quoteLocalPrice("50 CLP", { oracle: fixedOracle(0n), now: () => NOW })).rejects.toThrow(/positive price/);
+  });
+
+  it("refuses a rate dated in the future", async () => {
+    await expect(quoteLocalPrice("50 CLP", { oracle: fixedOracle(CLP_RATE, NOW + 5_000), now: () => NOW })).rejects.toThrow(/in the future/);
+  });
+});
+
 describe("UfRateSource", () => {
   it("prices UF as its CLP value times the CLP oracle rate", async () => {
     let lookups = 0;
@@ -131,9 +164,12 @@ describe("UfRateSource", () => {
       return { clp: "40934.58", source: "uf-test" };
     });
     const rate = await oracle.getRate("CLF");
-    // 40934.58 CLP * 0.00105408590567 USD/CLP = 43.14856383252106 USD
+    // 40934.58 CLP * 0.00105408590567 USD/CLP = 43.14856383252106... USD, rounded up like every
+    // other conversion here so the seller is never paid less than the price.
     expect(rate).toMatchObject({ decimals: 14, timestamp: NOW - 60, source: "uf-test:uf*test" });
-    expect(rate.usdPerUnit).toBe(4314856383252106n);
+    expect(rate.usdPerUnit).toBe(4314856383252107n);
+    // The CLP timestamp says nothing about which day's UF this is, so the rate carries the day too.
+    expect(rate.valueDate).toBe(chileDate());
 
     // 0.01 UF = 0.4314856383... USD, rounded up to USDC base units
     const quote = await quoteLocalPrice("0.01 UF", { oracle, now: () => NOW });
