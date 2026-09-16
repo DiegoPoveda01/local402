@@ -260,8 +260,13 @@ app.get("/receipts/stream", (_req, res) => {
 const PAY_LIMITS = { perVisitor: 3, overall: 20 };
 // No demo route costs more than 0.01 UF (~43 USD is the UF; the route charges a hundredth of it).
 const DEMO_MAX_PRICE = process.env.DEMO_MAX_PRICE ?? "1000 CLP";
-/** Where this API answers, for the demo agent that buys from it. */
-const SELF_URL = (process.env.SELF_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")).replace(/\/+$/, "");
+/**
+ * Where this API answers, for the demo agent that buys from it. The project's production domain, not
+ * `VERCEL_URL`: that names the individual deployment, which deployment protection answers with a login
+ * page — and the agent would read that as a resource that turned out to be free.
+ */
+const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+const SELF_URL = (process.env.SELF_URL || (vercelUrl ? `https://${vercelUrl}` : "")).replace(/\/+$/, "");
 function selfOrigin(req: express.Request): string {
   if (SELF_URL) return SELF_URL;
   // `Host` is whatever the caller wrote. Reading it on a public deployment would let anyone aim the

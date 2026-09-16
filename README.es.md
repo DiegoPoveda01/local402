@@ -197,7 +197,7 @@ necesita esto — cada `.env.example` lista el resto.
 | --- | --- | --- |
 | `LOCAL402_QUOTE_SECRET` | vendedor | Firma las cotizaciones. Sin esto, un reintento pagado que cae en otra instancia vuelve a cotizar y rechaza un pago que el pagador ya firmó. El mismo valor en todas las instancias. El servidor avisa por consola cuando falta. |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | vendedor | Recibos, los topes de pagos de demo y el último valor conocido de la UF. Sin esto cada instancia serverless guarda los suyos, y desaparecen con ella. |
-| `SELF_URL` | vendedor | Dónde compra el agente de demo. Cae a `VERCEL_URL`, y al `Host` del request solo si es localhost, porque el `Host` lo escribe quien llama. |
+| `SELF_URL` | vendedor | Dónde compra el agente de demo. Cae al dominio de producción del proyecto en Vercel, y al `Host` del request solo si es localhost, porque el `Host` lo escribe quien llama. |
 | `CORS_ORIGIN` | vendedor | Orígenes del dashboard autorizados a pagar desde la billetera del visitante, separados por coma. |
 | `PAY_TO_ALLOWLIST`, `MIN_AMOUNT` | facilitador | Cada liquidación gasta las comisiones del propio facilitador. En `stellar:pubnet` estos vienen por defecto en `PAY_TO` y 100000 (0.01 USDC); ponlos explícitos para atender a otros vendedores. |
 | `FACILITATOR_PRIVATE_KEYS` | facilitador | Una llave por liquidación concurrente. `ChannelPool` las separa solo dentro de una instancia, así que dale a cada instancia las suyas. |

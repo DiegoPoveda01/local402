@@ -191,7 +191,7 @@ money, needs these — each `.env.example` lists the rest.
 | --- | --- | --- |
 | `LOCAL402_QUOTE_SECRET` | seller | Signs quotes. Without it, a paid retry that lands on another instance re-quotes and rejects a payment the payer already signed. Same value on every instance. The server logs a warning when it is missing. |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | seller | Receipts, the demo payment caps and the last known UF value. Without them each serverless instance keeps its own, and they disappear when it does. |
-| `SELF_URL` | seller | Where the demo agent buys from. Falls back to `VERCEL_URL`, and to the request's `Host` only when that is localhost, because `Host` is whatever the caller wrote. |
+| `SELF_URL` | seller | Where the demo agent buys from. Falls back to the Vercel project's production domain, and to the request's `Host` only when that is localhost, because `Host` is whatever the caller wrote. |
 | `CORS_ORIGIN` | seller | Dashboard origins allowed to pay from the visitor's wallet, comma-separated. |
 | `PAY_TO_ALLOWLIST`, `MIN_AMOUNT` | facilitator | Every settlement spends the facilitator's own fees. On `stellar:pubnet` these default to `PAY_TO` and 100000 (0.01 USDC); set them explicitly to serve other sellers. |
 | `FACILITATOR_PRIVATE_KEYS` | facilitator | One key per concurrent settlement. `ChannelPool` separates them within an instance only, so give each instance its own keys. |
