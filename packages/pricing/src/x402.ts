@@ -39,6 +39,8 @@ function warnUnsignedQuotes() {
  * Emits a standard `exact` USDC requirement, so existing Stellar x402 clients pay it unchanged.
  * The quote is attached as `extra.local402` and frozen for its TTL: the resource server
  * rebuilds requirements when the paid retry arrives and needs the exact same amount.
+ * A new 402 gets a fresh quote once half the TTL has passed, so the payer always has time to sign
+ * and retry before the quote it accepted expires.
  */
 export function localPrice(price: string, options: LocalPriceOptions): DynamicPrice {
   const oracle = options.oracle ?? new ReflectorFiatOracle();
@@ -46,6 +48,7 @@ export function localPrice(price: string, options: LocalPriceOptions): DynamicPr
   const secret = options.quoteSecret ?? process.env.LOCAL402_QUOTE_SECRET;
   if (!secret) warnUnsignedQuotes();
   const { amount, currency } = parseLocalPrice(price);
+  const ttl = options.quoteTtlSeconds ?? 60;
   let cached: { quote: LocalQuote; asset: string } | undefined;
 
   const sign = (quote: LocalQuote, asset: string) =>
@@ -75,7 +78,7 @@ export function localPrice(price: string, options: LocalPriceOptions): DynamicPr
     const honored = signedQuote(context, unit.asset);
     if (honored) return { asset: unit.asset, amount: honored.tokenAmount, extra: { local402: honored } };
 
-    if (!cached || cached.quote.expiresAt <= now()) {
+    if (!cached || cached.quote.expiresAt - now() < ttl / 2) {
       const quote = await quoteLocalPrice(price, { ...options, oracle, tokenDecimals: unit.amount.length - 1, now });
       if (secret) quote.signature = sign(quote, unit.asset);
       cached = { quote, asset: unit.asset };

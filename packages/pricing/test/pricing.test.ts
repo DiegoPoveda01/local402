@@ -56,7 +56,7 @@ describe("quoteLocalPrice", () => {
 });
 
 describe("localPrice", () => {
-  it("returns a USDC requirement with the quote attached and keeps it until expiry", async () => {
+  it("returns a USDC requirement with the quote attached and keeps offering it for half its TTL", async () => {
     const oracle = fixedOracle(CLP_RATE);
     let now = NOW;
     const price = localPrice("50 CLP", { network: "stellar:testnet", oracle, now: () => now });
@@ -68,7 +68,8 @@ describe("localPrice", () => {
       extra: { local402: { currency: "CLP", localAmount: "50" } },
     });
 
-    now += 59;
+    // A payer who gets the quote now still has half the TTL to sign and retry before it expires.
+    now += 30;
     expect(await price({} as never)).toEqual(first);
     expect(oracle.calls).toBe(1);
 
