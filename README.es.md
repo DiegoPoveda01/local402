@@ -84,6 +84,29 @@ límite del pagador, la transacción entera se revierte y no se mueve nada.
 
 El vendedor nunca toca XLM. El facilitador paga la comisión de red. El pagador firma una sola vez.
 
+## Dónde lo usarías
+
+Cada caso de abajo corre sobre el código de este repositorio, no sobre una hoja de ruta.
+
+- **Una API tarificada en tu propia moneda.** Cobras `70 NGN` o `50 CLP`; al comprador se
+  le cobra eso y tú recibes USDC. Nunca publicas una cifra en dólares ni cargas el tipo de
+  cambio en tu página de precios — `local402-server` es una línea sobre cualquier ruta x402.
+- **Agentes que pagan a agentes.** El servidor MCP expone cada ruta como una herramienta; un
+  agente lee el `402`, lo cotiza contra su propio oráculo y paga por llamada con el activo que
+  tenga. Sin suscripción, sin cuenta, sin humano en el medio.
+- **Pago por petición en vez de un plan.** Un pago liquidado cuesta unos 0,0024 XLM de comisión
+  de red (medido, más abajo). Eso hace que una sola llamada, un solo artículo o una sola
+  inferencia valgan la pena cobrarse por separado.
+- **Que el pagador traiga su propio activo.** Con `exact-fx` el comprador paga en XLM o EURC y
+  tú igual recibes el USDC exacto que pediste — el swap y la devolución ocurren dentro del pago.
+  Un paso menos de "primero consigue USDC" entre el comprador y la venta.
+- **Facturar en una unidad que no es moneda.** La UF está cableada igual que un código fiat, así
+  que un arriendo o un contrato indexado a la inflación se puede tarificar en la unidad en que
+  realmente está escrito.
+- **Contabilidad que se cuadra sola.** Cada venta deja un recibo con el precio local, la tasa y
+  su fuente, el premio del swap en puntos básicos y el hash de la transacción.
+  `GET /receipts.csv` le entrega a contabilidad un libro mayor, no una captura de pantalla.
+
 ## Pruébalo en 60 segundos
 
 Sin instalar nada, sin billetera, sin llave. Pídele algo a la API de mainnet y lee lo que responde:
@@ -311,7 +334,8 @@ checkout limpio pasa en verde sin necesidad de una cuenta fondeada.
 - **No custodia fondos.** El input queda en FxPay solo dentro de la transacción que lo cambia. El contrato no
   guarda saldo entre pagos y no tiene funciones de administración ni de actualización.
 - **No está auditado.** El contrato tiene 10 tests y ha liquidado pagos reales, pero no tiene auditoría
-  externa. Por eso el facilitador de mainnet solo liquida para el vendedor de demo y desde 0.01 USDC.
+  externa — hay una revisión interna en [docs/security-review.md](docs/security-review.md). Por eso el
+  facilitador de mainnet solo liquida para el vendedor de demo y desde 0.01 USDC.
 - **`exact-fx` todavía no es parte de x402.** Es un borrador. Un cliente x402 estándar paga la opción `exact`
   del mismo 402, no la de FX.
 

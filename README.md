@@ -83,6 +83,29 @@ payer's limit, the whole transaction reverts and nothing moves.
 
 The seller never touches XLM. The facilitator pays the network fee. The payer signs once.
 
+## Where you'd use it
+
+Every case below runs on the code in this repository, not on a roadmap.
+
+- **A metered API priced in your own market.** You quote `70 NGN` or `50 CLP`; the
+  buyer is charged that, and you receive USDC. You never publish a dollar figure and
+  never carry the exchange rate on your pricing page — `local402-server` is a one-liner
+  over any x402 route.
+- **Agents paying agents.** The MCP server exposes each route as a tool; an agent reads
+  the `402`, quotes it against its own oracle, and pays per call with whatever asset it
+  holds. No subscription, no account, no human in the loop.
+- **Pay-per-request instead of a plan.** A settled payment costs about 0.0024 XLM in
+  network fee (measured, below). That makes a single API call, a single article, or a
+  single inference worth charging for on its own.
+- **Letting the payer bring their own asset.** With `exact-fx` the buyer pays in XLM or
+  EURC and you still receive the exact USDC you asked for — the swap and the refund happen
+  inside the payment. One less "first, go get USDC" step between the buyer and the sale.
+- **Billing in a unit that isn't a currency.** UF is wired the same way as a fiat code, so
+  a rent or an inflation-indexed contract can be priced in the unit it's actually written in.
+- **Books that reconcile themselves.** Every sale leaves a receipt with the local price, the
+  rate and its source, the swap premium in basis points, and the transaction hash.
+  `GET /receipts.csv` hands accounting a ledger, not a screenshot.
+
 ## Try it in 60 seconds
 
 No install, no wallet, no key. Ask the mainnet API for something and read what it answers:
@@ -305,8 +328,9 @@ checkout needs no funded account to go green.
   The SDEX quote on the dashboard is there for comparison and is never used to pay.
 - **It does not hold funds.** Input sits in FxPay only inside the transaction that swaps it. The contract
   keeps no balance between payments and has no admin or upgrade function.
-- **It is not audited.** The contract has 10 tests and has settled real payments, but no external audit. That
-  is why the mainnet facilitator only settles for the demo seller and for at least 0.01 USDC.
+- **It is not audited.** The contract has 10 tests and has settled real payments, but no external audit —
+  an internal review is in [docs/security-review.md](docs/security-review.md). That is why the mainnet
+  facilitator only settles for the demo seller and for at least 0.01 USDC.
 - **`exact-fx` is not part of x402 yet.** It is a draft. A stock x402 client pays the `exact` option of the
   same 402, not the FX one.
 
