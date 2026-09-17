@@ -24,7 +24,7 @@ sin que ninguna de las dos partes tenga que cambiar moneda a mano.
 | Especificación del esquema | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
 | npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) |
 | FxPay en mainnet | [`CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV`](https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV) |
-| Bug que encontramos y reportamos | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rechaza la tarifa que ofrece el SDK |
+| Bug que encontramos y corregimos upstream | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rechaza la tarifa que ofrece el SDK; nuestro arreglo, [x402#3503](https://github.com/x402-foundation/x402/pull/3503), ya está fusionado |
 
 ---
 
@@ -247,11 +247,14 @@ defensa en profundidad. Como el facilitador paga las comisiones, un despliegue p
 vendedor en allowlist y monto mínimo, y limita la tasa de `verify` y `settle` por separado porque cuestan
 cosas distintas.
 
-**La puja de comisiones, y un bug que reportamos upstream.** `@x402/stellar` 2.25 siempre ofrece la comisión
+**La puja de comisiones, y un bug que corregimos upstream.** `@x402/stellar` 2.25 siempre ofrece la comisión
 base de 100 stroops, que mainnet rechaza seguido cuando Soroban está con surge pricing. `feeBumpSigner`
 vuelve a envolver el fee bump con una puja del doble del p99 reciente de la red, con tope — sin tocar la
-transacción interna ni sus firmas. Reportado upstream como
-[x402#3491](https://github.com/x402-foundation/x402/issues/3491).
+transacción interna ni sus firmas. Lo reportamos como
+[x402#3491](https://github.com/x402-foundation/x402/issues/3491) y lo corregimos en
+[x402#3503](https://github.com/x402-foundation/x402/pull/3503), ya fusionado en `main` de x402: el
+facilitador exact ahora acepta la opción `inclusionFeeStroops`. El workaround se queda hasta que una
+versión posterior a la 2.26.0 lo publique.
 
 **La liquidación en paralelo necesita cuentas separadas.** Dos liquidaciones desde una misma cuenta Stellar
 chocan en el número de secuencia. `ChannelPool` le entrega a cada liquidación concurrente su propia cuenta

@@ -24,7 +24,7 @@ no manual currency swap on either side.
 | Scheme spec | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
 | npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) |
 | FxPay on mainnet | [`CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV`](https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV) |
-| Bug found and reported upstream | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rejects the fee the SDK bids |
+| Bug found and fixed upstream | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rejects the fee the SDK bids; our fix, [x402#3503](https://github.com/x402-foundation/x402/pull/3503), is merged |
 
 ---
 
@@ -244,10 +244,13 @@ events* — that the seller was paid, and that no facilitator account was draine
 Since the facilitator pays the fees, a public deployment can also require an allowlisted seller and a
 minimum amount, and rate-limits `verify`/`settle` separately because they cost different things.
 
-**Fee bidding, and a bug we reported upstream.** `@x402/stellar` 2.25 always bids the 100-stroop base
+**Fee bidding, and a bug we fixed upstream.** `@x402/stellar` 2.25 always bids the 100-stroop base
 fee, which mainnet frequently rejects under Soroban surge pricing. `feeBumpSigner` re-wraps the fee
 bump with a bid of twice the network's recent p99, capped — without touching the inner transaction or
-its signatures. Reported upstream as [x402#3491](https://github.com/x402-foundation/x402/issues/3491).
+its signatures. We reported it as [x402#3491](https://github.com/x402-foundation/x402/issues/3491) and
+fixed it in [x402#3503](https://github.com/x402-foundation/x402/pull/3503), merged into x402 `main`: the
+exact facilitator now takes an `inclusionFeeStroops` option. The workaround stays until a release
+(after 2.26.0) ships it.
 
 **Parallel settlement needs separate accounts.** Two settlements from one Stellar account collide on
 the sequence number. `ChannelPool` hands each concurrent settlement its own fee-paying account, and
