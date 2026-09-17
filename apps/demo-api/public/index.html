@@ -471,6 +471,7 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
         <tbody id="mainnet-payments"></tbody>
       </table>
     </div>
+    <nav class="pager" id="mainnet-pager" aria-label="Páginas de pagos en mainnet"></nav>
   </section>
 </main>
 
@@ -754,25 +755,30 @@ for (const preset of PRESETS) {
   $("presets").append(button);
 }
 
-const RECEIPTS_PER_PAGE = 10;
+const PER_PAGE = 5;
 let receiptsPage = 1;
 
-function renderPager(pages) {
-  const pager = $("receipts-pager");
+// Draws ← 1 2 … → under a table and returns the rows of the current page, clamped to the last one.
+function paginate(pagerId, rows, page, go) {
+  const pages = Math.ceil(rows.length / PER_PAGE);
+  page = Math.min(page, pages);
+  const pager = $(pagerId);
   pager.innerHTML = "";
-  if (pages < 2) return;
-  const add = (label, page, extra = "") => {
+  const add = (label, target, extra = "") => {
     const button = document.createElement("button");
     button.className = `ghost ${extra}`;
     button.textContent = label;
-    button.disabled = page < 1 || page > pages;
+    button.disabled = target < 1 || target > pages;
     if (extra === "current") button.setAttribute("aria-current", "page");
-    button.onclick = () => { receiptsPage = page; renderReceipts(); };
+    button.onclick = () => go(target);
     pager.append(button);
   };
-  add("←", receiptsPage - 1);
-  for (let page = 1; page <= pages; page++) add(String(page), page, page === receiptsPage ? "current" : "");
-  add("→", receiptsPage + 1);
+  if (pages > 1) {
+    add("←", page - 1);
+    for (let n = 1; n <= pages; n++) add(String(n), n, n === page ? "current" : "");
+    add("→", page + 1);
+  }
+  return { page, rows: rows.slice((page - 1) * PER_PAGE, page * PER_PAGE) };
 }
 
 function renderReceipts(newId) {
@@ -780,11 +786,9 @@ function renderReceipts(newId) {
   if (!receipts.length) return;
   // Newest receipts are first, so a new payment brings the table back to page 1.
   if (newId) receiptsPage = 1;
-  const pages = Math.ceil(receipts.length / RECEIPTS_PER_PAGE);
-  receiptsPage = Math.min(receiptsPage, pages);
-  renderPager(pages);
-  const start = (receiptsPage - 1) * RECEIPTS_PER_PAGE;
-  body.innerHTML = receipts.slice(start, start + RECEIPTS_PER_PAGE).map((r) => {
+  const shown = paginate("receipts-pager", receipts, receiptsPage, (page) => { receiptsPage = page; renderReceipts(); });
+  receiptsPage = shown.page;
+  body.innerHTML = shown.rows.map((r) => {
     const paidWith = r.spent
       ? `<span class="pill ${symbol(r.spent.asset).toLowerCase()}">${symbol(r.spent.asset)}</span> ${fmt(r.spent.amount)}`
       : `<span class="pill usdc">USDC</span> ${fmt(r.settled.amount, r.settled.decimals)}`;
@@ -849,7 +853,21 @@ async function loadMainnet() {
     })),
   ].sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
   if (!payments.length) return;
-  $("mainnet-payments").innerHTML = payments.map((p) => `<tr>
+  // Newest first, so a new payment brings the table back to page 1.
+  if (payments.length !== mainnetList.length) mainnetPage = 1;
+  mainnetList = payments;
+  renderMainnet();
+  $("mainnet").hidden = false;
+  mainnetPayments = payments.length;
+  renderNetwork();
+}
+
+let mainnetList = [];
+let mainnetPage = 1;
+function renderMainnet() {
+  const shown = paginate("mainnet-pager", mainnetList, mainnetPage, (page) => { mainnetPage = page; renderMainnet(); });
+  mainnetPage = shown.page;
+  $("mainnet-payments").innerHTML = shown.rows.map((p) => `<tr>
       <td class="mono">${new Date(p.paidAt).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" })}</td>
       <td><b>${local(p.local.amount)} ${currencyLabel(p.local.currency)}</b></td>
       <td>${fmt(p.usdc)} USDC</td>
@@ -857,9 +875,6 @@ async function loadMainnet() {
       <td class="mono">${p.spentPremiumBps !== undefined ? bps(p.spentPremiumBps) : p.fxPremiumBps !== undefined ? `${bps(p.fxPremiumBps)} máx.` : "—"}</td>
       <td>${txLink(p.transaction, "public")}</td>
     </tr>`).join("");
-  $("mainnet").hidden = false;
-  mainnetPayments = payments.length;
-  renderNetwork();
 }
 
 // Swap premium over the oracle: what was spent, or for the first scripted payments the most the swap could spend.
