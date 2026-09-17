@@ -194,6 +194,10 @@
   .pill.usdc { color: var(--usdc); border-color: rgba(138,180,255,.3); }
   .pill.xlm { color: var(--xlm); border-color: rgba(200,168,255,.3); }
   .pill.eurc { color: var(--eurc); border-color: rgba(127,220,207,.3); }
+  .pager { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 16px; }
+  .pager button.ghost { min-width: 38px; padding: 7px 12px; }
+  .pager button.ghost.current { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .pager button.ghost:disabled { opacity: .4; cursor: default; }
   .empty { color: var(--fg-dim); padding: 36px; text-align: center; font-family: var(--serif); font-size: 22px; font-style: italic; }
   .row-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 36px; }
   .link { font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; color: var(--fg); }
@@ -234,6 +238,10 @@
     .compare td:not(:first-child)::before { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-dim); margin-bottom: 4px; }
     .compare td.no::before { content: "x402 hoy"; }
     .compare td:last-child::before { content: "Con Local402"; color: var(--copper); }
+    .convert-form input { flex: 1 1 100%; width: auto; }
+    .convert-form select { flex: 1 1 0; min-width: 0; }
+    .convert-form .buttons { flex: 1 1 100%; margin-left: 0; }
+    .convert-form .buttons button.pay { flex: 1; }
   }
 </style>
 </head>
@@ -419,6 +427,7 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
         <tbody id="receipts"><tr><td colspan="7" class="empty">Aún no hay pagos. Prueba uno arriba.</td></tr></tbody>
       </table>
     </div>
+    <nav class="pager" id="receipts-pager" aria-label="Páginas de recibos"></nav>
   </section>
 
   <section id="mainnet">
@@ -745,10 +754,37 @@ for (const preset of PRESETS) {
   $("presets").append(button);
 }
 
+const RECEIPTS_PER_PAGE = 10;
+let receiptsPage = 1;
+
+function renderPager(pages) {
+  const pager = $("receipts-pager");
+  pager.innerHTML = "";
+  if (pages < 2) return;
+  const add = (label, page, extra = "") => {
+    const button = document.createElement("button");
+    button.className = `ghost ${extra}`;
+    button.textContent = label;
+    button.disabled = page < 1 || page > pages;
+    if (extra === "current") button.setAttribute("aria-current", "page");
+    button.onclick = () => { receiptsPage = page; renderReceipts(); };
+    pager.append(button);
+  };
+  add("←", receiptsPage - 1);
+  for (let page = 1; page <= pages; page++) add(String(page), page, page === receiptsPage ? "current" : "");
+  add("→", receiptsPage + 1);
+}
+
 function renderReceipts(newId) {
   const body = $("receipts");
   if (!receipts.length) return;
-  body.innerHTML = receipts.map((r) => {
+  // Newest receipts are first, so a new payment brings the table back to page 1.
+  if (newId) receiptsPage = 1;
+  const pages = Math.ceil(receipts.length / RECEIPTS_PER_PAGE);
+  receiptsPage = Math.min(receiptsPage, pages);
+  renderPager(pages);
+  const start = (receiptsPage - 1) * RECEIPTS_PER_PAGE;
+  body.innerHTML = receipts.slice(start, start + RECEIPTS_PER_PAGE).map((r) => {
     const paidWith = r.spent
       ? `<span class="pill ${symbol(r.spent.asset).toLowerCase()}">${symbol(r.spent.asset)}</span> ${fmt(r.spent.amount)}`
       : `<span class="pill usdc">USDC</span> ${fmt(r.settled.amount, r.settled.decimals)}`;
