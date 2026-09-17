@@ -166,6 +166,16 @@
   .wallet .buttons { margin-top: 14px; }
   .wallet #wallet-status { margin-top: 10px; min-height: 1.5em; }
   .discovery { font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--green); }
+  .convert { margin: 8px 0 40px; }
+  .convert h3 { margin: 10px 0; font-size: 22px; font-weight: 500; }
+  .convert-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+  .convert-form input, .convert-form select { font-family: var(--mono); font-size: 14px; background: var(--bg-elev); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 999px; padding: 9px 14px; outline: 0; }
+  .convert-form input { width: 110px; }
+  .convert-form input:focus, .convert-form select:focus { border-color: var(--copper); }
+  .convert-form .buttons { display: flex; gap: 8px; margin-left: auto; }
+  .convert-form .buttons button.pay { padding: 9px 16px; }
+  .convert-arrow { color: var(--fg-dim); font-family: var(--mono); }
+  #cv-status { margin-top: 10px; min-height: 1.4em; }
 
   /* Tables */
   .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-elev); }
@@ -430,6 +440,21 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
         <div class="window-bar"><i></i><i></i><i></i><span>tu-wallet@mainnet</span></div>
         <div class="term" id="wallet-console"></div>
       </div>
+    </div>
+    <div class="convert">
+      <div class="label">Conversor en vivo</div>
+      <h3 id="convert-title">Convierte tu monto y paga por <em>tu</em> resultado.</h3>
+      <p id="convert-text">Un pago de <code>GET /convertir</code> (100 NGN ≈ 0,08 USDC) te devuelve tu conversión con la tasa del oráculo Reflector en ese instante. Elige el monto y las monedas, y paga con Freighter. La respuesta llega a la consola de arriba.</p>
+      <div class="convert-form">
+        <input id="cv-monto" type="number" min="0" step="any" value="100" aria-label="Monto a convertir">
+        <select id="cv-de" aria-label="Moneda de origen"></select>
+        <span class="convert-arrow">→</span>
+        <select id="cv-a" aria-label="Moneda de destino"></select>
+        <div class="buttons">
+          <button class="pay usdc" data-cv-asset="USDC">USDC</button><button class="pay xlm" data-cv-asset="XLM">XLM</button><button class="pay eurc" data-cv-asset="EURC">EURC</button>
+        </div>
+      </div>
+      <div class="meta" id="cv-status"></div>
     </div>
     <div class="table-wrap">
       <table>
@@ -807,9 +832,9 @@ const MAINNET_SYMBOLS = { CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOW
 const symbolMainnet = (asset) => MAINNET_SYMBOLS[asset] ?? short(asset);
 
 $("wallet-console").innerHTML = [span("c", "# desde tu wallet: elige USDC, XLM o EURC"), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`)].join("\n");
-async function payFromWallet(asset) {
+async function payFromWallet(asset, resource = `${MAINNET_API}/indicadores`) {
   const term = $("wallet-console");
-  const buttons = document.querySelectorAll(".wallet button");
+  const buttons = document.querySelectorAll(".wallet button, .convert button");
   const lines = [];
   const show = (...more) => { lines.push(...more); term.innerHTML = lines.join("\n"); term.scrollTop = term.scrollHeight; };
   buttons.forEach((b) => (b.disabled = true));
@@ -820,12 +845,12 @@ async function payFromWallet(asset) {
     // Asked on every payment, so switching accounts in Freighter needs no reload.
     const walletAddress = await wallet.connect();
     $("wallet-status").innerHTML = `Conectada: <a target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/account/${escape(walletAddress)}">${short(escape(walletAddress))}</a>`;
-    show(span("h", `$ GET ${MAINNET_API}/indicadores`), span("y", "HTTP/1.1 402 Payment Required"),
+    show(span("h", `$ GET ${resource.replace(MAINNET_API, "")}`), span("y", "HTTP/1.1 402 Payment Required"),
       span("h", asset === "USDC" ? "→ Freighter firma una transferencia de USDC (exact)" : `→ Freighter firma FxPay.pay con ${asset} (exact-fx)`),
       span("c", "  el cliente revisa la tasa con Reflector y el tope de 200 CLP antes de enviar…"),
       span("c", "  si Freighter dice «Unable to scan site»: Blockaid aún no conoce este contrato nuevo"));
     const started = performance.now();
-    const data = await wallet.pay(`${MAINNET_API}/indicadores`, walletAddress, asset);
+    const data = await wallet.pay(resource, walletAddress, asset);
     const seconds = ((performance.now() - started) / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 });
     show(
       span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${txLink(data.transaction, "public")}`),
@@ -846,6 +871,27 @@ async function payFromWallet(asset) {
   }
 }
 document.querySelectorAll(".wallet button[data-asset]").forEach((b) => (b.onclick = () => payFromWallet(b.dataset.asset)));
+
+// Converter widget (section 08): builds a /convertir URL from the visitor's input and pays it from
+// Freighter, real money on mainnet. Only currencies the oracle publishes are offered, so a settled
+// payment always resolves to a rate.
+const CONVERT_CURRENCIES = ["USD", "EUR", "GBP", "CLP", "UF", "MXN", "BRL", "COP", "PEN", "ARS", "CRC", "INR", "JPY", "CNY", "KRW", "PHP", "HKD", "NGN", "KES", "ZAR", "CDF"];
+(function fillConvert() {
+  const de = $("cv-de"), a = $("cv-a");
+  if (!de || !a) return;
+  const options = (selected) => CONVERT_CURRENCIES.map((c) => `<option value="${c}"${c === selected ? " selected" : ""}>${c}</option>`).join("");
+  de.innerHTML = options("USD");
+  a.innerHTML = options("CLP");
+})();
+document.querySelectorAll(".convert button[data-cv-asset]").forEach((b) => (b.onclick = () => {
+  const monto = ($("cv-monto").value || "1").trim();
+  const de = $("cv-de").value, a = $("cv-a").value;
+  const status = $("cv-status");
+  if (!(Number(monto) > 0)) { status.textContent = tr("Escribe un monto mayor que cero.", "Enter an amount above zero."); return; }
+  if (de === a) { status.textContent = tr("Elige dos monedas distintas.", "Pick two different currencies."); return; }
+  status.textContent = "";
+  payFromWallet(b.dataset.cvAsset, `${MAINNET_API}/convertir?monto=${encodeURIComponent(monto)}&de=${de}&a=${a}`);
+}));
 
 // English copy for the static page, keyed by selector (and index when a selector matches several elements).
 // The product cards, the 402 console and the network badge follow it through `tr`; the calculator,
@@ -914,6 +960,8 @@ const EN = [
   ["#wallet-title", "Pay 50 real pesos from your wallet."],
   ["#wallet-text", 'With <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a> on Mainnet, pay <code>GET /indicadores</code> (50 CLP ≈ 0.05 USDC) with USDC, XLM or EURC. XLM alone is enough. You only sign the authorization: the facilitator pays the network fee, and the client refuses any charge above 200 CLP.'],
   ["#wallet-agents", "An agent? The same from the terminal, with your own key and a per-payment cap."],
+  ["#convert-title", "Convert your amount and pay for <em>your</em> result."],
+  ["#convert-text", 'A <code>GET /convertir</code> payment (100 NGN ≈ 0.08 USDC) returns your conversion at the Reflector oracle rate at that instant. Pick the amount and currencies, and pay with Freighter. The answer prints in the console above.'],
   ["#mainnet th", ["Date", "Price", "Seller receives", "Payer paid", "Premium vs Reflector", "Transaction"]],
   ["footer p", "x402 payments priced in local currency, settled in USDC on Stellar. For any currency. Made in Chile for Find Your Way."],
   ["footer .label", ["Project", "Built with"]],

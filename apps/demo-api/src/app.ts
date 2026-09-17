@@ -114,6 +114,19 @@ const products = [
   return { path, price, description, route, quote: (route.accepts as PaymentOption[])[0].price as DynamicPrice };
 });
 
+// A tool, not a data feed: pay one small local price and get YOUR amount converted at the live oracle
+// rate. Kept out of the `products` cards on purpose — it has its own widget on the dashboard.
+const CONVERT_EXAMPLE = { de: "USD", a: "CLP", monto: 100, resultado: 95546.3, tasa: 955.463, fuente: REFLECTOR_SOURCE, timestamp: 1789607100 };
+const convertRoute = localRoute("100 NGN", {
+  payTo: PAY_TO,
+  network: NETWORK,
+  oracle,
+  description: "Conversor de divisas: convierte tu monto entre las monedas del oráculo, cobrado en nairas",
+  serviceName: "Local402 demo",
+  tags: ["local-currency", "fx", "convertir", "tool"],
+  extensions: declareDiscoveryExtension({ output: { example: CONVERT_EXAMPLE } }),
+});
+
 export const app = express();
 // Behind exactly one proxy (Vercel's edge), so paid resource URLs keep their https scheme. Not `true`:
 // that takes the leftmost `X-Forwarded-For` entry, which the caller writes, and `req.ip` buckets the
@@ -141,7 +154,7 @@ if (CORS_ORIGINS.length) {
 }
 
 // A paid response must never come from a cache: the next visit has to reach the 402 again.
-const paidPaths = new Set(products.map(({ path }) => path));
+const paidPaths = new Set([...products.map(({ path }) => path), "/convertir"]);
 app.use((req, res, next) => {
   if (paidPaths.has(req.path)) res.set("Cache-Control", "no-store");
   next();
@@ -149,7 +162,7 @@ app.use((req, res, next) => {
 
 app.use(
   paymentMiddleware(
-    Object.fromEntries(products.map(({ path, route }) => [`GET ${path}`, route])),
+    { ...Object.fromEntries(products.map(({ path, route }) => [`GET ${path}`, route])), "GET /convertir": convertRoute },
     server,
   ),
 );
@@ -200,6 +213,42 @@ for (const [path, codes] of Object.entries(REGIONS)) {
     });
   });
 }
+
+// Currency converter (paid). Accepts any code the oracle publishes, plus USD (its base) and UF.
+// Robust to missing or unknown input so a settled payment always returns a real result, never a 500.
+const CONVERT_DEFAULT = { monto: 1, de: "USD", a: "CLP" };
+const asCode = (value: unknown, fallback: string) => {
+  const code = String(value ?? "").trim().toUpperCase();
+  return code === "UF" ? "CLF" : code || fallback;
+};
+const valueInUsd = async (code: string) => {
+  if (code === "USD") return { value: 1, source: "USD", timestamp: Math.floor(Date.now() / 1000) };
+  const { value, rate } = await usd(code);
+  return { value, source: rate.source, timestamp: rate.timestamp };
+};
+app.get("/convertir", async (req, res) => {
+  const de = asCode(req.query.de, CONVERT_DEFAULT.de);
+  const a = asCode(req.query.a, CONVERT_DEFAULT.a);
+  const montoRaw = Number(req.query.monto);
+  const monto = Number.isFinite(montoRaw) && montoRaw > 0 ? montoRaw : CONVERT_DEFAULT.monto;
+  const label = (code: string) => (code === "CLF" ? "UF" : code);
+  try {
+    const [from, to] = await Promise.all([valueInUsd(de), valueInUsd(a)]);
+    const tasa = from.value / to.value; // 1 unit of `de` equals `tasa` of `a`
+    res.json({
+      de: label(de),
+      a: label(a),
+      monto,
+      resultado: +(monto * tasa).toPrecision(8),
+      tasa: +tasa.toPrecision(8),
+      fuente: to.source === "USD" ? from.source : to.source,
+      timestamp: Math.min(from.timestamp, to.timestamp),
+    });
+  } catch (error) {
+    // A currency the oracle does not publish: the payment already settled, so answer with the reason.
+    res.json({ de: label(de), a: label(a), monto, error: (error instanceof Error ? error.message : String(error)).split("\n")[0] });
+  }
+});
 
 // --- Dashboard support: free, read-only views of prices and receipts. ---
 
