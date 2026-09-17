@@ -198,6 +198,7 @@
   .pager button.ghost { min-width: 38px; padding: 7px 12px; }
   .pager button.ghost.current { background: var(--fg); color: var(--bg); border-color: var(--fg); }
   .pager button.ghost:disabled { opacity: .4; cursor: default; }
+  .pager .gap { color: var(--fg-dim); padding: 7px 2px; }
   .empty { color: var(--fg-dim); padding: 36px; text-align: center; font-family: var(--serif); font-size: 22px; font-style: italic; }
   .row-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 36px; }
   .link { font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; color: var(--fg); }
@@ -242,6 +243,15 @@
     .convert-form select { flex: 1 1 0; min-width: 0; }
     .convert-form .buttons { flex: 1 1 100%; margin-left: 0; }
     .convert-form .buttons button.pay { flex: 1; }
+    .cards thead { display: none; }
+    .cards tr { display: grid; grid-template-columns: 1fr 1fr; padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .cards tr:last-child { border-bottom: 0; }
+    .cards td { min-width: 0; border-bottom: 0; padding: 8px 14px; white-space: normal; overflow-wrap: anywhere; }
+    .cards td[data-label]::before { content: attr(data-label); display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-dim); margin-bottom: 3px; }
+    .cards td.mono { white-space: nowrap; font-size: 12px; }
+    .cards td.empty { grid-column: 1 / -1; }
+    .pager { gap: 4px; }
+    .pager button.ghost { min-width: 32px; padding: 6px 8px; }
   }
 </style>
 </head>
@@ -422,7 +432,7 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
       <a href="/receipts.csv" class="link">Exportar CSV →</a>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="cards">
         <thead><tr><th>Hora</th><th>Recurso</th><th>Precio</th><th>Tasa (USD)</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Transacción</th></tr></thead>
         <tbody id="receipts"><tr><td colspan="7" class="empty">Aún no hay pagos. Prueba uno arriba.</td></tr></tbody>
       </table>
@@ -466,7 +476,7 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
       <div class="meta" id="cv-status"></div>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="cards">
         <thead><tr><th>Fecha</th><th>Precio</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Prima vs Reflector</th><th>Transacción</th></tr></thead>
         <tbody id="mainnet-payments"></tbody>
       </table>
@@ -775,10 +785,23 @@ function paginate(pagerId, rows, page, go) {
   };
   if (pages > 1) {
     add("←", page - 1);
-    for (let n = 1; n <= pages; n++) add(String(n), n, n === page ? "current" : "");
+    // First, last and the pages around the current one, so the row fits a phone.
+    let last = 0;
+    for (let n = 1; n <= pages; n++) {
+      if (n !== 1 && n !== pages && Math.abs(n - page) > 1) continue;
+      if (n - last > 1) pager.insertAdjacentHTML("beforeend", '<span class="gap">…</span>');
+      add(String(n), n, n === page ? "current" : "");
+      last = n;
+    }
     add("→", page + 1);
   }
   return { page, rows: rows.slice((page - 1) * PER_PAGE, page * PER_PAGE) };
+}
+
+// On phones each row is a card; every cell carries its column name from the (translated) header.
+function labelCells(tbody) {
+  const labels = [...tbody.closest("table").querySelectorAll("th")].map((th) => th.textContent);
+  for (const row of tbody.rows) [...row.cells].forEach((td, i) => { td.dataset.label = labels[i]; });
 }
 
 function renderReceipts(newId) {
@@ -802,6 +825,7 @@ function renderReceipts(newId) {
       <td>${txLink(r.transaction)}</td>
     </tr>`;
   }).join("");
+  labelCells(body);
 
   const byCurrency = {};
   let usdc = 0;
@@ -875,6 +899,7 @@ function renderMainnet() {
       <td class="mono">${p.spentPremiumBps !== undefined ? bps(p.spentPremiumBps) : p.fxPremiumBps !== undefined ? `${bps(p.fxPremiumBps)} máx.` : "—"}</td>
       <td>${txLink(p.transaction, "public")}</td>
     </tr>`).join("");
+  labelCells($("mainnet-payments"));
 }
 
 // Swap premium over the oracle: what was spent, or for the first scripted payments the most the swap could spend.
@@ -1035,6 +1060,7 @@ function setLang(lang) {
   if (catalog) renderCatalog();
   if (peeked) peek(peeked);
   if (receipts.length) renderReceipts();
+  if (mainnetList.length) renderMainnet();
 }
 $("lang").addEventListener("click", () => setLang(document.documentElement.lang === "en" ? "es" : "en"));
 try { if (localStorage.getItem("lang") === "en") setLang("en"); } catch {}
