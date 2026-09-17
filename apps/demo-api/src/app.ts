@@ -55,6 +55,15 @@ const receipts = new ReceiptBook({ redis, key: process.env.RECEIPTS_KEY || undef
 const server = local402Server(FACILITATOR_URL, NETWORK).onAfterSettle(receipts.record);
 
 // The output examples are published through Bazaar so agents can find these routes before paying.
+// Regional routes, each charged in one of its own currencies: units of each currency per US dollar.
+const REGIONS = {
+  "/latam": ["MXN", "BRL", "COP", "PEN", "ARS", "CLP", "CRC"],
+  "/asia": ["INR", "JPY", "CNY", "KRW", "PHP", "HKD"],
+  "/africa": ["NGN", "KES", "ZAR", "CDF"],
+};
+const REFLECTOR_SOURCE = "reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC";
+const regionExample = (perUsd: Record<string, number>) => ({ porUsd: perUsd, fuente: REFLECTOR_SOURCE, timestamp: 1789607100 });
+
 const products = [
   {
     path: "/indicadores",
@@ -74,6 +83,24 @@ const products = [
     description: "Valor de la UF en pesos y dólares, cobrado en UF",
     example: { clpPorUf: 40934.18, usdPorUf: 43.0118, fuente: "sii.cl:uf*reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC", timestamp: 1789450500 },
   },
+  {
+    path: "/latam",
+    price: "1 MXN",
+    description: "Monedas de Latinoamérica por dólar, cobradas en pesos mexicanos",
+    example: regionExample({ MXN: 17.1687, BRL: 5.15177, COP: 3123.64, PEN: 3.35802, ARS: 1510.92, CLP: 955.463, CRC: 447.685 }),
+  },
+  {
+    path: "/asia",
+    price: "5 INR",
+    description: "Monedas de Asia por dólar, cobradas en rupias indias",
+    example: regionExample({ INR: 96.007, JPY: 155.374, CNY: 6.70759, KRW: 1369.37, PHP: 62.7584, HKD: 7.84465 }),
+  },
+  {
+    path: "/africa",
+    price: "70 NGN",
+    description: "Monedas de África por dólar, cobradas en nairas nigerianas",
+    example: regionExample({ NGN: 1329.16, KES: 129.602, ZAR: 16.298, CDF: 2310.06 }),
+  },
 ].map(({ path, price, description, example }) => {
   const route = localRoute(price, {
     payTo: PAY_TO,
@@ -81,7 +108,7 @@ const products = [
     oracle,
     description,
     serviceName: "Local402 demo",
-    tags: ["local-currency", "fx", "chile"],
+    tags: ["local-currency", "fx", path.slice(1)],
     extensions: declareDiscoveryExtension({ output: { example } }),
   });
   return { path, price, description, route, quote: (route.accepts as PaymentOption[])[0].price as DynamicPrice };
@@ -162,6 +189,17 @@ app.get("/uf", async (_req, res) => {
     timestamp: uf.rate.timestamp,
   });
 });
+
+for (const [path, codes] of Object.entries(REGIONS)) {
+  app.get(path, async (_req, res) => {
+    const rates = await Promise.all(codes.map(usd));
+    res.json({
+      porUsd: Object.fromEntries(codes.map((code, i) => [code, +(1 / rates[i].value).toPrecision(6)])),
+      fuente: rates[0].rate.source,
+      timestamp: Math.min(...rates.map(({ rate }) => rate.timestamp)),
+    });
+  });
+}
 
 // --- Dashboard support: free, read-only views of prices and receipts. ---
 

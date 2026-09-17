@@ -1,6 +1,6 @@
 # Local402
 
-**Cobra en pesos. Recibe USDC exacto.**
+**Cobra en tu moneda. Recibe USDC exacto.**
 
 [![npm](https://img.shields.io/npm/v/local402-server?label=local402-server&color=e38b5a)](https://www.npmjs.com/package/local402-server)
 [![Stellar mainnet](https://img.shields.io/badge/Stellar-mainnet%20live-e38b5a)](https://local402-mainnet.vercel.app)
@@ -11,7 +11,7 @@
 ### [English](README.md) · Español
 
 Local402 es [x402](https://x402.org) sobre Stellar para el resto del mundo: quien vende le pone precio a una
-ruta de su API en su propia moneda — `"50 CLP"`, `"0.05 EUR"`, `"0.01 UF"` — y quien paga lo liquida con lo
+ruta de su API en su propia moneda — `"1 MXN"`, `"5 INR"`, `"70 NGN"`, `"0.05 EUR"`, `"0.01 UF"` — y quien paga lo liquida con lo
 que tenga: USDC, XLM o EURC. El vendedor siempre recibe el monto exacto en USDC, en una sola transacción,
 sin que ninguna de las dos partes tenga que cambiar moneda a mano.
 
@@ -33,10 +33,27 @@ sin que ninguna de las dos partes tenga que cambiar moneda a mano.
 x402 permite que un recurso HTTP cobre por request y que un agente de IA pague por su cuenta. Pero hoy el
 precio es un monto en dólares que se liquida con un solo activo. Escribe `price: "50 CLP"` y el SDK falla.
 
-Así no funciona el comercio fuera de Estados Unidos. Una API chilena factura en pesos; una brasileña en
-reales; un contrato de arriendo en Chile se denomina en **UF**, una unidad indexada a la inflación que
-cambia todos los días. Y el cliente paga con lo que tenga en la billetera, que casi nunca es el activo del
-vendedor.
+Así no funciona el comercio fuera de Estados Unidos. Una API mexicana factura en pesos, una india en
+rupias, una nigeriana en nairas; un contrato de arriendo en Chile se denomina en **UF**, una unidad
+indexada a la inflación que cambia todos los días. Y el cliente paga con lo que tenga en la billetera, que
+casi nunca es el activo del vendedor.
+
+### Dónde funciona hoy
+
+Local402 cobra en cualquier moneda que el oráculo fiat de [Reflector](https://reflector.network) publique
+en mainnet (revisado el 2026-09-16), además de USD y la UF:
+
+| Región | Monedas |
+| --- | --- |
+| Latinoamérica | MXN, BRL, COP, PEN, ARS, CLP, CRC, VES |
+| África | NGN, KES, ZAR, CDF |
+| Asia | INR, JPY, CNY, KRW, PHP, HKD |
+| Europa y Norteamérica | EUR, GBP, TRY, RUB, CAD |
+
+Una moneda nueva no requiere código: el día que Reflector la publique, `localRoute("… XYZ")` ya cobra en
+ella. La demo vende una ruta por región (`/latam` en MXN, `/asia` en INR, `/africa` en NGN) junto a las de
+euros y de Chile. Chile es el ejemplo más completo por la UF, que muestra que incluso una unidad indexada,
+que no es una moneda, funciona igual.
 
 ## Qué agrega Local402
 
@@ -78,12 +95,13 @@ curl -si https://local402-mainnet.vercel.app/indicadores \
 
 # Lo mismo con el cliente publicado, que vuelve a derivar el precio desde su propio oráculo
 npx -y local402-client quote https://local402-mainnet.vercel.app/indicadores
-npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with XLM
+npx -y local402-client quote https://local402-mainnet.vercel.app/africa --with XLM
+npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with EURC
 ```
 
 Para pagar de verdad, usa el botón de Freighter en la sección 08 del [dashboard](https://local402.vercel.app), o
-`STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "200 CLP"`. El límite `--max` va en
-pesos, y el cliente rechaza cualquier cosa por encima.
+`STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "200 CLP"`. El límite `--max` puede ir en
+cualquier moneda soportada, sea o no la del vendedor, y el cliente rechaza cualquier cosa por encima.
 
 ## Para partir
 
@@ -286,7 +304,7 @@ checkout limpio pasa en verde sin necesidad de una cuenta fondeada.
 - **No hace que el oráculo tenga la razón.** Por defecto el vendedor y el pagador leen el mismo feed de
   Reflector, así que Local402 atrapa a un vendedor que cotiza mal, no a un feed que está equivocado. Pásale
   tu propio `oracle` a `Local402Client` para una lectura independiente.
-- **No cubre el riesgo cambiario.** El vendedor recibe USDC. Pasarlo a pesos sigue siendo cosa suya: Local402
+- **No cubre el riesgo cambiario.** El vendedor recibe USDC. Pasarlo a su moneda local sigue siendo cosa suya: Local402
   fija el monto de la venta, no el tipo de cambio de después.
 - **No busca en todos los mercados.** FxPay rutea solo en Soroswap, por la pool directa o pasando por XLM. La
   cotización de SDEX del dashboard está para comparar y nunca se usa para pagar.

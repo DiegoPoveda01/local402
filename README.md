@@ -1,6 +1,6 @@
 # Local402
 
-**Charge in pesos. Receive exact USDC.**
+**Charge in your currency. Receive exact USDC.**
 
 [![npm](https://img.shields.io/npm/v/local402-server?label=local402-server&color=e38b5a)](https://www.npmjs.com/package/local402-server)
 [![Stellar mainnet](https://img.shields.io/badge/Stellar-mainnet%20live-e38b5a)](https://local402-mainnet.vercel.app)
@@ -11,7 +11,7 @@
 ### English · [Español](README.es.md)
 
 Local402 is [x402](https://x402.org) on Stellar for the rest of the world: a seller prices an API route
-in their own currency — `"50 CLP"`, `"0.05 EUR"`, `"0.01 UF"` — and a payer settles it with whatever
+in their own currency — `"1 MXN"`, `"5 INR"`, `"70 NGN"`, `"0.05 EUR"`, `"0.01 UF"` — and a payer settles it with whatever
 they hold: USDC, XLM or EURC. The seller always receives the exact USDC amount, in one transaction, with
 no manual currency swap on either side.
 
@@ -33,9 +33,27 @@ no manual currency swap on either side.
 x402 lets an HTTP resource charge per request and lets an AI agent pay on its own. Today, though, the
 price is a dollar amount settled in a single asset. Write `price: "50 CLP"` and the SDK fails.
 
-That is not how commerce outside the US works. A Chilean API bills in pesos; a Brazilian one in reais;
-a Chilean rental contract is denominated in **UF**, an inflation-indexed unit that changes daily. And
-the customer pays with whatever is in their wallet, which is usually not the seller's asset.
+That is not how commerce outside the US works. A Mexican API bills in pesos, an Indian one in rupees, a
+Nigerian one in naira; a Chilean rental contract is denominated in **UF**, an inflation-indexed unit that
+changes daily. And the customer pays with whatever is in their wallet, which is usually not the seller's
+asset.
+
+### Where it works today
+
+Local402 prices in any currency the [Reflector](https://reflector.network) fiat oracle publishes on
+mainnet (checked 2026-09-16), plus USD and the UF:
+
+| Region | Currencies |
+| --- | --- |
+| Latin America | MXN, BRL, COP, PEN, ARS, CLP, CRC, VES |
+| Africa | NGN, KES, ZAR, CDF |
+| Asia | INR, JPY, CNY, KRW, PHP, HKD |
+| Europe and North America | EUR, GBP, TRY, RUB, CAD |
+
+A new currency needs no code: the day Reflector publishes it, `localRoute("… XYZ")` prices in it. The
+demo sells one route per region (`/latam` in MXN, `/asia` in INR, `/africa` in NGN) next to the euro and
+Chilean ones. Chile is the deepest example because of the UF, which shows that even an indexed unit
+that is not a currency works the same way.
 
 ## What Local402 adds
 
@@ -76,12 +94,13 @@ curl -si https://local402-mainnet.vercel.app/indicadores \
 
 # The same through the published client, which re-derives the price from its own oracle
 npx -y local402-client quote https://local402-mainnet.vercel.app/indicadores
-npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with XLM
+npx -y local402-client quote https://local402-mainnet.vercel.app/africa --with XLM
+npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with EURC
 ```
 
 To pay for real, use the Freighter button in section 08 of the [dashboard](https://local402.vercel.app), or
-`STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "200 CLP"`. The `--max` limit is in
-pesos, and the client refuses anything above it.
+`STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "200 CLP"`. The `--max` limit can be
+in any supported currency, whatever the seller's, and the client refuses anything above it.
 
 ## Quick start
 
@@ -280,7 +299,7 @@ checkout needs no funded account to go green.
 - **It does not make the oracle right.** By default the seller and the payer read the same Reflector feed, so
   Local402 catches a seller who misquotes, not a feed that is wrong. Pass your own `oracle` to
   `Local402Client` for an independent reading.
-- **It does not hedge.** The seller receives USDC. Turning it into pesos is still their job: Local402 fixes
+- **It does not hedge.** The seller receives USDC. Turning it into their local currency is still their job: Local402 fixes
   the amount of the sale, not the exchange rate after it.
 - **It does not search every venue.** FxPay routes on Soroswap only, through the direct pool or through XLM.
   The SDEX quote on the dashboard is there for comparison and is never used to pay.

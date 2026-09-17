@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Local402 · Cobra en tu moneda</title>
-<meta name="description" content="x402 en Stellar con precios en moneda local (CLP, UF, EUR, BRL) vía el oráculo Reflector. El cliente paga con USDC, XLM o EURC y el vendedor recibe USDC exacto.">
+<meta name="description" content="x402 en Stellar con precios en moneda local (24 monedas: MXN, BRL, EUR, INR, NGN, JPY, CLP y la UF…) vía el oráculo Reflector. El cliente paga con USDC, XLM o EURC y el vendedor recibe USDC exacto.">
 <meta name="theme-color" content="#0a0908">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://local402.vercel.app/">
-<meta property="og:title" content="Local402 · Cobra en pesos, recibe USDC exacto">
+<meta property="og:title" content="Local402 · Cobra en tu moneda, recibe USDC exacto">
 <meta property="og:description" content="Pagos x402 en Stellar con precios en moneda local y swap atómico en Soroswap. Demo en vivo en testnet.">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="/logo.svg" type="image/svg+xml">
@@ -246,8 +246,8 @@
   <div class="wrap">
     <div>
       <div class="eyebrow"><span class="dot"></span>x402 en Stellar · precios en moneda local</div>
-      <h1>Cobra en <em>pesos</em>.<br>Recibe USDC exacto.</h1>
-      <p class="problem">Hoy x402 solo cobra en dólares y en un único activo. Pero el comercio real factura en pesos, soles, reales, euros o UF.</p>
+      <h1>Cobra en <em>tu moneda</em>.<br>Recibe USDC exacto.</h1>
+      <p class="problem">Hoy x402 solo cobra en dólares y en un único activo. Pero el comercio real factura en pesos, reales, rupias, nairas, euros o yenes.</p>
       <p class="lead">Tus clientes, personas o agentes de IA, pagan con USDC, XLM o EURC. Una sola transacción, tasa de un oráculo on-chain, y el vendedor recibe siempre el monto justo.</p>
       <div class="cta">
         <a class="btn primary" href="#probar">Probar gratis en testnet →</a>
@@ -269,7 +269,7 @@
 
 <div class="wrap stats">
   <div class="stat"><div class="label">Pagos</div><div class="value" id="stat-count">0</div><div class="note">en testnet, on-chain</div></div>
-  <div class="stat"><div class="label">Vendido</div><div class="value" id="stat-local">—</div><div class="note">en moneda local</div></div>
+  <div class="stat"><div class="label">Vendido</div><div class="value" id="stat-local">—</div><div class="note" id="stat-local-note">en moneda local</div></div>
   <div class="stat"><div class="label">Recibido</div><div class="value" id="stat-usdc">0 USDC</div><div class="note">por el vendedor</div></div>
   <div class="stat"><div class="label">Con swap</div><div class="value" id="stat-xlm">0</div><div class="note">pagados con XLM o EURC</div></div>
 </div>
@@ -279,7 +279,7 @@
     <div class="label">Qué es nuevo</div>
     <ul>
       <li><b>exact-fx</b>: un esquema x402 nuevo, con <a href="https://github.com/DiegoPoveda01/local402/blob/main/docs/scheme_exact_fx_stellar.md" target="_blank" rel="noopener">especificación</a> y contrato Soroban propio (FxPay)</li>
-      <li>Precios en <b>24 monedas</b> del oráculo Reflector on-chain (CLP, MXN, COP, PEN, BRL, EUR…) y en UF</li>
+      <li>Precios en <b>24 monedas</b> de cuatro continentes, del oráculo Reflector on-chain (MXN, BRL, EUR, INR, NGN, KES, JPY…), y en UF</li>
       <li>El agente <b>verifica</b> la tasa del vendedor y la del swap antes de firmar</li>
     </ul>
   </div>
@@ -297,7 +297,7 @@
     <ul>
       <li>Integrar es gratis: una línea por ruta, sin cambiar el USDC que recibe el vendedor</li>
       <li>El facilitador cobra unos <b>puntos básicos</b> solo en pagos con swap</li>
-      <li>Siguiente: APIs y agentes de Latinoamérica, donde MXN, COP y PEN ya cotizan</li>
+      <li>Siguiente: APIs y agentes donde el dólar no es la moneda local: Latinoamérica, África y Asia ya cotizan en Reflector</li>
     </ul>
   </div>
 </div>
@@ -305,7 +305,7 @@
 <main class="wrap">
   <section id="probar">
     <div class="eyebrow">01 — Pruébalo</div>
-    <h2>Tres APIs, tres monedas. <em>Un solo</em> USDC al otro lado.</h2>
+    <h2>Seis APIs, seis monedas. <em>Un solo</em> USDC al otro lado.</h2>
     <p class="sub">«Ver el 402» muestra lo que recibe cualquier cliente x402, sin wallet ni pago. Los botones de color hacen un pago real en testnet con una wallet de demo, gratis para cualquiera. Los pagos con dinero real, con el mismo código, están en <a href="#mainnet">mainnet</a>.</p>
     <div class="products" id="products"></div>
     <div class="window">
@@ -317,11 +317,11 @@
   <section id="calculadora">
     <div class="eyebrow">02 — Calculadora</div>
     <h2>Pon tu precio. <em>Nosotros</em> hacemos el cambio.</h2>
-    <p class="sub">Cualquier monto en UF, USD o las 24 monedas de Reflector (CLP, MXN, COP, PEN, BRL, EUR…), convertido con el oráculo, y lo que costaría ahora pagarlo con cada activo según el contrato FxPay.</p>
+    <p class="sub">Cualquier monto en USD, UF o las 24 monedas de Reflector (MXN, BRL, EUR, INR, NGN, KES, JPY, CLP…), convertido con el oráculo, y lo que costaría ahora pagarlo con cada activo según el contrato FxPay.</p>
     <div class="calc">
       <div class="card">
         <div class="label">Precio del vendedor</div>
-        <form id="calc-form"><input id="calc-input" value="1500 CLP" aria-label="Precio en moneda local"><button class="ghost">Cotizar</button></form>
+        <form id="calc-form"><input id="calc-input" value="100 INR" aria-label="Precio en moneda local"><button class="ghost">Cotizar</button></form>
         <div class="presets" id="presets"></div>
         <div class="rate" id="calc-rate"></div>
       </div>
@@ -384,7 +384,7 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
       <table class="compare">
         <thead><tr><th></th><th>x402 en Stellar hoy</th><th>Con Local402</th></tr></thead>
         <tbody>
-          <tr><td>Precio</td><td class="no">En dólares; <code>"50 CLP"</code> falla</td><td><span class="yes">✓</span>CLP, MXN, COP, EUR… (24 monedas) y UF, vía oráculo on-chain</td></tr>
+          <tr><td>Precio</td><td class="no">En dólares; <code>"50 CLP"</code> falla</td><td><span class="yes">✓</span>MXN, EUR, INR, NGN, CLP… (24 monedas) y UF, vía oráculo on-chain</td></tr>
           <tr><td>El cliente paga con</td><td class="no">Solo el activo exacto (USDC)</td><td><span class="yes">✓</span>USDC, XLM o EURC, con swap atómico</td></tr>
           <tr><td>El vendedor recibe</td><td class="no">USDC</td><td><span class="yes">✓</span>USDC exacto, sin exposición a XLM</td></tr>
           <tr><td>Si el swap no alcanza</td><td class="no">—</td><td><span class="yes">✓</span>Se revierte todo; el sobrante vuelve</td></tr>
@@ -444,7 +444,7 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
   <div class="wrap">
     <div>
       <a class="logo" href="#"><img src="/logo.svg" alt=""><span>Local<i>402</i></span></a>
-      <p>Pagos x402 con precios en moneda local, liquidados en USDC sobre Stellar. Hecho en Chile para Find Your Way.</p>
+      <p>Pagos x402 con precios en moneda local, liquidados en USDC sobre Stellar. Para cualquier moneda. Hecho en Chile para Find Your Way.</p>
     </div>
     <div class="cols">
       <div><span class="label">Proyecto</span><a href="https://github.com/DiegoPoveda01/local402" target="_blank" rel="noopener">GitHub</a><a href="https://www.npmjs.com/package/local402-server" target="_blank" rel="noopener">npm</a><a href="/receipts.csv">Recibos CSV</a></div>
@@ -511,15 +511,19 @@ async function loadCatalog() {
 function renderCatalog() {
   renderNetwork();
   for (const item of catalog.items) renderProduct(item);
-  const quoted = catalog.items.find((item) => !item.error);
-  if (quoted) renderTicket(quoted);
+  renderTicket();
   // Serverless facilitators start with an empty catalog; only show the count once there is something to find.
   const found = catalog.discovered === 1 ? tr("recurso en el catálogo Bazaar", "resource in the Bazaar catalog") : tr("recursos en el catálogo Bazaar", "resources in the Bazaar catalog");
   $("discovery-count").textContent = catalog.discovered ? `● ${catalog.discovered} ${found}` : "";
 }
 
-// Hero ticket: the live quote of the first product, as a client would see it in the 402.
-function renderTicket(item) {
+// Hero ticket: the live quote of one product at a time, as a client would see it in the 402. It cycles
+// through the products so the page shows more than one currency.
+let ticketIndex = 0;
+function renderTicket() {
+  const quoted = catalog.items.filter((item) => !item.error);
+  if (!quoted.length) return;
+  const item = quoted[ticketIndex % quoted.length];
   const q = item.quote;
   $("ticket-path").textContent = `GET ${item.path}`;
   $("ticket-price").innerHTML = `${local(q.localAmount)} ${currencyLabel(q.currency)}`;
@@ -528,11 +532,20 @@ function renderTicket(item) {
   $("ticket-source").innerHTML = sourceLabel(q.oracleSource);
 }
 
+setInterval(() => {
+  if (!catalog || document.hidden) return;
+  ticketIndex++;
+  renderTicket();
+}, 4_000);
+
 // The API publishes its descriptions in Spanish (they also go to Bazaar); these are for the English page.
 const DESCRIPTIONS_EN = {
   "/indicadores": "Chilean market rates, charged in Chilean pesos",
   "/europa": "Euro exchange rates, charged in euros",
   "/uf": "The UF in pesos and dollars, charged in UF",
+  "/latam": "Latin American currencies per dollar, charged in Mexican pesos",
+  "/asia": "Asian currencies per dollar, charged in Indian rupees",
+  "/africa": "African currencies per dollar, charged in Nigerian naira",
 };
 
 function renderProduct(item) {
@@ -681,7 +694,7 @@ function fxLines(asset, units, data) {
   </ul>`;
 }
 
-const PRESETS = ["1500 CLP", "0.5 UF", "30 MXN", "5 PEN", "2 EUR", "10 BRL"];
+const PRESETS = ["30 MXN", "10 BRL", "2 EUR", "100 INR", "800 NGN", "300 KES", "1500 CLP", "0.5 UF"];
 async function calculate(price) {
   $("calc-input").value = price;
   $("calc-rate").textContent = "Cotizando…";
@@ -732,7 +745,11 @@ function renderReceipts(newId) {
     usdc += Number(r.settled.amount) / 10 ** r.settled.decimals;
   }
   $("stat-count").textContent = receipts.length;
-  $("stat-local").textContent = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString(locale(), { maximumFractionDigits: 4 })} ${c === "CLF" ? "UF" : c}`).join(" · ");
+  // Two currencies fit as amounts; more are counted, with the amounts underneath.
+  const sold = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString(locale(), { maximumFractionDigits: 4 })} ${c === "CLF" ? "UF" : c}`);
+  const many = sold.length > 2;
+  $("stat-local").textContent = many ? `${sold.length} ${tr("monedas", "currencies")}` : sold.join(" · ");
+  $("stat-local-note").textContent = many ? sold.join(" · ") : tr("en moneda local", "in local currency");
   $("stat-usdc").textContent = `${usdc.toLocaleString(locale(), { maximumFractionDigits: 4 })} USDC`;
   $("stat-xlm").textContent = receipts.filter((r) => r.spent).length;
   $("judges-tx").innerHTML = txLink(receipts[0].transaction);
@@ -836,30 +853,31 @@ document.querySelectorAll(".wallet button[data-asset]").forEach((b) => (b.onclic
 const EN = [
   [".links a", ["Try it", "Calculator", "Integrate", "Receipts", "Mainnet"]],
   [".hero .eyebrow", '<span class="dot"></span>x402 on Stellar · local-currency prices'],
-  [".hero h1", "Charge in <em>pesos</em>.<br>Receive exact USDC."],
-  [".hero .problem", "Today x402 only charges in dollars, in a single asset. But real businesses invoice in pesos, soles, reais, euros or UF."],
+  [".hero h1", "Charge in <em>your currency</em>.<br>Receive exact USDC."],
+  [".hero .problem", "Today x402 only charges in dollars, in a single asset. But real businesses invoice in pesos, reais, rupees, naira, euros or yen."],
   [".hero .lead", "Your customers, people or AI agents, pay with USDC, XLM or EURC. One transaction, an on-chain oracle rate, and the seller always receives the exact amount."],
   [".cta .btn", ["Try it free on testnet →", "Pay on mainnet with your wallet", "Price something"]],
   [".ticket .row span:first-child", [null, "rate", "source", "pay with"]],
+  [".ticket .status", "402 · payment required"],
   [".stats .label", ["Payments", "Sold", "Received", "Swapped"]],
-  [".stats .note", ["on testnet, on-chain", "in local currency", "by the seller", "paid with XLM or EURC"]],
+  [".stats .note", ["on testnet, on-chain", null, "by the seller", "paid with XLM or EURC"]],
   [".judges .label", ["What's new", "Verify it", "Business model (proposal)"]],
   [".judges li", [
     '<b>exact-fx</b>: a new x402 scheme, with a <a href="https://github.com/DiegoPoveda01/local402/blob/main/docs/scheme_exact_fx_stellar.md" target="_blank" rel="noopener">spec</a> and its own Soroban contract (FxPay)',
-    "Prices in <b>24 currencies</b> from the on-chain Reflector oracle (CLP, MXN, COP, PEN, BRL, EUR…) and in UF",
+    "Prices in <b>24 currencies</b> across four continents, from the on-chain Reflector oracle (MXN, BRL, EUR, INR, NGN, KES, JPY…), and in UF",
     "The agent <b>checks</b> the seller's rate and the swap's before signing",
     null, null,
     '<a href="#mainnet">Real mainnet payments</a>, also from your own wallet, through FxPay <a class="mono" href="https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV" target="_blank" rel="noopener">CBMWKV…RSCV</a>; fee bug reported to <a href="https://github.com/x402-foundation/x402/issues/3491" target="_blank" rel="noopener">x402</a>',
     '<b>32</b> TypeScript tests and <b>10</b> contract tests; packages on <a href="https://www.npmjs.com/package/local402-server" target="_blank" rel="noopener">npm</a>',
     "Integrating is free: one line per route, and the seller still receives USDC",
     "The facilitator charges a few <b>basis points</b>, only on swap payments",
-    "Next: Latin American APIs and agents, where MXN, COP and PEN already quote",
+    "Next: APIs and agents where the dollar is not the local currency: Latin America, Africa and Asia already quote on Reflector",
   ]],
-  ["#probar h2", "Three APIs, three currencies. <em>One</em> USDC on the other side."],
+  ["#probar h2", "Six APIs, six currencies. <em>One</em> USDC on the other side."],
   ["#probar .window-bar span", "agent@local402"],
   ["#probar .sub", "“See the 402” shows what any x402 client receives, with no wallet or payment. The colored buttons make a real testnet payment with a demo wallet, free for anyone. Payments with real money, from the same code, are under <a href=\"#mainnet\">mainnet</a>."],
   ["#calculadora h2", "Set your price. <em>We</em> handle the exchange."],
-  ["#calculadora .sub", "Any amount in UF, USD or Reflector's 24 currencies (CLP, MXN, COP, PEN, BRL, EUR…), converted with the oracle, and what paying it with each asset would cost right now through FxPay."],
+  ["#calculadora .sub", "Any amount in USD, UF or Reflector's 24 currencies (MXN, BRL, EUR, INR, NGN, KES, JPY, CLP…), converted with the oracle, and what paying it with each asset would cost right now through FxPay."],
   ["#calculadora .card > .label", "Seller's price"],
   ["main > section > .eyebrow, .split .eyebrow, #recibos .eyebrow", ["01 — Try it", "02 — Calculator", "03 — How it works", "04 — Sellers", "05 — Agents", "06 — Comparison", "07 — Live receipts", "08 — Mainnet"]],
   ["main > section:nth-of-type(3) h2", "Four steps and <em>no</em> manual exchange rates."],
@@ -880,7 +898,7 @@ const EN = [
   ["main > section:nth-of-type(5) .sub", "What changes for whoever sells and whoever pays."],
   [".compare th", [null, "x402 on Stellar today", "With Local402"]],
   [".compare td", [
-    "Price", 'In dollars; <code>"50 CLP"</code> fails', '<span class="yes">✓</span>CLP, MXN, COP, EUR… (24 currencies) and UF, via an on-chain oracle',
+    "Price", 'In dollars; <code>"50 CLP"</code> fails', '<span class="yes">✓</span>MXN, EUR, INR, NGN, CLP… (24 currencies) and UF, via an on-chain oracle',
     "The payer pays with", "Only the exact asset (USDC)", '<span class="yes">✓</span>USDC, XLM or EURC, with an atomic swap',
     "The seller receives", "USDC", '<span class="yes">✓</span>Exact USDC, no XLM exposure',
     "If the swap falls short", null, '<span class="yes">✓</span>Everything reverts; unused funds go back',
@@ -897,7 +915,7 @@ const EN = [
   ["#wallet-text", 'With <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a> on Mainnet, pay <code>GET /indicadores</code> (50 CLP ≈ 0.05 USDC) with USDC, XLM or EURC. XLM alone is enough. You only sign the authorization: the facilitator pays the network fee, and the client refuses any charge above 200 CLP.'],
   ["#wallet-agents", "An agent? The same from the terminal, with your own key and a per-payment cap."],
   ["#mainnet th", ["Date", "Price", "Seller receives", "Payer paid", "Premium vs Reflector", "Transaction"]],
-  ["footer p", "x402 payments priced in local currency, settled in USDC on Stellar. Made in Chile for Find Your Way."],
+  ["footer p", "x402 payments priced in local currency, settled in USDC on Stellar. For any currency. Made in Chile for Find Your Way."],
   ["footer .label", ["Project", "Built with"]],
   ["footer .cols a[href='/receipts.csv']", "Receipts CSV"],
 ];
