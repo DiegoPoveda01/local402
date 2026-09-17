@@ -11,7 +11,7 @@ If the swap would need more than the payer allowed, or cannot deliver exactly `a
 Use cases:
 
 - An agent holding XLM or EURC pays an API that only wants USDC, without a separate swap step and without the seller changing anything.
-- A seller prices in local currency (e.g. `50 CLP`, see Local402 pricing) while every payer, whatever it holds, is charged the same USDC amount.
+- A seller prices in local currency (e.g. `70 NGN` or `5 INR`, see Local402 pricing) while every payer, whatever it holds, is charged the same USDC amount.
 
 ## Relation to `exact`
 

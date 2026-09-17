@@ -334,7 +334,7 @@
     <h2>Cuatro pasos y <em>ningún</em> tipo de cambio a mano.</h2>
     <p class="sub">Todo ocurre dentro del flujo x402 estándar. Si algo no cuadra, la transacción entera se revierte.</p>
     <div class="grid4">
-      <div class="step"><div class="eyebrow">01</div><h3>Precio local</h3><p>El vendedor fija <code>"50 CLP"</code> en su ruta x402.</p></div>
+      <div class="step"><div class="eyebrow">01</div><h3>Precio local</h3><p>El vendedor fija <code>"70 NGN"</code> en su ruta x402.</p></div>
       <div class="step"><div class="eyebrow">02</div><h3>Oráculo Reflector</h3><p>Se convierte a USDC con la tasa on-chain, redondeando a favor del vendedor. La cotización viaja en el 402.</p></div>
       <div class="step"><div class="eyebrow">03</div><h3>Paga con lo que tengas</h3><p>USDC con <code>exact</code>. XLM o EURC con <code>exact-fx</code>: FxPay swapea en Soroswap en la misma transacción.</p></div>
       <div class="step"><div class="eyebrow">04</div><h3>Recibo</h3><p>El vendedor recibe el USDC exacto y el sobrante vuelve al cliente. Queda un recibo con tasa, fuente y transacción.</p></div>
@@ -354,7 +354,7 @@
 <span class="k">import</span> { localRoute, local402Server } <span class="k">from</span> <span class="s">"local402-server"</span>;
 
 <span class="k">app</span>.use(paymentMiddleware({
-  <span class="s">"GET /indicadores"</span>: localRoute(<span class="s">"50 CLP"</span>, { payTo }),
+  <span class="s">"GET /africa"</span>: localRoute(<span class="s">"70 NGN"</span>, { payTo }),
   <span class="s">"GET /uf"</span>: localRoute(<span class="s">"0.01 UF"</span>, { payTo }),
 }, local402Server()));</pre>
       </div>
@@ -384,7 +384,7 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
       <table class="compare">
         <thead><tr><th></th><th>x402 en Stellar hoy</th><th>Con Local402</th></tr></thead>
         <tbody>
-          <tr><td>Precio</td><td class="no">En dólares; <code>"50 CLP"</code> falla</td><td><span class="yes">✓</span>MXN, EUR, INR, NGN, CLP… (24 monedas) y UF, vía oráculo on-chain</td></tr>
+          <tr><td>Precio</td><td class="no">En dólares; <code>"70 NGN"</code> falla</td><td><span class="yes">✓</span>MXN, EUR, INR, NGN, CLP… (24 monedas) y UF, vía oráculo on-chain</td></tr>
           <tr><td>El cliente paga con</td><td class="no">Solo el activo exacto (USDC)</td><td><span class="yes">✓</span>USDC, XLM o EURC, con swap atómico</td></tr>
           <tr><td>El vendedor recibe</td><td class="no">USDC</td><td><span class="yes">✓</span>USDC exacto, sin exposición a XLM</td></tr>
           <tr><td>Si el swap no alcanza</td><td class="no">—</td><td><span class="yes">✓</span>Se revierte todo; el sobrante vuelve</td></tr>
@@ -884,7 +884,7 @@ const EN = [
   ["main > section:nth-of-type(3) .sub", "It all happens inside the standard x402 flow. If anything doesn't add up, the whole transaction reverts."],
   [".step h3", ["Local price", "Reflector oracle", "Pay with what you hold", "Receipt"]],
   [".step p", [
-    'The seller sets <code>"50 CLP"</code> on its x402 route.',
+    'The seller sets <code>"70 NGN"</code> on its x402 route.',
     "Converted to USDC at the on-chain rate, rounded in the seller's favor. The quote travels in the 402.",
     "USDC with <code>exact</code>. XLM or EURC with <code>exact-fx</code>: FxPay swaps on Soroswap in the same transaction.",
     "The seller receives the exact USDC and the rest goes back to the payer. A receipt keeps the rate, source and transaction.",
@@ -898,7 +898,7 @@ const EN = [
   ["main > section:nth-of-type(5) .sub", "What changes for whoever sells and whoever pays."],
   [".compare th", [null, "x402 on Stellar today", "With Local402"]],
   [".compare td", [
-    "Price", 'In dollars; <code>"50 CLP"</code> fails', '<span class="yes">✓</span>MXN, EUR, INR, NGN, CLP… (24 currencies) and UF, via an on-chain oracle',
+    "Price", 'In dollars; <code>"70 NGN"</code> fails', '<span class="yes">✓</span>MXN, EUR, INR, NGN, CLP… (24 currencies) and UF, via an on-chain oracle',
     "The payer pays with", "Only the exact asset (USDC)", '<span class="yes">✓</span>USDC, XLM or EURC, with an atomic swap',
     "The seller receives", "USDC", '<span class="yes">✓</span>Exact USDC, no XLM exposure',
     "If the swap falls short", null, '<span class="yes">✓</span>Everything reverts; unused funds go back',

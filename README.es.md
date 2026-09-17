@@ -15,7 +15,7 @@ ruta de su API en su propia moneda — `"1 MXN"`, `"5 INR"`, `"70 NGN"`, `"0.05 
 que tenga: USDC, XLM o EURC. El vendedor siempre recibe el monto exacto en USDC, en una sola transacción,
 sin que ninguna de las dos partes tenga que cambiar moneda a mano.
 
-![Un agente paga 50 CLP con XLM en testnet: el 402, el swap firmado en FxPay y el vendedor recibiendo USDC exacto](docs/img/pay.gif)
+![Un agente paga 70 NGN con XLM en testnet: el 402, el swap firmado en FxPay y el vendedor recibiendo USDC exacto](docs/img/pay.gif)
 
 | | |
 | --- | --- |
@@ -31,7 +31,7 @@ sin que ninguna de las dos partes tenga que cambiar moneda a mano.
 ## El problema
 
 x402 permite que un recurso HTTP cobre por request y que un agente de IA pague por su cuenta. Pero hoy el
-precio es un monto en dólares que se liquida con un solo activo. Escribe `price: "50 CLP"` y el SDK falla.
+precio es un monto en dólares que se liquida con un solo activo. Escribe `price: "70 NGN"` y el SDK falla.
 
 Así no funciona el comercio fuera de Estados Unidos. Una API mexicana factura en pesos, una india en
 rupias, una nigeriana en nairas; un contrato de arriendo en Chile se denomina en **UF**, una unidad
@@ -71,7 +71,7 @@ import { paymentMiddleware } from "@x402/express";
 import { localRoute, local402Server } from "local402-server";
 
 app.use(paymentMiddleware(
-  { "GET /indicadores": localRoute("50 CLP", { payTo: SELLER_ADDRESS }) },
+  { "GET /africa": localRoute("70 NGN", { payTo: SELLER_ADDRESS }) },
   local402Server(FACILITATOR_URL),
 ));
 ```
@@ -89,18 +89,18 @@ El vendedor nunca toca XLM. El facilitador paga la comisión de red. El pagador 
 Sin instalar nada, sin billetera, sin llave. Pídele algo a la API de mainnet y lee lo que responde:
 
 ```bash
-# El 402 en sí: el precio está en pesos, el requirement en USDC
-curl -si https://local402-mainnet.vercel.app/indicadores \
+# El 402 en sí: el precio está en nairas, el requirement en USDC
+curl -si https://local402-mainnet.vercel.app/africa \
   | grep -i '^payment-required' | cut -d' ' -f2 | tr -d '\r' | base64 -d
 
 # Lo mismo con el cliente publicado, que vuelve a derivar el precio desde su propio oráculo
-npx -y local402-client quote https://local402-mainnet.vercel.app/indicadores
-npx -y local402-client quote https://local402-mainnet.vercel.app/africa --with XLM
+npx -y local402-client quote https://local402-mainnet.vercel.app/africa
+npx -y local402-client quote https://local402-mainnet.vercel.app/asia --with XLM
 npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with EURC
 ```
 
 Para pagar de verdad, usa el botón de Freighter en la sección 08 del [dashboard](https://local402.vercel.app), o
-`STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "200 CLP"`. El límite `--max` puede ir en
+`STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "100 NGN"`. El límite `--max` puede ir en
 cualquier moneda soportada, sea o no la del vendedor, y el cliente rechaza cualquier cosa por encima.
 
 ## Para partir
@@ -131,15 +131,15 @@ sequenceDiagram
     participant F as Facilitador
     participant N as Stellar
 
-    P->>S: GET /indicadores
-    S->>N: Reflector: 1 CLP = 0.00104548 USD
+    P->>S: GET /africa
+    S->>N: Reflector: 1 NGN = 0.00075233 USD
     S-->>P: 402 · accepts [exact, exact-fx] · extra.local402
     Note over P: Recotiza con su PROPIO oráculo<br/>rechaza sobreprecio >2%<br/>acota max_send, rechaza premium FX >5%
     P->>F: autorización firmada de FxPay.pay(...)
     Note over F: 11 reglas de verificación<br/>simula · ofrece inclusion fee · fee-bump
     F->>N: submit
-    N->>N: cambia XLM en Soroswap por exactamente 0.0522742 USDC
-    N-->>S: 0.0522742 USDC — exacto
+    N->>N: cambia XLM en Soroswap por exactamente 0.0526629 USDC
+    N-->>S: 0.0526629 USDC — exacto
     N-->>P: devolución del XLM no usado
     F-->>S: hash de la tx → recibo
     S-->>P: 200 + los datos
@@ -168,7 +168,7 @@ packages/
   client/    Local402Client — paga con USDC/XLM/EURC, con sus propias defensas. También CLI
   server/    localRoute() y localToolPayment() — una línea para ponerle precio a una ruta o a una tool MCP
 apps/
-  demo-api/      el vendedor: tres rutas pagadas, recibos, el dashboard
+  demo-api/      el vendedor: seis rutas pagadas, recibos, el dashboard
   facilitator/   verifica y liquida, paga comisiones, sirve el catálogo x402 Bazaar
   agent/         cliente pagador mínimo
   mcp/           servidor MCP que un agente de IA usa para descubrir, cotizar y pagar
@@ -184,7 +184,7 @@ docs/
 Estos son los lugares donde la implementación obvia está mal.
 
 **El redondeo tiene dirección.** `quoteLocalPrice` redondea *hacia arriba* (`ceilDiv`). Un vendedor que pide
-50 CLP nunca puede recibir el equivalente a 49.999 CLP por un truncamiento de enteros.
+70 NGN nunca puede recibir el equivalente a 69.999 NGN por un truncamiento de enteros.
 
 **Las cotizaciones son la mediana de cinco, no el último precio.** El feed de CLP de Reflector ha publicado
 prints individuales de 5 minutos a 0.65% de sus vecinos. `ReflectorFiatOracle` toma la mediana de los

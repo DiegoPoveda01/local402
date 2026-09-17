@@ -15,7 +15,7 @@ in their own currency — `"1 MXN"`, `"5 INR"`, `"70 NGN"`, `"0.05 EUR"`, `"0.01
 they hold: USDC, XLM or EURC. The seller always receives the exact USDC amount, in one transaction, with
 no manual currency swap on either side.
 
-![An agent pays 50 CLP with XLM on testnet: the 402, the signed FxPay swap, and the seller receiving exact USDC](docs/img/pay-en.gif)
+![An agent pays 70 NGN with XLM on testnet: the 402, the signed FxPay swap, and the seller receiving exact USDC](docs/img/pay-en.gif)
 
 | | |
 | --- | --- |
@@ -31,7 +31,7 @@ no manual currency swap on either side.
 ## The problem
 
 x402 lets an HTTP resource charge per request and lets an AI agent pay on its own. Today, though, the
-price is a dollar amount settled in a single asset. Write `price: "50 CLP"` and the SDK fails.
+price is a dollar amount settled in a single asset. Write `price: "70 NGN"` and the SDK fails.
 
 That is not how commerce outside the US works. A Mexican API bills in pesos, an Indian one in rupees, a
 Nigerian one in naira; a Chilean rental contract is denominated in **UF**, an inflation-indexed unit that
@@ -70,7 +70,7 @@ import { paymentMiddleware } from "@x402/express";
 import { localRoute, local402Server } from "local402-server";
 
 app.use(paymentMiddleware(
-  { "GET /indicadores": localRoute("50 CLP", { payTo: SELLER_ADDRESS }) },
+  { "GET /africa": localRoute("70 NGN", { payTo: SELLER_ADDRESS }) },
   local402Server(FACILITATOR_URL),
 ));
 ```
@@ -88,18 +88,18 @@ The seller never touches XLM. The facilitator pays the network fee. The payer si
 No install, no wallet, no key. Ask the mainnet API for something and read what it answers:
 
 ```bash
-# The 402 itself: the price is in pesos, the requirement is in USDC
-curl -si https://local402-mainnet.vercel.app/indicadores \
+# The 402 itself: the price is in naira, the requirement is in USDC
+curl -si https://local402-mainnet.vercel.app/africa \
   | grep -i '^payment-required' | cut -d' ' -f2 | tr -d '\r' | base64 -d
 
 # The same through the published client, which re-derives the price from its own oracle
-npx -y local402-client quote https://local402-mainnet.vercel.app/indicadores
-npx -y local402-client quote https://local402-mainnet.vercel.app/africa --with XLM
+npx -y local402-client quote https://local402-mainnet.vercel.app/africa
+npx -y local402-client quote https://local402-mainnet.vercel.app/asia --with XLM
 npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with EURC
 ```
 
 To pay for real, use the Freighter button in section 08 of the [dashboard](https://local402.vercel.app), or
-`STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "200 CLP"`. The `--max` limit can be
+`STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "100 NGN"`. The `--max` limit can be
 in any supported currency, whatever the seller's, and the client refuses anything above it.
 
 ## Quick start
@@ -130,15 +130,15 @@ sequenceDiagram
     participant F as Facilitator
     participant N as Stellar
 
-    P->>S: GET /indicadores
-    S->>N: Reflector: 1 CLP = 0.00104548 USD
+    P->>S: GET /africa
+    S->>N: Reflector: 1 NGN = 0.00075233 USD
     S-->>P: 402 · accepts [exact, exact-fx] · extra.local402
     Note over P: Re-quotes from its OWN oracle<br/>rejects >2% overcharge<br/>bounds max_send, rejects >5% FX premium
     P->>F: signed FxPay.pay(...) authorization
     Note over F: 11 verification rules<br/>simulate · bid inclusion fee · fee-bump
     F->>N: submit
-    N->>N: swap XLM on Soroswap for exactly 0.0522742 USDC
-    N-->>S: 0.0522742 USDC — exact
+    N->>N: swap XLM on Soroswap for exactly 0.0526629 USDC
+    N-->>S: 0.0526629 USDC — exact
     N-->>P: refund of the unused XLM
     F-->>S: tx hash → receipt
     S-->>P: 200 + the data
@@ -167,7 +167,7 @@ packages/
   client/    Local402Client — pays with USDC/XLM/EURC, with its own guards. Also a CLI
   server/    localRoute() and localToolPayment() — one line to price a route or an MCP tool
 apps/
-  demo-api/      the seller: three paid routes, receipts, the dashboard
+  demo-api/      the seller: six paid routes, receipts, the dashboard
   facilitator/   verifies and settles, pays fees, serves the x402 Bazaar catalog
   agent/         minimal paying client
   mcp/           MCP server an AI agent uses to discover, quote and pay
@@ -182,8 +182,8 @@ docs/
 
 These are the places where the obvious implementation is wrong.
 
-**Rounding is directional.** `quoteLocalPrice` rounds *up* (`ceilDiv`). A seller asking 50 CLP must
-never receive 49.999 CLP worth of USDC because of integer truncation.
+**Rounding is directional.** `quoteLocalPrice` rounds *up* (`ceilDiv`). A seller asking 70 NGN must
+never receive 69.999 NGN worth of USDC because of integer truncation.
 
 **Quotes are median-of-five, not last-price.** Reflector's CLP feed has published single 5-minute
 prints 0.65% away from their neighbours. `ReflectorFiatOracle` takes the median of the last five
