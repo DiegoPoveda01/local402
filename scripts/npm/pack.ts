@@ -71,7 +71,7 @@ for (const name of PACKAGES) {
         type: "module",
         exports,
         types: exports["."].types,
-        bin: source.bin && Object.fromEntries(Object.entries(source.bin as Record<string, string>).map(([cmd, file]) => [cmd, file.replace("./src/", "./dist/").replace(/\.ts$/, ".js")])),
+        bin: source.bin && Object.fromEntries(Object.entries(source.bin as Record<string, string>).map(([cmd, file]) => [cmd, file.replace("./src/", "dist/").replace(/\.ts$/, ".js")])),
         files: ["dist"],
         engines: { node: ">=20" },
         dependencies,
