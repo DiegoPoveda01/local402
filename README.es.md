@@ -170,15 +170,16 @@ sequenceDiagram
 
 ## Medido, no estimado
 
-Ocho pagos reales en Stellar mainnet el 15 y 16 de septiembre de 2026, todos exitosos. Los más recientes
+Once pagos reales en Stellar mainnet entre el 15 y el 20 de septiembre de 2026, todos exitosos. Los tres
+últimos pasaron por el despliegue reproducible. Los más recientes
 están en los [recibos](https://local402-mainnet.vercel.app/receipts).
 
 | | |
 | --- | --- |
-| Lo que recibió el vendedor | El monto exacto en USDC que pedía el 402, en los ocho pagos. |
-| Comisión de red, pagada por el facilitador | 0.0024 XLM en un pago con USDC. Cerca de 0.0055 XLM en los últimos cinco pagos `exact-fx`; los dos primeros pagaron 0.081 y 0.044. |
-| Lo que el swap gastó de verdad | 0.21–0.39% por sobre el valor Reflector del precio (últimos tres pagos). |
-| Lo máximo que autorizó el pagador | 2.55–3.17% por sobre ese valor. Eso incluye el margen de slippage de 2%, y lo que el swap no usa se devuelve. |
+| Lo que recibió el vendedor | El monto exacto en USDC que pedía el 402, en los once pagos. |
+| Comisión de red, pagada por el facilitador | 0.0024 XLM en un pago con USDC. En `exact-fx`, 0.081 y 0.044 XLM en los dos primeros swaps de un despliegue nuevo, y cerca de 0.0055 una vez que las entradas del contrato están en caliente. Al redesplegar se repitió igual: 0.0807 y 0.0436. |
+| Lo que el swap gastó de verdad | 0.21–0.39% por sobre el valor Reflector del precio (los tres pagos del 15 de septiembre). |
+| Lo máximo que autorizó el pagador | 2.29–3.17% por sobre ese valor. Eso incluye el margen de slippage de 2%, y lo que el swap no usa se devuelve. |
 | Un 402 con cotización en vivo | Cerca de 0.41 s, en caliente. |
 | Un pago completo en testnet: 402 → cotización → firma → liquidación → 200 | 5.6 s con XLM, 6.8 s con USDC, 9.4 s con EURC (que rutea por XLM). |
 

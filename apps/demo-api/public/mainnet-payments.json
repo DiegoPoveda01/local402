@@ -72,5 +72,49 @@
     "via": "freighter",
     "payTo": "GAOHHW4LH3BYI6JXIW2XKBVQXH6AA66DN2PXQHO67NMPTYL4JYBQ6J47",
     "transaction": "e9114f04b41ccdd59e43bcbc0fc4deb87bea58d0603a9701e2c1b93bebe5c7ea"
+  },
+  {
+    "paidAt": "2026-09-20T17:23:44.555Z",
+    "resource": "/indicadores",
+    "local": {
+      "amount": "50",
+      "currency": "CLP"
+    },
+    "usdc": "520721",
+    "payWith": "USDC",
+    "spent": "520721",
+    "payer": "GA4T526FYR5O6ICX63W4EUL7ZJL6RW23BAKY5F5CXKWJE4DSTNOG7HML",
+    "payTo": "GAOHHW4LH3BYI6JXIW2XKBVQXH6AA66DN2PXQHO67NMPTYL4JYBQ6J47",
+    "transaction": "ad7b111ec95be197fe7b61f48ac20f184ce76f2a63377206501a9f0e62a73157"
+  },
+  {
+    "paidAt": "2026-09-20T17:24:05.227Z",
+    "resource": "/indicadores",
+    "local": {
+      "amount": "50",
+      "currency": "CLP"
+    },
+    "usdc": "520721",
+    "payWith": "XLM",
+    "spent": "2655958",
+    "fxPremiumBps": 276,
+    "payer": "GA4T526FYR5O6ICX63W4EUL7ZJL6RW23BAKY5F5CXKWJE4DSTNOG7HML",
+    "payTo": "GAOHHW4LH3BYI6JXIW2XKBVQXH6AA66DN2PXQHO67NMPTYL4JYBQ6J47",
+    "transaction": "0babefe189f2765b3198bbfdefb28c5bcad8b8bd9bc0710c78eb2776b306ac3d"
+  },
+  {
+    "paidAt": "2026-09-20T17:24:24.882Z",
+    "resource": "/indicadores",
+    "local": {
+      "amount": "50",
+      "currency": "CLP"
+    },
+    "usdc": "520721",
+    "payWith": "EURC",
+    "spent": "454859",
+    "fxPremiumBps": 229,
+    "payer": "GA4T526FYR5O6ICX63W4EUL7ZJL6RW23BAKY5F5CXKWJE4DSTNOG7HML",
+    "payTo": "GAOHHW4LH3BYI6JXIW2XKBVQXH6AA66DN2PXQHO67NMPTYL4JYBQ6J47",
+    "transaction": "bfe6a44d5db2a37a67552c38c75d85009f3208c95d1c22e4fd086c6e959f0a09"
   }
 ]

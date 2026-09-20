@@ -169,15 +169,16 @@ sequenceDiagram
 
 ## Measured, not estimated
 
-Eight real payments on Stellar mainnet on 15–16 September 2026, all of them successful. The latest ones are
+Eleven real payments on Stellar mainnet between 15 and 20 September 2026, all of them successful. The last
+three went through the reproducible-build deployment. The latest ones are
 in the [receipts](https://local402-mainnet.vercel.app/receipts).
 
 | | |
 | --- | --- |
-| What the seller received | The exact USDC amount the 402 asked for, in all eight payments. |
-| Network fee, paid by the facilitator | 0.0024 XLM for a USDC payment. About 0.0055 XLM for the last five `exact-fx` payments; the first two paid 0.081 and 0.044. |
-| What the swap actually spent | 0.21–0.39% above the Reflector value of the price (last three payments). |
-| The most the payer authorized | 2.55–3.17% above it. That includes the 2% slippage allowance, and whatever the swap does not use is refunded. |
+| What the seller received | The exact USDC amount the 402 asked for, in all eleven payments. |
+| Network fee, paid by the facilitator | 0.0024 XLM for a USDC payment. For `exact-fx`, 0.081 and 0.044 XLM on a fresh deployment's first two swaps, then about 0.0055 once the contract's ledger entries are warm. Redeploying reproduced this exactly: 0.0807 and 0.0436. |
+| What the swap actually spent | 0.21–0.39% above the Reflector value of the price (the three payments on 15 September). |
+| The most the payer authorized | 2.29–3.17% above it. That includes the 2% slippage allowance, and whatever the swap does not use is refunded. |
 | A 402 carrying a live quote | About 0.41 s, warm. |
 | A full payment on testnet: 402 → quote → sign → settle → 200 | 5.6 s with XLM, 6.8 s with USDC, 9.4 s with EURC (which routes through XLM). |
 
