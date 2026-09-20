@@ -24,6 +24,7 @@ no manual currency swap on either side.
 | Scheme spec | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
 | npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) |
 | FxPay on mainnet | [`CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD`](https://stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD) |
+| Reproducible build | [release](https://github.com/DiegoPoveda01/local402/releases/tag/v0.1.1_contracts_fx-pay_cli27.0.0) — wasm `69a12d89…`, byte for byte what is deployed ([why no badge](#reproducible-builds)) |
 | Bug found and fixed upstream | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rejects the fee the SDK bids; our fix, [x402#3503](https://github.com/x402-foundation/x402/pull/3503), is merged |
 
 ---
@@ -320,6 +321,33 @@ hub route still wins if it exists, and otherwise the payer gets `NoRoute` rather
 Four further tests build a real `exact-fx` payload against testnet and run it through the facilitator's
 verification, including the rejections. They only run when `FX_PAYER_SECRET` is set, so a clean
 checkout needs no funded account to go green.
+
+## Reproducible builds
+
+The contract on mainnet is not a local build someone uploaded. Its wasm is byte for byte a GitHub release
+artifact, compiled in CI by [stellar-expert's reusable workflow](https://github.com/stellar-expert/soroban-build-workflow).
+Check it without trusting this README:
+
+```bash
+curl -fsSL -O https://github.com/DiegoPoveda01/local402/releases/download/v0.1.1_contracts_fx-pay_cli27.0.0/fx-pay_v0.1.1.wasm
+sha256sum fx-pay_v0.1.1.wasm
+curl -s https://api.stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD | jq -r .wasm
+```
+
+Both print `69a12d89059be04ac195f5acf40982d7e9ee93fd08f4df33626789d00ffccbd2`. The build is reproducible in
+the strict sense: two runs, from different commits and with the package version changed between them,
+produced identical artifacts. Each carries a [SLSA provenance attestation](https://github.com/DiegoPoveda01/local402/attestations)
+signed through Sigstore and logged in Rekor. `scripts/mainnet/deploy-fxpay.sh` deploys the downloaded
+release asset and aborts if its hash is not the one above, so a local build cannot reach mainnet by accident.
+
+stellar.expert still reports the contract as `unverified`, and that part is not ours to fix. Its intake
+endpoint now answers `{}` where it used to answer `{"ok":1}`, so submissions never reach the validation
+queue — reposting the payload of an already-verified contract reproduces it, which rules out anything
+specific to this build. Tracked upstream in
+[soroban-build-workflow#9](https://github.com/stellar-expert/soroban-build-workflow/issues/9) and
+[#8](https://github.com/stellar-expert/soroban-build-workflow/issues/8), where another project's release
+has sat unverified for over a month. The two hashes above are exactly the check that badge would have
+automated.
 
 ## What it does not do
 

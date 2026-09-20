@@ -13,12 +13,12 @@ NET=(--rpc-url "${RPC_URL:-https://mainnet.sorobanrpc.com}" --network-passphrase
 ROUTER=CAG5LRYQ5JVEUI5TEID72EYOVX44TTUJT5BQR2J6J77FH65PCCFAJDDH
 XLM=CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA
 
-RELEASE="${RELEASE:-v0.1.0_contracts_fx-pay_cli27.0.0}"
+RELEASE="${RELEASE:-v0.1.1_contracts_fx-pay_cli27.0.0}"
 WASM_SHA256=69a12d89059be04ac195f5acf40982d7e9ee93fd08f4df33626789d00ffccbd2
 WASM="$(mktemp -t fx-pay-XXXXXX.wasm)"
 trap 'rm -f "$WASM"' EXIT
 
-curl -fsSL -o "$WASM" "https://github.com/DiegoPoveda01/local402/releases/download/$RELEASE/fx-pay_v0.1.0.wasm"
+curl -fsSL -o "$WASM" "https://github.com/DiegoPoveda01/local402/releases/download/$RELEASE/fx-pay_v0.1.1.wasm"
 got="$(sha256sum "$WASM" | cut -d ' ' -f 1)"
 if [ "$got" != "$WASM_SHA256" ]; then
   echo "Release wasm hash is $got, expected $WASM_SHA256 — refusing to deploy." >&2
