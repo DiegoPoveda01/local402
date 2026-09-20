@@ -23,7 +23,7 @@ no manual currency swap on either side.
 | Live API (Stellar mainnet) | **<https://local402-mainnet.vercel.app>** |
 | Scheme spec | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
 | npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) |
-| FxPay on mainnet | [`CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV`](https://stellar.expert/explorer/public/contract/CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV) |
+| FxPay on mainnet | [`CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD`](https://stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD) |
 | Bug found and fixed upstream | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rejects the fee the SDK bids; our fix, [x402#3503](https://github.com/x402-foundation/x402/pull/3503), is merged |
 
 ---

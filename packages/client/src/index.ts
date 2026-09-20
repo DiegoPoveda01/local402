@@ -7,7 +7,7 @@ import { ExactFxClientScheme, fxNetwork } from "@local402/fx";
 import { quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource, type FiatRate, type FiatRateSource, type LocalQuote } from "@local402/pricing";
 
 /** Local402's FxPay deployment on Stellar mainnet (scripts/mainnet/deploy-fxpay.sh). */
-export const FXPAY_MAINNET = "CBMWKVMFEBBSN2VS7VD3AYNDLHAIPW4WYP5ZAOAEXKT4NCG2OPGYRSCV";
+export const FXPAY_MAINNET = "CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD";
 
 export type PayAsset = "USDC" | "XLM" | "EURC";
 
