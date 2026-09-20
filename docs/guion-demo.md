@@ -2,7 +2,7 @@
 
 ## Qué piden y qué funciona
 
-- **Find Your Way** no publica requisitos del video (la página del evento solo trae fechas: 1 sep – 12 oct). Confirma en el formulario de envío el largo máximo y el idioma.
+- **Find Your Way** no publica requisitos del video. Las fechas reales de Stellar Passport: los envíos abren el 21 sep y cierran el **5 oct a las 19:00**; el jurado evalúa hasta el 9 oct y los resultados salen el 12 oct. Confirma en el formulario de envío el largo máximo y el idioma.
 - **Estándar de los hackathons de Stellar** (Stellar Hacks en DoraHacks):
   - Video de 2–3 min, con 5 como máximo, mostrando el proyecto funcionando y una explicación técnica clara.
   - Repo público.

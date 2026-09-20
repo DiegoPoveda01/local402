@@ -5,7 +5,7 @@
 [![npm](https://img.shields.io/npm/v/local402-server?label=local402-server&color=e38b5a)](https://www.npmjs.com/package/local402-server)
 [![Stellar mainnet](https://img.shields.io/badge/Stellar-mainnet%20live-e38b5a)](https://local402-mainnet.vercel.app)
 [![CI](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml/badge.svg)](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-32%20TS%20%2B%2010%20Soroban-3fb950)](#tests)
+[![tests](https://img.shields.io/badge/tests-36%20TS%20%2B%2010%20Soroban-3fb950)](#tests)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ### [English](README.md) · Español
@@ -310,7 +310,7 @@ necesita esto — cada `.env.example` lista el resto.
 ## Tests
 
 ```bash
-npm test        # 32 tests unitarios entre pricing, fx y client
+npm test        # 36 tests unitarios entre pricing, fx y client
 npm run typecheck
 cd contracts && cargo test    # 10 tests del contrato contra un router Soroswap simulado
 ```
