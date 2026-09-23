@@ -361,8 +361,12 @@ automated.
 - **It does not hold funds.** Input sits in FxPay only inside the transaction that swaps it. The contract
   keeps no balance between payments and has no admin or upgrade function.
 - **It is not audited.** The contract has 10 tests and has settled real payments, but no external audit —
-  an internal review is in [docs/security-review.md](docs/security-review.md). That is why the mainnet
-  facilitator only settles for the demo seller and for at least 0.01 USDC.
+  an internal review is in [docs/security-review.md](docs/security-review.md). The wasm that runs on mainnet
+  was also deployed to testnet as [CD6PUDBJ…](https://stellar.expert/explorer/testnet/contract/CD6PUDBJNDYWLTQPHYU26OCEH4GWR7WN3UIXAEKUP3DQIS3DKJQIF7DL) and scanned with
+  [kuyfi](https://github.com/alex0tico/kuyfi), an automated black-box fuzzer for Soroban: 37 vectors over the
+  five entry points, zero findings. Every vector was rejected in simulation, so nothing reached the ledger —
+  a surface scan, not an audit. That is why the mainnet facilitator only settles for the demo seller and for
+  at least 0.01 USDC.
 - **`exact-fx` is not part of x402 yet.** It is a draft. A stock x402 client pays the `exact` option of the
   same 402, not the FX one.
 
