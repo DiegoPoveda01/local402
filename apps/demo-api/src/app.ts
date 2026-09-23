@@ -395,9 +395,10 @@ app.post("/demo/pay", async (req, res) => {
   }
   try {
     // The client refuses swaps more than 5% above the oracle. Testnet pools are seeded with arbitrary prices
-    // (tstEURC trades near 0.74 USD), so the demo allows more there and shows the premium next to each payment.
+    // and nobody arbitrages them (tstEURC trades near 0.74 USD, and XLM has drifted past twice the oracle
+    // rate), so the demo allows more there and shows the premium next to each payment.
     // `maxPrice` is the second guard: whatever a 402 asks for, the shared demo wallet never pays more.
-    const client = new Local402Client({ secret: DEMO_AGENT_SECRET, payWith, maxFxPremiumBps: 10_000, maxPrice: DEMO_MAX_PRICE });
+    const client = new Local402Client({ secret: DEMO_AGENT_SECRET, payWith, maxFxPremiumBps: 30_000, maxPrice: DEMO_MAX_PRICE });
     res.json(await client.pay(`${origin}${path}`));
   } catch (error) {
     // Soroban simulation errors carry a full event log; the first line is the reason.
