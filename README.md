@@ -5,7 +5,7 @@
 [![npm](https://img.shields.io/npm/v/local402-server?label=local402-server&color=e38b5a)](https://www.npmjs.com/package/local402-server)
 [![Stellar mainnet](https://img.shields.io/badge/Stellar-mainnet%20live-e38b5a)](https://local402-mainnet.vercel.app)
 [![CI](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml/badge.svg)](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-36%20TS%20%2B%2010%20Soroban-3fb950)](#testing)
+[![tests](https://img.shields.io/badge/tests-41%20TS%20%2B%2010%20Soroban-3fb950)](#testing)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ### English · [Español](README.es.md)
@@ -307,7 +307,7 @@ money, needs these — each `.env.example` lists the rest.
 ## Testing
 
 ```bash
-npm test        # 36 unit tests across pricing, fx and client
+npm test        # 41 unit tests across pricing, fx and client
 npm run typecheck
 cd contracts && cargo test    # 10 contract tests against a mock Soroswap router
 ```
@@ -317,6 +317,12 @@ The contract tests cover the cases that matter: exact delivery with a refund of 
 routing through the hub asset when there is no direct pool, picking the cheaper of two routes, and
 refusal without the payer's authorization. Two cover a router that answers with no amounts at all: the
 hub route still wins if it exists, and otherwise the payer gets `NoRoute` rather than a trap.
+
+Nine TypeScript tests drive the facilitator's verification offline, over every rejection it reaches before
+it touches the network: a payload for another version, scheme or network, a transaction it cannot read, a
+call that is not FxPay's `pay`, a source or payer that is the facilitator itself, a send asset it does not
+accept, an asset, amount or recipient that is not what the seller asked for, and a deadline that has
+expired or reaches too far.
 
 Four further tests build a real `exact-fx` payload against testnet and run it through the facilitator's
 verification, including the rejections. They only run when `FX_PAYER_SECRET` is set, so a clean

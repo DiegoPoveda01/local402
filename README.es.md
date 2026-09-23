@@ -5,7 +5,7 @@
 [![npm](https://img.shields.io/npm/v/local402-server?label=local402-server&color=e38b5a)](https://www.npmjs.com/package/local402-server)
 [![Stellar mainnet](https://img.shields.io/badge/Stellar-mainnet%20live-e38b5a)](https://local402-mainnet.vercel.app)
 [![CI](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml/badge.svg)](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-36%20TS%20%2B%2010%20Soroban-3fb950)](#tests)
+[![tests](https://img.shields.io/badge/tests-41%20TS%20%2B%2010%20Soroban-3fb950)](#tests)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ### [English](README.md) · Español
@@ -312,7 +312,7 @@ necesita esto — cada `.env.example` lista el resto.
 ## Tests
 
 ```bash
-npm test        # 36 tests unitarios entre pricing, fx y client
+npm test        # 41 tests unitarios entre pricing, fx y client
 npm run typecheck
 cd contracts && cargo test    # 10 tests del contrato contra un router Soroswap simulado
 ```
@@ -322,6 +322,12 @@ coincida con lo que `pay` gasta de verdad, rechazo cuando la ruta necesita más 
 activo hub cuando no hay pool directa, elegir la más barata entre dos rutas, y negarse sin la autorización
 del pagador. Dos cubren un router que responde sin montos: la ruta por el hub gana igual si existe, y si no
 el pagador recibe `NoRoute` en vez de un trap.
+
+Nueve tests de TypeScript pasan la verificación del facilitador sin red, por cada rechazo al que llega antes
+de tocar la red: un payload de otra versión, esquema o red, una transacción que no puede leer, una llamada
+que no es el `pay` de FxPay, un origen o un pagador que es el propio facilitador, un activo de envío que no
+acepta, un activo, monto o destinatario distinto del que pidió el vendedor, y un deadline vencido o
+demasiado lejano.
 
 Otros cuatro tests construyen un payload `exact-fx` real contra testnet y lo pasan por la verificación del
 facilitador, incluyendo los rechazos. Solo corren cuando `FX_PAYER_SECRET` está definido, así que un
