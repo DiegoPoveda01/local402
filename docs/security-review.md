@@ -5,8 +5,8 @@ external audit. Its purpose is to state the contract's invariants and trust boun
 record what has been checked, and give an outside auditor a place to start. Where the README says
 *"It is not audited,"* it still means it: nothing here replaces a paid third-party review.
 
-Reviewed at `contracts/fx-pay/src/lib.rs` (161 lines) and `src/test.rs` (10 tests, all passing:
-`cargo test -p fx-pay` → 10 passed).
+Reviewed at `contracts/fx-pay/src/lib.rs` (161 lines) and `src/test.rs` (11 tests, all passing:
+`cargo test -p fx-pay` → 11 passed).
 
 ## What the contract does
 
@@ -69,7 +69,41 @@ moves.
 Ten tests, all passing: exact delivery + refund, quote-equals-spend, excessive input rejected, hub
 routing when there is no direct pool, cheapest-route selection, no-route rejection, empty-amounts
 router rejection, hub fallback when the direct pool answers empty, same-asset rejection, and payment
-refused without payer authorization.
+refused without payer authorization. The eleventh is a property test: 200 deterministic combinations of
+direct and hub prices (including missing pools), destination amounts and `max_send` limits, asserting
+on every one that the seller receives exactly `dest_amount`, the payer spends exactly the cheaper route,
+FxPay ends with zero balance in both assets, and an invalid or insufficient `max_send` moves nothing.
+
+## Tooling results (2026-09-22)
+
+- **`cargo clippy --all-targets`**: no correctness, suspicious or performance lints. Two style lints:
+  `unnecessary_map_or` in `route` (suggests `is_none_or`) and `too_many_arguments` on `pay` (8/7), which
+  is the call's ABI — every argument is one the payer's signature has to bind. Neither is fixed, on
+  purpose: any edit to `lib.rs` changes the wasm, and the deployed contract is verified by its hash
+  against a release built from this exact source.
+- **`cargo audit`** (RustSec, 1 264 advisories, 215 crates): **no vulnerabilities**. One `unmaintained`
+  warning, RUSTSEC-2024-0436 for `paste` 1.0.15, a proc-macro reached through `soroban-sdk` → the host's
+  BLS12-381 code (`ark-ff`). It runs at compile time and is not part of the contract's logic.
+
+## Limits by design (what a reviewer will raise, and why it stays)
+
+- **Front-running up to `max_send`.** `amount_in` is priced from the pools at execution time, so someone
+  who moves a pool just before the payment raises what the payer spends, up to `max_send` and never past
+  it. The payer chooses that ceiling when signing: `Local402Client` refuses a `max_send` more than
+  `maxFxPremiumBps` (5% by default) above the oracle value of the price, and the unused part is always
+  refunded. The exposure is that premium, per payment, bounded by the payer's own signature.
+- **No asset allowlist in the contract.** `send_asset` and `dest_asset` are whatever the payer signed.
+  FxPay keeps no balance, so a hostile token can only affect the payment that chose it. The allowlist
+  lives where the choice is made: the facilitator rejects a send asset it does not accept and any
+  destination asset, amount or recipient that differs from the 402.
+- **No pause.** A pause needs an admin key, and an admin key is a way to freeze or redirect payments.
+  Since the contract holds nothing between calls, there is nothing a pause would protect; the off-switch
+  is the facilitator, which can stop settling without touching the chain.
+- **No TTL extension inside `pay`.** The instance and code entries are extended by
+  `scripts/extend-ttl.sh` rather than by every payment, so an idle contract can be archived. Archival
+  loses nothing — there are no balances — and a restore brings it back; it is a liveness chore, not a
+  safety issue. A future version could extend the instance TTL in `pay` at the cost of a slightly higher
+  fee per payment.
 
 ## Audit-readiness checklist
 
@@ -78,11 +112,13 @@ refused without payer authorization.
 - [x] Payer authorization binds every argument
 - [x] Input bounded by `max_send`; unused input refunded
 - [x] Seller delivery is unconditional or the payment reverts
-- [x] 10 unit tests against a mock router (happy path, refunds, routing, and every error)
+- [x] 11 unit tests against a mock router (happy path, refunds, routing, and every error)
 - [ ] External third-party audit
-- [ ] Property / fuzz tests on `route` and the exact-out rounding boundary
-- [ ] `cargo audit` on the dependency tree (tooling not yet run in this environment)
-- [ ] `cargo clippy` clean (component not installed in this environment)
+- [x] Property test over routes, amounts and limits (200 cases); black-box fuzz of the deployed wasm with
+      [kuyfi](https://github.com/alex0tico/kuyfi), 37 vectors, zero findings
+- [ ] Fuzzing against a real Soroswap pool's exact-out rounding (the mock router rounds exactly)
+- [x] `cargo audit` on the dependency tree: no vulnerabilities, one unmaintained proc-macro (see above)
+- [x] `cargo clippy`: no correctness lints; two style lints left so the source keeps matching the deployed wasm
 - [ ] Confirm the pinned mainnet Soroswap router and hub addresses on deployment
 
 Until the first three unchecked items are done, the mainnet facilitator keeps its two guards: it

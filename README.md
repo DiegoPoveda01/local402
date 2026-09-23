@@ -5,7 +5,7 @@
 [![npm](https://img.shields.io/npm/v/local402-server?label=local402-server&color=e38b5a)](https://www.npmjs.com/package/local402-server)
 [![Stellar mainnet](https://img.shields.io/badge/Stellar-mainnet%20live-e38b5a)](https://local402-mainnet.vercel.app)
 [![CI](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml/badge.svg)](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-41%20TS%20%2B%2010%20Soroban-3fb950)](#testing)
+[![tests](https://img.shields.io/badge/tests-41%20TS%20%2B%2011%20Soroban-3fb950)](#testing)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ### English · [Español](README.es.md)
@@ -83,6 +83,24 @@ and refunds the unused input — all atomically. If the swap cannot deliver the 
 payer's limit, the whole transaction reverts and nothing moves.
 
 The seller never touches XLM. The facilitator pays the network fee. The payer signs once.
+
+## How it differs from x402 on Stellar today
+
+[Stellar's x402 docs](https://developers.stellar.org/docs/build/agentic-payments/x402) support any SEP-41
+token, USDC by default, through the Coinbase facilitator (testnet) and the OpenZeppelin Relayer plugin.
+Both settle x402's `exact` scheme: the price is an amount of one token, and the payer transfers that very
+token. The x402 projects on Stellar we could find in the ecosystem directories and past hackathons
+(checked 2026-09-22) — facilitators, MCP templates, paywalls, agent SDKs — build on that same scheme.
+
+| | x402 on Stellar today | Local402 |
+| --- | --- | --- |
+| The price is written in | an amount of the settlement token | the seller's currency — CLP, UF, NGN, EUR… — converted by Reflector at request time |
+| The payer pays with | the seller's token | USDC, XLM or EURC; FxPay swaps inside the payment |
+| The seller receives | that token | the exact USDC amount, or the transaction reverts |
+| A stock x402 client | pays | still pays: every 402 keeps a plain `exact` option next to `exact-fx` |
+
+Local402 does not replace a facilitator or fork x402. It is four npm packages and one contract on top of it,
+and the one change it needed upstream — the fee bid — went back into x402 itself.
 
 ## Where you'd use it
 
@@ -309,14 +327,17 @@ money, needs these — each `.env.example` lists the rest.
 ```bash
 npm test        # 41 unit tests across pricing, fx and client
 npm run typecheck
-cd contracts && cargo test    # 10 contract tests against a mock Soroswap router
+cd contracts && cargo test    # 11 contract tests against a mock Soroswap router
 ```
 
 The contract tests cover the cases that matter: exact delivery with a refund of the unused input,
 `quote` agreeing with what `pay` actually spends, rejection when the route needs more than `max_send`,
 routing through the hub asset when there is no direct pool, picking the cheaper of two routes, and
 refusal without the payer's authorization. Two cover a router that answers with no amounts at all: the
-hub route still wins if it exists, and otherwise the payer gets `NoRoute` rather than a trap.
+hub route still wins if it exists, and otherwise the payer gets `NoRoute` rather than a trap. The last one is
+a property test: 200 deterministic combinations of pools, amounts and limits, checking every time that the
+seller gets exactly `dest_amount`, the payer spends exactly the cheaper route, FxPay keeps nothing, and a
+`max_send` below the route moves nothing at all.
 
 Nine TypeScript tests drive the facilitator's verification offline, over every rejection it reaches before
 it touches the network: a payload for another version, scheme or network, a transaction it cannot read, a
@@ -366,7 +387,7 @@ automated.
   The SDEX quote on the dashboard is there for comparison and is never used to pay.
 - **It does not hold funds.** Input sits in FxPay only inside the transaction that swaps it. The contract
   keeps no balance between payments and has no admin or upgrade function.
-- **It is not audited.** The contract has 10 tests and has settled real payments, but no external audit —
+- **It is not audited.** The contract has 11 tests and has settled real payments, but no external audit —
   an internal review is in [docs/security-review.md](docs/security-review.md). The wasm that runs on mainnet
   was also deployed to testnet as [CD6PUDBJ…](https://stellar.expert/explorer/testnet/contract/CD6PUDBJNDYWLTQPHYU26OCEH4GWR7WN3UIXAEKUP3DQIS3DKJQIF7DL) and scanned with
   [kuyfi](https://github.com/alex0tico/kuyfi), an automated black-box fuzzer for Soroban: 37 vectors over the

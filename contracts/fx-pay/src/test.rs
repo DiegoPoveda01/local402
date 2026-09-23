@@ -207,6 +207,56 @@ fn rejects_same_asset() {
     assert_eq!(result, Err(Ok(soroban_sdk::Error::from_contract_error(Error::SameAsset as u32))));
 }
 
+/// The invariants of `pay` over a deterministic spread of pools, amounts and limits: the seller gets
+/// exactly `dest_amount`, the payer spends exactly the cheaper route, FxPay keeps nothing, and a
+/// `max_send` below that route moves nothing at all.
+#[test]
+fn invariants_hold_across_prices_amounts_and_limits() {
+    let mut seed: u64 = 402;
+    let mut next = |bound: i128| -> i128 {
+        seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        (seed >> 33) as i128 % bound
+    };
+    for _ in 0..200 {
+        // A price of 0 means that pool does not exist. Amounts stay within the payer's 1 000.
+        let (price, hub_price) = (next(21), next(21));
+        let dest_amount = next(45) + 1;
+        let slack = next(14) - 3;
+        let s = setup_with_prices(price, hub_price);
+
+        let Some(cost) = [price, hub_price].into_iter().filter(|p| *p > 0).map(|p| p * dest_amount).min() else {
+            let result = s.fx.try_quote(&s.xlm.address, &s.usdc.address, &dest_amount);
+            assert_eq!(result, Err(Ok(soroban_sdk::Error::from_contract_error(Error::NoRoute as u32))));
+            continue;
+        };
+        let max_send = cost + slack;
+        authorize_payer(&s, max_send, dest_amount);
+        let result = s.fx.try_pay(&s.payer, &s.xlm.address, &max_send, &s.usdc.address, &dest_amount, &s.seller, &100);
+
+        let expected_error = if max_send <= 0 {
+            Some(Error::InvalidAmount)
+        } else if slack < 0 {
+            Some(Error::ExcessiveInput)
+        } else {
+            None
+        };
+        match expected_error {
+            Some(error) => {
+                assert_eq!(result, Err(Ok(soroban_sdk::Error::from_contract_error(error as u32))));
+                assert_eq!(s.xlm.balance(&s.payer), 1_000);
+                assert_eq!(s.usdc.balance(&s.seller), 0);
+            }
+            None => {
+                assert_eq!(result, Ok(Ok(cost)));
+                assert_eq!(s.usdc.balance(&s.seller), dest_amount);
+                assert_eq!(s.xlm.balance(&s.payer), 1_000 - cost);
+            }
+        }
+        assert_eq!(s.xlm.balance(&s.fx.address), 0);
+        assert_eq!(s.usdc.balance(&s.fx.address), 0);
+    }
+}
+
 #[test]
 fn requires_payer_authorization() {
     let s = setup();
