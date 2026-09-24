@@ -25,7 +25,7 @@ sin que ninguna de las dos partes tenga que cambiar moneda a mano.
 | Especificación del esquema | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
 | npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) |
 | FxPay en mainnet | [`CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD`](https://stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD) |
-| Build reproducible | [release](https://github.com/DiegoPoveda01/local402/releases/tag/v0.1.1_contracts_fx-pay_cli27.0.0) — wasm `69a12d89…`, byte por byte lo desplegado ([por qué no hay badge](#builds-reproducibles)) |
+| Build reproducible | [release](https://github.com/DiegoPoveda01/local402/releases/tag/v0.1.1_contracts_fx-pay_cli27.0.0) — wasm `69a12d89…`, byte por byte lo desplegado; [Verified Build (SEP-55) en Stellar Lab](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=mainnet&label=Mainnet&horizonUrl=https:////horizon.stellar.org&rpcUrl=https:////mainnet.sorobanrpc.com&passphrase=Public%20Global%20Stellar%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD;;) |
 | Bug que encontramos y corregimos upstream | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rechaza la tarifa que ofrece el SDK; nuestro arreglo, [x402#3503](https://github.com/x402-foundation/x402/pull/3503), ya está fusionado |
 
 ---
@@ -383,8 +383,9 @@ cola de validación — reenviar el payload de un contrato ya verificado reprodu
 cualquier cosa propia de este build. Está reportado aguas arriba en
 [soroban-build-workflow#9](https://github.com/stellar-expert/soroban-build-workflow/issues/9) y
 [#8](https://github.com/stellar-expert/soroban-build-workflow/issues/8), donde el release de otro proyecto
-lleva más de un mes sin verificar. Los dos hashes de arriba son exactamente la comprobación que ese badge
-habría automatizado.
+lleva más de un mes sin verificar. Stellar Lab lee la atestación SEP-55 directamente, sin pasar por esa
+cola, y su explorador de contratos muestra FxPay como [Verified Build](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=mainnet&label=Mainnet&horizonUrl=https:////horizon.stellar.org&rpcUrl=https:////mainnet.sorobanrpc.com&passphrase=Public%20Global%20Stellar%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD;;),
+enlazado a este repositorio.
 
 ## Lo que no hace
 
