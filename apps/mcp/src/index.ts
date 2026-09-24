@@ -24,7 +24,8 @@ function identitySecret(identity: string): string {
       return execFileSync(binary, ["keys", "secret", identity], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
     } catch (error) {
       // Only "no such binary" is worth trying the next name for; anything else is stellar-cli answering.
-      if ((error as { code?: string }).code !== "ENOENT") {
+      // EINVAL is Node on Windows refusing to execFile a .cmd without a shell, so it means the same.
+      if (!["ENOENT", "EINVAL"].includes((error as { code?: string }).code ?? "")) {
         const detail = String((error as { stderr?: unknown }).stderr ?? "").trim() || (error as Error).message;
         throw new Error(`stellar keys secret ${identity} failed: ${detail.split("\n")[0]}`);
       }
