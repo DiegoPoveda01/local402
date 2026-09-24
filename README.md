@@ -19,6 +19,7 @@ no manual currency swap on either side.
 
 | | |
 | --- | --- |
+| Demo video (3 min) | **<https://youtu.be/SNeQ8wZo3hg>** |
 | Dashboard (testnet) | **<https://local402.vercel.app>** |
 | Live API (Stellar mainnet) | **<https://local402-mainnet.vercel.app>** |
 | Scheme spec | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
