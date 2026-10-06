@@ -144,6 +144,11 @@ On testnet, a client paid one scan end to end:
 | What came back | the `200` scan of FxPay's own testnet deployment — five entry points over a 4821-byte wasm |
 | Transaction | [`44ef0d00…c8abf42`](https://stellar.expert/explorer/testnet/tx/44ef0d00b52dafd64acdb97b1c992ba62f996f7ee5a1d9c35f258d339c8abf42) |
 
+For now the integration runs on testnet only. Moving it to mainnet (`NETWORK=stellar:pubnet`, real USDC)
+is planned, and is tracked in [kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2). It needs one change
+on our side first: the mainnet facilitator settles only for the demo seller today (see
+[What it does not do](#what-it-does-not-do)), so the kuyfi operator has to be added to its payee allowlist.
+
 So the two projects now rely on each other both ways: Local402's own contract was scanned with kuyfi (see
 [What it does not do](#what-it-does-not-do)), and kuyfi sells those scans with Local402.
 

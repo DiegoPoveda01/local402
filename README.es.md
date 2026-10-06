@@ -146,6 +146,12 @@ En testnet, un cliente pagó un escaneo de principio a fin:
 | Lo que volvió | el escaneo `200` del propio despliegue de FxPay en testnet — cinco puntos de entrada sobre un wasm de 4821 bytes |
 | Transacción | [`44ef0d00…c8abf42`](https://stellar.expert/explorer/testnet/tx/44ef0d00b52dafd64acdb97b1c992ba62f996f7ee5a1d9c35f258d339c8abf42) |
 
+Por ahora la integración corre solo en testnet. El paso a mainnet (`NETWORK=stellar:pubnet`, USDC real)
+está planificado y se sigue en [kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2). Antes requiere un
+cambio de nuestro lado: hoy el facilitador de mainnet solo liquida para el vendedor de demo (ver
+[Lo que no hace](#lo-que-no-hace)), así que hay que agregar al operador de kuyfi a su lista de
+destinatarios permitidos.
+
 Así los dos proyectos dependen uno del otro en ambos sentidos: el contrato de Local402 fue escaneado con
 kuyfi (ver [Lo que no hace](#lo-que-no-hace)), y kuyfi vende esos escaneos con Local402.
 
