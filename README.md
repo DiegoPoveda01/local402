@@ -437,8 +437,8 @@ waiting on that queue, and its contract explorer shows FxPay as
 
 ## Status
 
-Running on **Stellar mainnet** with real payments — USDC, XLM and EURC — through the FxPay deployment
-linked above. Every sale leaves a receipt recording the local price, the rate and its source, the swap
+Running on **Stellar mainnet** with real payments: XLM and EURC through the FxPay deployment linked
+above, and USDC directly through x402 `exact`. Every sale leaves a receipt recording the local price, the rate and its source, the swap
 premium in basis points, and the transaction hash. `GET /receipts.csv` hands it to accounting.
 
 Next, in October 2026: an integration guide for sellers. Pau Koh, from the Stellar Chile community and
