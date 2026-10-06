@@ -452,6 +452,9 @@ Corriendo en **Stellar mainnet** con pagos reales — USDC, XLM y EURC — a tra
 enlazado más arriba. Cada venta deja un recibo que registra el precio local, la tasa y su fuente, el premium
 del swap en puntos básicos, y el hash de la transacción. `GET /receipts.csv` se lo entrega a contabilidad.
 
+Lo siguiente, en octubre de 2026: una guía de integración para vendedores. Pau Koh, de la comunidad Stellar
+Chile y ajeno al proyecto, la va a seguir desde cero y señalar lo que no se entienda antes de darla por final.
+
 `exact-fx` es un esquema en borrador. Está escrito en el formato de specs de x402 para poder discutirse como
 propuesta, y se podría expresar igual de bien como un `assetTransferMethod` de `exact`; lo que no cambia en
 ninguno de los dos casos es la garantía de cara al vendedor ni las reglas de verificación del facilitador.

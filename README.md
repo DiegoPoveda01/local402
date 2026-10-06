@@ -441,6 +441,9 @@ Running on **Stellar mainnet** with real payments — USDC, XLM and EURC — thr
 linked above. Every sale leaves a receipt recording the local price, the rate and its source, the swap
 premium in basis points, and the transaction hash. `GET /receipts.csv` hands it to accounting.
 
+Next, in October 2026: an integration guide for sellers. Pau Koh, from the Stellar Chile community and
+not part of the project, will follow it from scratch and report whatever is unclear before it is final.
+
 `exact-fx` is a draft scheme. It is written in the x402 spec format so it can be discussed as a
 proposal, and it could equally be expressed as an `assetTransferMethod` of `exact`; what does not
 change either way is the seller-facing guarantee and the facilitator's verification rules.
