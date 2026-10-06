@@ -149,6 +149,8 @@ En testnet, un cliente pagó un escaneo de principio a fin:
 Así los dos proyectos dependen uno del otro en ambos sentidos: el contrato de Local402 fue escaneado con
 kuyfi (ver [Lo que no hace](#lo-que-no-hace)), y kuyfi vende esos escaneos con Local402.
 
+Anunciado en X: [el hilo de kuyfi × Local402](https://x.com/dpoveda0/status/2107313680660812005).
+
 ## Pruébalo en 60 segundos
 
 Sin instalar nada, sin billetera, sin llave. Pídele algo a la API de mainnet y lee lo que responde:

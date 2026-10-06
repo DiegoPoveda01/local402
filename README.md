@@ -147,6 +147,8 @@ On testnet, a client paid one scan end to end:
 So the two projects now rely on each other both ways: Local402's own contract was scanned with kuyfi (see
 [What it does not do](#what-it-does-not-do)), and kuyfi sells those scans with Local402.
 
+Announced on X: [the kuyfi × Local402 thread](https://x.com/dpoveda0/status/2107313680660812005).
+
 ## Try it in 60 seconds
 
 No install, no wallet, no key. Ask the mainnet API for something and read what it answers:
