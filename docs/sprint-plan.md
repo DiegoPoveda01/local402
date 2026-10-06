@@ -56,8 +56,8 @@ does it. The acceptance criterion stays the same.
 ## Explicitly not in this sprint
 
 - **An external audit of FxPay.** The code is left audit-ready: [security-review.md](security-review.md)
-  and [threat-model.md](threat-model.md) are where an auditor starts. The audit itself is the goal of the next
-  funding step, an SCF Build application.
+  and [threat-model.md](threat-model.md) are where an auditor starts. The audit itself is the final goal of the
+  roadmap, an SCF Build application. A follow-on Instaward, if eligible, comes before it.
 - **Lifting the mainnet allowlist or minimum amount.** Both stay until the audit.
 - **Getting `exact-fx` merged into x402.** We open the proposal. When it merges is up to x402's maintainers.
 - New currencies or oracles, marketing, bounties, legal work, mobile apps, or a hosted paid service.

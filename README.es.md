@@ -487,8 +487,9 @@ Chile y ajeno al proyecto, la va a seguir desde cero y señalar lo que no se ent
 | Cuándo | Qué | Evidencia de que está hecho |
 | --- | --- | --- |
 | Sprint de octubre 2026 | Paquetes 1.0, un facilitador que cualquiera puede desplegar, la guía de integración, más tests, y kuyfi en 1.0 | Los criterios de aceptación de [docs/sprint-plan.md](docs/sprint-plan.md) |
-| Después del sprint | **Una auditoría externa de FxPay.** Es el objetivo de una postulación a SCF Build y no la financia el sprint. El sprint deja el código listo para auditar: [security-review.md](docs/security-review.md) para el contrato y [threat-model.md](docs/threat-model.md) para todo el camino del pago | Un informe de auditoría publicado, con cada hallazgo corregido o respondido |
+| Siguiente: un Instaward de continuación, si corresponde | El siguiente paso de adopción después del sprint, definido a partir de lo que muestre su informe de cierre | Sus propios criterios de aceptación, publicados igual que los de este sprint |
 | Cuando kuyfi esté listo | kuyfi en vivo en mainnet. El sprint ya agrega su destinatario a la allowlist, así que la decisión es de kuyfi ([kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2)) | Hashes de mainnet de un escaneo de kuyfi pagado |
+| **Meta final: SCF Build** | **Una auditoría externa de FxPay**, que ningún Instaward financia. El sprint deja el código listo para auditar: [security-review.md](docs/security-review.md) para el contrato y [threat-model.md](docs/threat-model.md) para todo el camino del pago | Un informe de auditoría publicado, con cada hallazgo corregido o respondido |
 | Después de la auditoría | Abrir el facilitador de mainnet a cualquier vendedor: quitar la allowlist de destinatarios y revisar el monto mínimo | Un pago en mainnet liquidado para un vendedor que nadie agregó a mano |
 | En curso | `exact-fx` propuesto upstream a x402 | La propuesta abierta; cuándo se fusiona depende de x402 |
 

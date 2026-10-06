@@ -475,8 +475,9 @@ not part of the project, will follow it from scratch and report whatever is uncl
 | When | What | Evidence that it is done |
 | --- | --- | --- |
 | October 2026 sprint | 1.0 packages, a facilitator anyone can deploy, the integration guide, wider tests, and kuyfi on 1.0 | The acceptance criteria in [docs/sprint-plan.md](docs/sprint-plan.md) |
-| After the sprint | **An external audit of FxPay.** It is the goal of an SCF Build application, and is not funded by the sprint. The sprint leaves the code audit-ready: [security-review.md](docs/security-review.md) for the contract, [threat-model.md](docs/threat-model.md) for the whole payment path | A published audit report, with every finding fixed or answered |
+| Next: a follow-on Instaward, if eligible | The next adoption step after the sprint, scoped from what its close-out report shows | Its own acceptance criteria, published like this sprint's |
 | When kuyfi is ready | kuyfi live on mainnet. The sprint already adds its payee to the allowlist, so this is kuyfi's call ([kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2)) | Mainnet tx hashes for a paid kuyfi scan |
+| **Final goal: SCF Build** | **An external audit of FxPay**, which neither Instaward funds. The sprint leaves the code audit-ready: [security-review.md](docs/security-review.md) for the contract, [threat-model.md](docs/threat-model.md) for the whole payment path | A published audit report, with every finding fixed or answered |
 | After the audit | Open the mainnet facilitator to any seller: drop the payee allowlist and revisit the minimum amount | A mainnet payment settled for a seller nobody added by hand |
 | Ongoing | `exact-fx` proposed upstream to x402 | The open proposal; when it merges is up to x402 |
 

@@ -92,7 +92,7 @@ and no further. It is a bounded loss the payer chose when signing, not an open o
 ## What would change this model
 
 - **An external audit of FxPay.** It is not in the October 2026 sprint (see [sprint-plan.md](sprint-plan.md)).
-  It is the goal of the next funding step. Until it happens, the mainnet facilitator keeps its allowlist and
+  It is the goal of an SCF Build application, the last step of the README's roadmap. Until it happens, the mainnet facilitator keeps its allowlist and
   its minimum amount.
 - **A seller other than the demo on mainnet.** Adding one, such as kuyfi
   ([kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2)), is an allowlist entry, not a code change. Each
