@@ -126,6 +126,27 @@ Every case below runs on the code in this repository, not on a roadmap.
   rate and its source, the swap premium in basis points, and the transaction hash.
   `GET /receipts.csv` hands accounting a ledger, not a screenshot.
 
+## Someone else is already charging with it
+
+[kuyfi](https://github.com/alex0tico/kuyfi) is an independent, MIT-licensed project — an OSINT scanner
+that maps the attack surface of a Soroban contract. It added an optional `kuyfi-server` that puts a price
+on each scan with `local402-server`: `GET /scan/<contractId>` answers `402` priced in **Chilean pesos**,
+and returns the read-only scan once the payment settles. That is the first integration of Local402 by a
+seller we did not write, and it took the same one line as the snippet above — one import and one
+`localRoute("500 CLP", …)` over an existing route.
+
+On testnet, a client paid one scan end to end:
+
+| | |
+| --- | --- |
+| The price | 500 CLP, converted by Reflector to **0.509682 USDC** at request time |
+| What settled | that exact USDC amount to the kuyfi operator, in one transaction; the payer paid 0 XLM, since the facilitator sponsors the fee |
+| What came back | the `200` scan of FxPay's own testnet deployment — five entry points over a 4821-byte wasm |
+| Transaction | [`44ef0d00…c8abf42`](https://stellar.expert/explorer/testnet/tx/44ef0d00b52dafd64acdb97b1c992ba62f996f7ee5a1d9c35f258d339c8abf42) |
+
+So the two projects now rely on each other both ways: Local402's own contract was scanned with kuyfi (see
+[What it does not do](#what-it-does-not-do)), and kuyfi sells those scans with Local402.
+
 ## Try it in 60 seconds
 
 No install, no wallet, no key. Ask the mainnet API for something and read what it answers:

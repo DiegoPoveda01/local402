@@ -128,6 +128,27 @@ Cada caso de abajo corre sobre el código de este repositorio, no sobre una hoja
   su fuente, el premio del swap en puntos básicos y el hash de la transacción.
   `GET /receipts.csv` le entrega a contabilidad un libro mayor, no una captura de pantalla.
 
+## Alguien más ya cobra con esto
+
+[kuyfi](https://github.com/alex0tico/kuyfi) es un proyecto independiente con licencia MIT — un escáner
+OSINT que mapea la superficie de ataque de un contrato Soroban. Le agregó un `kuyfi-server` opcional que
+le pone precio a cada escaneo con `local402-server`: `GET /scan/<contractId>` responde `402` tarificado
+en **pesos chilenos** y entrega el escaneo de solo lectura una vez que el pago se liquida. Es la primera
+integración de Local402 por un vendedor que no escribimos nosotros, y le tomó la misma línea del ejemplo
+de arriba — un import y una llamada `localRoute("500 CLP", …)` sobre una ruta existente.
+
+En testnet, un cliente pagó un escaneo de principio a fin:
+
+| | |
+| --- | --- |
+| El precio | 500 CLP, convertidos por Reflector a **0.509682 USDC** al momento del request |
+| Lo que se liquidó | ese monto exacto de USDC al operador de kuyfi, en una transacción; el pagador puso 0 XLM, porque el facilitador patrocina la comisión |
+| Lo que volvió | el escaneo `200` del propio despliegue de FxPay en testnet — cinco puntos de entrada sobre un wasm de 4821 bytes |
+| Transacción | [`44ef0d00…c8abf42`](https://stellar.expert/explorer/testnet/tx/44ef0d00b52dafd64acdb97b1c992ba62f996f7ee5a1d9c35f258d339c8abf42) |
+
+Así los dos proyectos dependen uno del otro en ambos sentidos: el contrato de Local402 fue escaneado con
+kuyfi (ver [Lo que no hace](#lo-que-no-hace)), y kuyfi vende esos escaneos con Local402.
+
 ## Pruébalo en 60 segundos
 
 Sin instalar nada, sin billetera, sin llave. Pídele algo a la API de mainnet y lee lo que responde:
