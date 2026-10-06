@@ -134,8 +134,9 @@ Cada caso de abajo corre sobre el código de este repositorio, no sobre una hoja
 OSINT que mapea la superficie de ataque de un contrato Soroban. Le agregó un `kuyfi-server` opcional que
 le pone precio a cada escaneo con `local402-server`: `GET /scan/<contractId>` responde `402` tarificado
 en **pesos chilenos** y entrega el escaneo de solo lectura una vez que el pago se liquida. Es la primera
-integración de Local402 por un vendedor que no escribimos nosotros, y le tomó la misma línea del ejemplo
-de arriba — un import y una llamada `localRoute("500 CLP", …)` sobre una ruta existente.
+integración de Local402 por un vendedor que no escribimos nosotros. El cobro en sí es la misma línea del
+ejemplo de arriba, una llamada `localRoute("500 CLP", …)`; el resto del PR es el servidor HTTP que kuyfi
+no tenía.
 
 En testnet, un cliente pagó un escaneo de principio a fin:
 

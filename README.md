@@ -132,8 +132,8 @@ Every case below runs on the code in this repository, not on a roadmap.
 that maps the attack surface of a Soroban contract. It added an optional `kuyfi-server` that puts a price
 on each scan with `local402-server`: `GET /scan/<contractId>` answers `402` priced in **Chilean pesos**,
 and returns the read-only scan once the payment settles. That is the first integration of Local402 by a
-seller we did not write, and it took the same one line as the snippet above — one import and one
-`localRoute("500 CLP", …)` over an existing route.
+seller we did not write. The paywall itself is the same one line as the snippet above, a
+`localRoute("500 CLP", …)` call; the rest of the PR is the HTTP server kuyfi did not have before.
 
 On testnet, a client paid one scan end to end:
 
