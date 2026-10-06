@@ -25,6 +25,10 @@ no manual currency swap on either side.
 | Scheme spec | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
 | npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) |
 | FxPay on mainnet | [`CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD`](https://stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD) |
+| Real payments through it | XLM → USDC [`0babefe1…`](https://stellar.expert/explorer/public/tx/0babefe189f2765b3198bbfdefb28c5bcad8b8bd9bc0710c78eb2776b306ac3d) and EURC → USDC [`bfe6a44d…`](https://stellar.expert/explorer/public/tx/bfe6a44d5db2a37a67552c38c75d85009f3208c95d1c22e4fd086c6e959f0a09), 2026-09-20 — each delivered exactly 0.0520721 USDC to the seller and refunded the unused input |
+| An outside seller charging with it | [kuyfi](#someone-else-is-already-charging-with-it) prices each scan at 500 CLP — **[the full paid flow on video (28 s)](https://x.com/dpoveda0/status/2107313680660812005)** · testnet tx [`44ef0d00…`](https://stellar.expert/explorer/testnet/tx/44ef0d00b52dafd64acdb97b1c992ba62f996f7ee5a1d9c35f258d339c8abf42) |
+| Security | [threat model](docs/threat-model.md) · [internal review](docs/security-review.md) — not audited, so mainnet settles only for the demo seller and from 0.01 USDC |
+| Next 30 days | [sprint plan](docs/sprint-plan.md): 1.0 packages, a deployable facilitator, an integration guide, kuyfi on 1.0 — each with its acceptance criterion |
 | Reproducible build | [release](https://github.com/DiegoPoveda01/local402/releases/tag/v0.1.1_contracts_fx-pay_cli27.0.0) — wasm `69a12d89…`, byte for byte what is deployed; [Verified Build (SEP-55) on Stellar Lab](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=mainnet&label=Mainnet&horizonUrl=https:////horizon.stellar.org&rpcUrl=https:////mainnet.sorobanrpc.com&passphrase=Public%20Global%20Stellar%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD;;) |
 | Bug found and fixed upstream | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rejects the fee the SDK bids; our fix, [x402#3503](https://github.com/x402-foundation/x402/pull/3503), is merged |
 
@@ -93,6 +97,20 @@ Both settle x402's `exact` scheme: the price is an amount of one token, and the 
 token. The x402 projects on Stellar we could find in the ecosystem directories and past hackathons
 (checked 2026-09-22) — facilitators, MCP templates, paywalls, agent SDKs — build on that same scheme.
 
+The three closest, as their own READMEs describe them (checked 2026-10-06):
+
+| Project | What it solves | The price is written in | The payer pays with |
+| --- | --- | --- | --- |
+| [Rail402](https://github.com/tolgayayci/rail402) | Who settles: an x402 facilitator that sponsors the fee, plus a Bazaar where agents find paid APIs and MCP tools | USD, settled as USDC (`price: "$0.01"`, scheme `exact`) | USDC |
+| [REAPP](https://github.com/mks044/reapp-poc) | Who may spend: AP2-style mandates and a Soroban registry that enforces an agent's budget, scope and revocation | USDC (`AGENT_PLAN_PRICE_USDC`) | USDC |
+| [x402 MCP Stellar Template](https://github.com/ffarinas/x402-mcp-stellar-template) | How to start: Node, Python and Go templates for paid MCP servers, with optional on-chain daily caps | USDC (`x402({ price: 0.10 })`) | USDC |
+| **Local402** | **What the price is, and what the payer brings** | **The seller's currency**, converted by Reflector per request | **USDC, XLM or EURC** |
+
+They answer different questions, so they can stack rather than compete. Local402's `exact` option is a
+plain USDC requirement, which is the kind of payment Rail402 settles and a REAPP mandate is written for.
+We have not tested either combination yet. What none of the three does is let a seller write `"500 CLP"`, or let a
+payer settle it in XLM while the seller still receives exact USDC.
+
 | | x402 on Stellar today | Local402 |
 | --- | --- | --- |
 | The price is written in | an amount of the settlement token | the seller's currency — CLP, UF, NGN, EUR… — converted by Reflector at request time |
@@ -128,6 +146,11 @@ Every case below runs on the code in this repository, not on a roadmap.
 
 ## Someone else is already charging with it
 
+> **▶ [Watch it: a paid kuyfi scan, end to end on testnet (28 s video, on X)](https://x.com/dpoveda0/status/2107313680660812005)**
+> `GET /scan/…` → `402` at 500 CLP = 0.509682 USDC → payment to the kuyfi operator → `200` with the scan →
+> tx [`44ef0d00…c8abf42`](https://stellar.expert/explorer/testnet/tx/44ef0d00b52dafd64acdb97b1c992ba62f996f7ee5a1d9c35f258d339c8abf42).
+> The video is animated from the real request, response and transaction below.
+
 [kuyfi](https://github.com/alex0tico/kuyfi) is an independent, MIT-licensed project — an OSINT scanner
 that maps the attack surface of a Soroban contract. It added an optional `kuyfi-server` that puts a price
 on each scan with `local402-server`: `GET /scan/<contractId>` answers `402` priced in **Chilean pesos**,
@@ -152,7 +175,9 @@ on our side first: the mainnet facilitator settles only for the demo seller toda
 So the two projects now rely on each other both ways: Local402's own contract was scanned with kuyfi (see
 [What it does not do](#what-it-does-not-do)), and kuyfi sells those scans with Local402.
 
-Announced on X: [the kuyfi × Local402 thread](https://x.com/dpoveda0/status/2107313680660812005).
+Moving kuyfi onto the 1.0 packages, with paid testnet scans as the evidence, is the acceptance test of the
+October sprint ([D5 in the sprint plan](docs/sprint-plan.md#deliverables-and-acceptance-criteria)). The plan
+also covers what happens if kuyfi cannot move in time.
 
 ## Try it in 60 seconds
 
@@ -418,7 +443,8 @@ waiting on that queue, and its contract explorer shows FxPay as
 - **It does not hold funds.** Input sits in FxPay only inside the transaction that swaps it. The contract
   keeps no balance between payments and has no admin or upgrade function.
 - **It is not audited.** The contract has 11 tests and has settled real payments, but no external audit —
-  an internal review is in [docs/security-review.md](docs/security-review.md). The wasm that runs on mainnet
+  an internal review is in [docs/security-review.md](docs/security-review.md), and who could attack a payment,
+  and what stops them, is in [docs/threat-model.md](docs/threat-model.md). The wasm that runs on mainnet
   was also deployed to testnet as [CD6PUDBJ…](https://stellar.expert/explorer/testnet/contract/CD6PUDBJNDYWLTQPHYU26OCEH4GWR7WN3UIXAEKUP3DQIS3DKJQIF7DL) and scanned with
   [kuyfi](https://github.com/alex0tico/kuyfi), an automated black-box fuzzer for Soroban: 37 vectors over the
   five entry points, zero findings. Every vector was rejected in simulation, so nothing reached the ledger —
@@ -443,6 +469,16 @@ premium in basis points, and the transaction hash. `GET /receipts.csv` hands it 
 
 Next, in October 2026: an integration guide for sellers. Pau Koh, from the Stellar Chile community and
 not part of the project, will follow it from scratch and report whatever is unclear before it is final.
+
+### Roadmap
+
+| When | What | Evidence that it is done |
+| --- | --- | --- |
+| October 2026 sprint | 1.0 packages, a facilitator anyone can deploy, the integration guide, wider tests, and kuyfi on 1.0 | The acceptance criteria in [docs/sprint-plan.md](docs/sprint-plan.md) |
+| After the sprint | **An external audit of FxPay.** It is the goal of an SCF Build application, and is not funded by the sprint. The sprint leaves the code audit-ready: [security-review.md](docs/security-review.md) for the contract, [threat-model.md](docs/threat-model.md) for the whole payment path | A published audit report, with every finding fixed or answered |
+| When kuyfi is ready | kuyfi live on mainnet. The sprint already adds its payee to the allowlist, so this is kuyfi's call ([kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2)) | Mainnet tx hashes for a paid kuyfi scan |
+| After the audit | Open the mainnet facilitator to any seller: drop the payee allowlist and revisit the minimum amount | A mainnet payment settled for a seller nobody added by hand |
+| Ongoing | `exact-fx` proposed upstream to x402 | The open proposal; when it merges is up to x402 |
 
 `exact-fx` is a draft scheme. It is written in the x402 spec format so it can be discussed as a
 proposal, and it could equally be expressed as an `assetTransferMethod` of `exact`; what does not
