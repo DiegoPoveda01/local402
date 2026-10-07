@@ -157,6 +157,8 @@ on each scan with `local402-server`: `GET /scan/<contractId>` answers `402` pric
 and returns the read-only scan once the payment settles. That is the first integration of Local402 by a
 seller we did not write. The paywall itself is the same one line as the snippet above, a
 `localRoute("500 CLP", …)` call; the rest of the PR is the HTTP server kuyfi did not have before.
+We wrote that PR ([kuyfi#1](https://github.com/alex0tico/kuyfi/pull/1)); kuyfi's maintainer reviewed and
+merged it, and the payments go to the maintainer's own account.
 
 On testnet, a client paid one scan end to end:
 

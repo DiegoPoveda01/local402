@@ -160,7 +160,8 @@ le pone precio a cada escaneo con `local402-server`: `GET /scan/<contractId>` re
 en **pesos chilenos** y entrega el escaneo de solo lectura una vez que el pago se liquida. Es la primera
 integración de Local402 por un vendedor que no escribimos nosotros. El cobro en sí es la misma línea del
 ejemplo de arriba, una llamada `localRoute("500 CLP", …)`; el resto del PR es el servidor HTTP que kuyfi
-no tenía.
+no tenía. Ese PR lo escribimos nosotros ([kuyfi#1](https://github.com/alex0tico/kuyfi/pull/1)); el
+mantenedor de kuyfi lo revisó y lo mergeó, y los pagos llegan a su cuenta.
 
 En testnet, un cliente pagó un escaneo de principio a fin:
 
