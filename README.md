@@ -423,14 +423,10 @@ produced identical artifacts. Each carries a [SLSA provenance attestation](https
 signed through Sigstore and logged in Rekor. `scripts/mainnet/deploy-fxpay.sh` deploys the downloaded
 release asset and aborts if its hash is not the one above, so a local build cannot reach mainnet by accident.
 
-stellar.expert still reports the contract as `unverified`, and that part is not ours to fix. Its intake
-endpoint now answers `{}` where it used to answer `{"ok":1}`, so submissions never reach the validation
-queue — reposting the payload of an already-verified contract reproduces it, which rules out anything
-specific to this build. Tracked upstream in
-[soroban-build-workflow#9](https://github.com/stellar-expert/soroban-build-workflow/issues/9) and
-[#8](https://github.com/stellar-expert/soroban-build-workflow/issues/8), where another project's release
-has sat unverified for over a month. Stellar Lab reads the SEP-55 attestation directly instead of
-waiting on that queue, and its contract explorer shows FxPay as
+stellar.expert lists FxPay as [verified](https://stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD), matched to commit `268f32c` (tag `v0.1.1`) of this
+repository. It did not for several weeks: its intake was dropping valid submissions until the bug was
+found and fixed on their side ([soroban-build-workflow#9](https://github.com/stellar-expert/soroban-build-workflow/issues/9)).
+Stellar Lab reads the SEP-55 attestation directly, and its contract explorer shows FxPay as
 [Verified Build](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=mainnet&label=Mainnet&horizonUrl=https:////horizon.stellar.org&rpcUrl=https:////mainnet.sorobanrpc.com&passphrase=Public%20Global%20Stellar%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD;;), linked to this repository.
 
 ## What it does not do

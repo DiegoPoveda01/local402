@@ -434,15 +434,11 @@ Sigstore y registrada en Rekor. `scripts/mainnet/deploy-fxpay.sh` despliega el a
 release y aborta si su hash no es el de arriba, así que una compilación local no puede llegar a mainnet
 por descuido.
 
-stellar.expert sigue reportando el contrato como `unverified`, y esa parte no está en nuestras manos. Su
-endpoint de ingreso responde `{}` donde antes respondía `{"ok":1}`, así que los envíos nunca llegan a la
-cola de validación — reenviar el payload de un contrato ya verificado reproduce el fallo, lo que descarta
-cualquier cosa propia de este build. Está reportado aguas arriba en
-[soroban-build-workflow#9](https://github.com/stellar-expert/soroban-build-workflow/issues/9) y
-[#8](https://github.com/stellar-expert/soroban-build-workflow/issues/8), donde el release de otro proyecto
-lleva más de un mes sin verificar. Stellar Lab lee la atestación SEP-55 directamente, sin pasar por esa
-cola, y su explorador de contratos muestra FxPay como [Verified Build](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=mainnet&label=Mainnet&horizonUrl=https:////horizon.stellar.org&rpcUrl=https:////mainnet.sorobanrpc.com&passphrase=Public%20Global%20Stellar%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD;;),
-enlazado a este repositorio.
+stellar.expert muestra FxPay como [verificado](https://stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD), enlazado al commit `268f32c` (tag `v0.1.1`) de
+este repositorio. Durante varias semanas no fue así: su ingreso descartaba envíos válidos hasta que
+encontraron y corrigieron el fallo de su lado ([soroban-build-workflow#9](https://github.com/stellar-expert/soroban-build-workflow/issues/9)).
+Stellar Lab lee la atestación SEP-55 directamente, y su explorador de contratos muestra FxPay como
+[Verified Build](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=mainnet&label=Mainnet&horizonUrl=https:////horizon.stellar.org&rpcUrl=https:////mainnet.sorobanrpc.com&passphrase=Public%20Global%20Stellar%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD;;), enlazado a este repositorio.
 
 ## Lo que no hace
 
