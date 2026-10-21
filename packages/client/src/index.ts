@@ -1,15 +1,29 @@
 import { x402Client, x402HTTPClient } from "@x402/core/client";
 import type { Network, PaymentPayload, PaymentRequirements } from "@x402/core/types";
-import { Operation, scValToNative, Transaction } from "@stellar/stellar-sdk";
+import { Operation, scValToNative, StrKey, Transaction } from "@stellar/stellar-sdk";
 import { createEd25519Signer, getNetworkPassphrase, type ClientStellarSigner } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/client";
 import { ExactFxClientScheme, fxNetwork } from "@local402/fx";
-import { quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource, type FiatRate, type FiatRateSource, type LocalQuote } from "@local402/pricing";
+import {
+  Local402Error,
+  parseLocalPrice,
+  quoteLocalPrice,
+  REFLECTOR_CEX,
+  ReflectorFiatOracle,
+  UfRateSource,
+  type FiatRate,
+  type FiatRateSource,
+  type LocalQuote,
+} from "@local402/pricing";
+
+export { Local402Error, type Local402ErrorCode } from "@local402/pricing";
 
 /** Local402's FxPay deployment on Stellar mainnet (scripts/mainnet/deploy-fxpay.sh). */
 export const FXPAY_MAINNET = "CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD";
 
 export type PayAsset = "USDC" | "XLM" | "EURC";
+
+const PAY_ASSETS: PayAsset[] = ["USDC", "XLM", "EURC"];
 
 type FxAsset = Exclude<PayAsset, "USDC">;
 
@@ -23,7 +37,9 @@ const NO_CACHE = { cache: "no-store" } as const;
 export class SpendingBudget {
   /** USDC units spent or reserved by in-flight payments. */
   spent = 0n;
-  constructor(readonly limit: string) {}
+  constructor(readonly limit: string) {
+    parseLocalPrice(limit);
+  }
 }
 
 export interface Local402ClientOptions {
@@ -125,15 +141,17 @@ export class Local402Client {
   private readonly assetOracle: FiatRateSource;
 
   constructor(options: Local402ClientOptions) {
+    checkClientOptions(options);
     this.network = options.network ?? "stellar:testnet";
-    const signer = options.signer ?? (options.secret ? createEd25519Signer(options.secret, this.network) : undefined);
-    if (!signer) throw new Error("Local402Client needs a secret or a signer");
+    const fx = fxNetwork(this.network, options.fxContract);
+    const signer = options.signer ?? createEd25519Signer(options.secret!, this.network);
     this.address = signer.address;
     this.payWith = options.payWith ?? "USDC";
-    const fx = fxNetwork(this.network, options.fxContract);
     const rpcUrl = options.rpcUrl ?? fx.rpcUrl;
     const rpcConfig = rpcUrl ? { url: rpcUrl } : undefined;
-    if (this.payWith !== "USDC" && !fx.fxContract) throw new Error(`Paying with ${this.payWith} on ${this.network} needs fxContract`);
+    if (this.payWith !== "USDC" && !fx.fxContract) {
+      throw new Local402Error("INVALID_CONFIG", `Paying with ${this.payWith} on ${this.network} needs fxContract, e.g. FXPAY_MAINNET.`);
+    }
     const scheme =
       this.payWith === "USDC"
         ? new ExactStellarScheme(signer, rpcConfig)
@@ -168,6 +186,10 @@ export class Local402Client {
     if (first.status !== 402) return { free: true, body: await readBody(first) };
 
     const required = this.http.getPaymentRequiredResponse((name) => first.headers.get(name), await first.json());
+    if (!required.accepts.some((accept) => accept.scheme === this.scheme && accept.network === this.network)) {
+      const offered = required.accepts.map((accept) => `${accept.scheme} on ${accept.network}`).join(", ") || "nothing";
+      throw new Local402Error("NO_PAYMENT_OPTION", `The seller accepts ${offered}; this client pays ${this.scheme} (${this.payWith}) on ${this.network}.`);
+    }
     const payload = await this.http.createPaymentPayload(required);
     const price = describe(url, payload.accepted);
     await this.checkPrice(price);
@@ -182,7 +204,7 @@ export class Local402Client {
     });
     if (!paid.ok) {
       if (this.budget) this.budget.spent -= charged;
-      throw new Error(`Payment failed (HTTP ${paid.status}): ${await refusalReason(paid)}`);
+      throw new Local402Error("PAYMENT_FAILED", `Payment failed (HTTP ${paid.status}): ${await refusalReason(paid)}`);
     }
     const settlement = this.http.getPaymentSettleResponse((name) => paid.headers.get(name));
     const extra = settlement.extra as { sendAsset?: string; sendAmount?: string } | undefined;
@@ -210,16 +232,17 @@ export class Local402Client {
       this.budget && quoteLocalPrice(this.budget.limit, { oracle: this.oracle }),
     ]);
     if (fair && charged * 10_000n > BigInt(fair.tokenAmount) * (10_000n + this.maxOverchargeBps)) {
-      throw new Error(
+      throw new Local402Error(
+        "REFUSED_OVERCHARGE",
         `Refusing to pay: ${fair.localAmount} ${fair.currency} is ${fair.tokenAmount} USDC units by our oracle, but the seller charges ${price.amount}`,
       );
     }
     if (cap && charged > BigInt(cap.tokenAmount)) {
       const label = fair ? `${fair.localAmount} ${fair.currency}` : `${price.amount} USDC units`;
-      throw new Error(`Refusing to pay ${label}: above the ${this.maxPrice} limit`);
+      throw new Local402Error("REFUSED_MAX_PRICE", `Refusing to pay ${label}: above the ${this.maxPrice} limit`);
     }
     if (budget && this.budget && this.budget.spent + charged > BigInt(budget.tokenAmount)) {
-      throw new Error(`Refusing to pay: it would exceed the ${this.budget.limit} budget (${this.budget.spent} of ${budget.tokenAmount} USDC units already spent)`);
+      throw new Local402Error("REFUSED_BUDGET", `Refusing to pay: it would exceed the ${this.budget.limit} budget (${this.budget.spent} of ${budget.tokenAmount} USDC units already spent)`);
     }
   }
 
@@ -232,12 +255,13 @@ export class Local402Client {
     const symbol = FX_ORACLE_SYMBOLS[this.payWith];
     const rate = await this.assetOracle.getRate(symbol);
     if (Date.now() / 1000 - rate.timestamp > MAX_ORACLE_AGE_SECONDS) {
-      throw new Error(`Refusing to pay: the ${symbol} oracle rate is stale`);
+      throw new Local402Error("REFUSED_FX_ORACLE_STALE", `Refusing to pay: the ${symbol} oracle rate is stale`);
     }
     const oracleSend = oracleSendAmount(usdcAmount, rate);
     const premiumBps = Number(((maxSend - oracleSend) * 10_000n) / oracleSend);
     if (premiumBps > this.maxFxPremiumBps) {
-      throw new Error(
+      throw new Local402Error(
+        "REFUSED_FX_PREMIUM",
         `Refusing to pay: the swap may spend ${maxSend} ${this.payWith} units, ${(premiumBps / 100).toFixed(2)}% above the ${oracleSend} the oracle rate implies (limit ${this.maxFxPremiumBps / 100}%)`,
       );
     }
@@ -246,6 +270,47 @@ export class Local402Client {
 }
 
 const MAX_ORACLE_AGE_SECONDS = 900;
+
+/** Rejects options the client could never pay with, so the mistake surfaces at startup and not on the first 402. */
+function checkClientOptions(options: Local402ClientOptions): void {
+  const invalid = (message: string) => new Local402Error("INVALID_CONFIG", message);
+  if (!options) throw invalid("Local402Client needs options, e.g. { secret: process.env.STELLAR_SECRET }.");
+  if (options.secret !== undefined && options.signer !== undefined) throw invalid("Give Local402Client a secret or a signer, not both.");
+  if (options.signer === undefined) {
+    // Never echo the value: it may be a real key with one character off.
+    if (!options.secret) throw invalid("Local402Client needs a secret or a signer.");
+    if (!StrKey.isValidEd25519SecretSeed(options.secret)) throw invalid("secret must be a Stellar secret key (S…, 56 characters).");
+  } else if (typeof options.signer.address !== "string" || typeof options.signer.signAuthEntry !== "function") {
+    throw invalid("signer must have an address and signAuthEntry, e.g. createEd25519Signer(secret, network).");
+  }
+  if (options.payWith !== undefined && !PAY_ASSETS.includes(options.payWith)) {
+    throw invalid(`payWith must be one of ${PAY_ASSETS.join(", ")}, got ${options.payWith}.`);
+  }
+  if (options.rpcUrl !== undefined && !/^https?:\/\/\S+$/.test(options.rpcUrl)) throw invalid("rpcUrl must be an http(s) URL, e.g. https://soroban-testnet.stellar.org.");
+  if (options.maxPrice !== undefined) parseLocalPrice(options.maxPrice);
+  if (options.budget !== undefined && !(options.budget instanceof SpendingBudget)) {
+    throw invalid('budget must be a SpendingBudget, e.g. new SpendingBudget("5000 CLP").');
+  }
+  for (const name of ["oracle", "assetOracle"] as const) {
+    if (options[name] !== undefined && typeof options[name]?.getRate !== "function") {
+      throw invalid(`${name} must be a FiatRateSource (an object with getRate(currency)).`);
+    }
+  }
+  for (const name of ["maxOverchargeBps", "maxFxPremiumBps", "fxSlippageBps"] as const) {
+    const value = options[name];
+    if (value !== undefined && !(Number.isInteger(value) && value >= 0)) {
+      throw invalid(`${name} must be a whole number of basis points (100 = 1%), got ${value}.`);
+    }
+  }
+  const slippage = options.fxSlippageBps ?? 200;
+  const premium = options.maxFxPremiumBps ?? 500;
+  if ((options.payWith ?? "USDC") !== "USDC" && slippage >= premium) {
+    throw invalid(
+      `fxSlippageBps (${slippage}) must stay below maxFxPremiumBps (${premium}): the slippage counts toward the premium, ` +
+        `so the swap price would have no room to move before a ${options.payWith} payment is refused.`,
+    );
+  }
+}
 
 /** Send-asset units worth `usdcAmount` at an oracle rate, rounded up. USDC and the send assets use 7 decimals; USDC counts as one dollar. */
 export function oracleSendAmount(usdcAmount: string | bigint, rate: FiatRate): bigint {
@@ -268,13 +333,22 @@ async function refusalReason(response: Response): Promise<string> {
   if (header) {
     try {
       const { error } = JSON.parse(atob(header)) as { error?: unknown };
-      if (typeof error === "string" && error) return error;
+      if (typeof error === "string" && error) return untrusted(error);
     } catch {
       // Not a header this client can read; the body below is all there is.
     }
   }
-  const text = (await response.text()).trim();
+  const text = untrusted(await response.text());
   return text && text !== "{}" ? text : "no reason given";
+}
+
+/**
+ * The seller writes the refusal, and it lands in an error that is logged and, through the MCP server, read by a
+ * model. Keep it to one bounded line so a hostile seller cannot flood either.
+ */
+function untrusted(text: string, max = 300): string {
+  const line = text.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ").trim();
+  return line.length > max ? `${line.slice(0, max)}…` : line;
 }
 
 async function readBody(response: Response): Promise<unknown> {

@@ -1,3 +1,5 @@
+import { Local402Error } from "./errors.js";
+
 export interface LocalMoney {
   /** Decimal amount as written by the seller, e.g. "50" or "1.20". */
   amount: string;
@@ -12,8 +14,12 @@ const ALIASES: Record<string, string> = { UF: "CLF" };
 /** Parses a seller price such as "50 CLP", "1.20 EUR" or "0.5 UF". */
 export function parseLocalPrice(price: string): LocalMoney {
   const match = LOCAL_PRICE.exec(price);
-  if (!match) {
-    throw new Error(`Invalid local price "${price}". Expected "<amount> <CURRENCY>", e.g. "50 CLP".`);
+  if (typeof price !== "string" || !match) {
+    throw new Local402Error("INVALID_PRICE", `Invalid local price "${price}". Expected "<amount> <CURRENCY>", e.g. "50 CLP".`);
+  }
+  // A zero price would emit a requirement for 0 tokens: the resource is given away and books as a sale.
+  if (!/[1-9]/.test(match[1])) {
+    throw new Local402Error("INVALID_PRICE", `Invalid local price "${price}": the amount must be greater than zero.`);
   }
   const code = match[2].toUpperCase();
   return { amount: match[1], currency: ALIASES[code] ?? code };

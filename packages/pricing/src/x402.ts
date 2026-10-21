@@ -2,35 +2,48 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { decodePaymentSignatureHeader, type DynamicPrice, type HTTPRequestContext } from "@x402/core/http";
 import type { AssetAmount, Network } from "@x402/core/types";
 import { ExactStellarScheme } from "@x402/stellar/exact/server";
+import { Local402Error } from "./errors.js";
 import { parseLocalPrice } from "./money.js";
 import { ReflectorFiatOracle, type FiatRateSource } from "./oracle.js";
-import { quoteLocalPrice, type LocalQuote, type QuoteOptions } from "./quote.js";
+import { checkQuoteOptions, quoteLocalPrice, type LocalQuote, type QuoteOptions } from "./quote.js";
 
 export interface LocalPriceOptions extends Omit<QuoteOptions, "oracle" | "tokenDecimals"> {
   network: Network;
   oracle?: FiatRateSource;
   /**
    * Signs quotes so a paid retry can be honored by any server instance holding the same secret,
-   * not only the one that issued the 402. Defaults to `LOCAL402_QUOTE_SECRET`.
+   * not only the one that issued the 402. Defaults to `LOCAL402_QUOTE_SECRET`, and one of the two is
+   * required: at least 32 characters, the same value on every instance.
+   *
+   * `false` serves unsigned quotes, which only the issuing instance can honor, through the in-memory
+   * cache below. That is fine for one process and silently wrong behind a load balancer or on
+   * serverless, where the paid retry usually lands elsewhere, re-quotes, and rejects the payment the
+   * payer already signed. So it has to be asked for.
    */
-  quoteSecret?: string;
+  quoteSecret?: string | false;
 }
 
-let warnedUnsignedQuotes = false;
+const NETWORKS = ["stellar:pubnet", "stellar:testnet"];
+/** An HMAC key short enough to guess lets a payer forge a cheaper quote from one they were given. */
+export const MIN_QUOTE_SECRET_LENGTH = 32;
 
-/**
- * Without a secret, a quote can only be honored by the instance that issued the 402, through the
- * in-memory cache below. That is fine for one process and silently wrong behind a load balancer or on
- * serverless, where the paid retry usually lands elsewhere, re-quotes, and rejects the payment the
- * payer already signed. It works in local development and in the tests, so say it out loud instead.
- */
-function warnUnsignedQuotes() {
-  if (warnedUnsignedQuotes) return;
-  warnedUnsignedQuotes = true;
-  console.warn(
-    "LOCAL402_QUOTE_SECRET is not set: quotes are unsigned and only honored by the instance that issued them. " +
-      "Set it (the same value on every instance) before running more than one.",
-  );
+function quoteSecret(option: string | false | undefined): string | undefined {
+  if (option === false) return undefined;
+  const secret = option ?? process.env.LOCAL402_QUOTE_SECRET;
+  if (!secret) {
+    throw new Local402Error(
+      "QUOTE_SECRET_MISSING",
+      "LOCAL402_QUOTE_SECRET is not set. Set it to a random value of at least 32 characters, the same on every " +
+        "instance (e.g. `openssl rand -hex 32`), or pass quoteSecret: false to serve unsigned quotes from a single instance.",
+    );
+  }
+  if (typeof secret !== "string" || secret.length < MIN_QUOTE_SECRET_LENGTH) {
+    throw new Local402Error(
+      "QUOTE_SECRET_WEAK",
+      `The quote secret must be at least ${MIN_QUOTE_SECRET_LENGTH} characters (e.g. \`openssl rand -hex 32\`).`,
+    );
+  }
+  return secret;
 }
 
 /**
@@ -43,11 +56,14 @@ function warnUnsignedQuotes() {
  * and retry before the quote it accepted expires.
  */
 export function localPrice(price: string, options: LocalPriceOptions): DynamicPrice {
+  if (!NETWORKS.includes(options?.network)) {
+    throw new Local402Error("INVALID_CONFIG", `network must be one of ${NETWORKS.join(", ")}, got ${options?.network}.`);
+  }
+  checkQuoteOptions(options, true);
+  const { amount, currency } = parseLocalPrice(price);
+  const secret = quoteSecret(options.quoteSecret);
   const oracle = options.oracle ?? new ReflectorFiatOracle();
   const now = options.now ?? (() => Math.floor(Date.now() / 1000));
-  const secret = options.quoteSecret ?? process.env.LOCAL402_QUOTE_SECRET;
-  if (!secret) warnUnsignedQuotes();
-  const { amount, currency } = parseLocalPrice(price);
   const ttl = options.quoteTtlSeconds ?? 60;
   let cached: { quote: LocalQuote; asset: string } | undefined;
 

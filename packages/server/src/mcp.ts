@@ -1,9 +1,10 @@
 import type { x402ResourceServer } from "@x402/core/server";
 import { encodePaymentSignatureHeader, type PaymentOption } from "@x402/core/http";
 import { createPaymentWrapper, extractPaymentFromMeta, type MCPToolCallback, type PaymentWrappedHandler } from "@x402/mcp";
+import { Local402Error } from "@local402/pricing";
 import { localRoute, type LocalRouteOptions } from "./index.js";
 
-export interface LocalToolOptions extends Pick<LocalRouteOptions, "payTo" | "network" | "oracle" | "description"> {
+export interface LocalToolOptions extends Pick<LocalRouteOptions, "payTo" | "network" | "oracle" | "quoteSecret" | "description"> {
   /** Tool name as registered on the MCP server; identifies the paid resource. */
   toolName: string;
 }
@@ -13,6 +14,12 @@ export interface LocalToolOptions extends Pick<LocalRouteOptions, "payTo" | "net
  * payable in USDC (`exact`) or XLM/EURC (`exact-fx`).
  */
 export function localToolPayment(server: x402ResourceServer, price: string, { toolName, description, ...options }: LocalToolOptions) {
+  if (typeof server?.buildPaymentRequirementsFromOptions !== "function") {
+    throw new Local402Error("INVALID_CONFIG", "localToolPayment needs the resource server, e.g. local402Server(process.env.FACILITATOR_URL).");
+  }
+  if (typeof toolName !== "string" || !toolName) {
+    throw new Local402Error("INVALID_CONFIG", "toolName must be the tool's name as registered on the MCP server.");
+  }
   const { accepts } = localRoute(price, options);
   return <TArgs extends Record<string, unknown>>(handler: PaymentWrappedHandler<TArgs>): MCPToolCallback<TArgs> =>
     async (args, extra) => {

@@ -1,6 +1,6 @@
 {
   "name": "@local402/server",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
@@ -12,6 +12,7 @@
     "@local402/fx": "*",
     "@local402/pricing": "*",
     "@modelcontextprotocol/sdk": "1.30.0",
+    "@stellar/stellar-sdk": "16.3.0",
     "@x402/core": "2.25.0",
     "@x402/extensions": "2.25.0",
     "@x402/mcp": "2.25.0",
