@@ -57,9 +57,9 @@ if (!(PAY_ASSETS as readonly string[]).includes(requested)) {
 }
 const payWith = requested as PayAsset;
 // Without an explicit limit an agent could be talked into paying anything, so default to a small one.
-const maxPrice = process.env.MAX_PRICE ?? "500 CLP";
+const maxPrice = process.env.MAX_PRICE || "500 CLP";
 // One budget for the whole session, whatever asset each payment uses.
-const budget = new SpendingBudget(process.env.BUDGET ?? "5000 CLP");
+const budget = new SpendingBudget(process.env.BUDGET || "5000 CLP");
 const common = { secret: SECRET, network: NETWORK, fxContract, maxPrice, budget };
 const clients: Record<PayAsset, Local402Client> = {
   USDC: new Local402Client({ ...common, payWith: "USDC" }),

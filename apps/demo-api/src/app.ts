@@ -346,7 +346,7 @@ app.get("/receipts/stream", (_req, res) => {
 // Demo payments spend a shared testnet wallet, so they are capped per minute, per visitor and overall.
 const PAY_LIMITS = { perVisitor: 3, overall: 20 };
 // No demo route costs more than 0.01 UF (~43 USD is the UF; the route charges a hundredth of it).
-const DEMO_MAX_PRICE = process.env.DEMO_MAX_PRICE ?? "1000 CLP";
+const DEMO_MAX_PRICE = process.env.DEMO_MAX_PRICE || "1000 CLP";
 /**
  * Where this API answers, for the demo agent that buys from it. The project's production domain, not
  * `VERCEL_URL`: that names the individual deployment, which deployment protection answers with a login
