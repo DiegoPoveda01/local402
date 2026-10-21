@@ -2,13 +2,16 @@ extern crate std;
 
 use super::*;
 use soroban_sdk::{
-    testutils::{Address as _, MockAuth, MockAuthInvoke},
+    testutils::{Address as _, Events as _, MockAuth, MockAuthInvoke},
     token::StellarAssetClient,
+    xdr, Event, FromVal, TryFromVal, Val,
 };
 
 /// Soroswap-like router with fixed prices: `price` units of the input per unit of output on the
 /// direct pool (0 means there is no direct pool, a negative one answers with no amounts at all) and
 /// `hub_price` through a hub hop. It acts as its own pair and holds the output liquidity.
+/// `set_mode` makes it misbehave on the swap: `GREEDY` pulls everything FxPay holds instead of the
+/// quoted input, and `SHORT` delivers one unit less than asked.
 #[contract]
 struct MockRouter;
 
@@ -35,6 +38,10 @@ impl MockRouter {
         amounts
     }
 
+    pub fn set_mode(env: Env, mode: u32) {
+        env.storage().instance().set(&symbol_short!("MODE"), &mode);
+    }
+
     pub fn router_pair_for(env: Env, _token_a: Address, _token_b: Address) -> Address {
         env.current_contract_address()
     }
@@ -51,11 +58,18 @@ impl MockRouter {
         let amounts = Self::router_get_amounts_in(env.clone(), amount_out, path.clone());
         assert!(amounts.get(0).unwrap() <= amount_in_max);
         let pair = env.current_contract_address();
-        TokenClient::new(&env, &path.get(0).unwrap()).transfer(&to, &pair, &amounts.get(0).unwrap());
-        TokenClient::new(&env, &path.last().unwrap()).transfer(&pair, &to, &amount_out);
+        let mode: u32 = env.storage().instance().get(&symbol_short!("MODE")).unwrap_or(0);
+        let input = TokenClient::new(&env, &path.get(0).unwrap());
+        let amount_in = if mode == GREEDY { input.balance(&to) } else { amounts.get(0).unwrap() };
+        input.transfer(&to, &pair, &amount_in);
+        let delivered = if mode == SHORT { amount_out - 1 } else { amount_out };
+        TokenClient::new(&env, &path.last().unwrap()).transfer(&pair, &to, &delivered);
         amounts
     }
 }
+
+const GREEDY: u32 = 1;
+const SHORT: u32 = 2;
 
 struct Setup {
     env: Env,
@@ -264,4 +278,121 @@ fn requires_payer_authorization() {
     let result = s.fx.try_pay(&s.payer, &s.xlm.address, &55, &s.usdc.address, &5, &s.seller, &100);
     assert!(result.is_err());
     assert_eq!(s.usdc.balance(&s.seller), 0);
+}
+
+/// The hub hop is only a detour between two other assets: paying with the hub asset itself, or for
+/// it, has nothing to route through, so without a direct pool there is no route.
+#[test]
+fn skips_the_hub_route_when_the_hub_is_one_of_the_two_assets() {
+    let s = setup_with_prices(0, 12);
+    let hub = s.fx.hub();
+    let no_route = Err(Ok(soroban_sdk::Error::from_contract_error(Error::NoRoute as u32)));
+    assert_eq!(s.fx.try_quote(&hub, &s.usdc.address, &5), no_route);
+    assert_eq!(s.fx.try_quote(&s.xlm.address, &hub, &5), no_route);
+}
+
+/// Every token transfer `token` emitted in the last invocation, as (from, to, amount).
+fn transfers(s: &Setup, token: &Address) -> std::vec::Vec<(Address, Address, i128)> {
+    let val = |sc: &xdr::ScVal| Val::try_from_val(&s.env, sc).unwrap();
+    s.env
+        .events()
+        .all()
+        .filter_by_contract(token)
+        .events()
+        .iter()
+        .filter_map(|event| {
+            let xdr::ContractEventBody::V0(body) = &event.body;
+            let topics = body.topics.as_slice();
+            if Symbol::from_val(&s.env, &val(&topics[0])) != symbol_short!("transfer") {
+                return None;
+            }
+            let from = Address::from_val(&s.env, &val(&topics[1]));
+            let to = Address::from_val(&s.env, &val(&topics[2]));
+            Some((from, to, i128::from_val(&s.env, &val(&body.data))))
+        })
+        .collect()
+}
+
+/// What the facilitator looks for when it simulates a payment: the seller's asset moving from FxPay
+/// to `pay_to`, exactly `dest_amount`, and the unused input going back to the payer, nowhere else.
+#[test]
+fn emits_the_delivery_and_the_refund_the_facilitator_checks() {
+    let s = setup();
+    authorize_payer(&s, 55, 5);
+    s.fx.pay(&s.payer, &s.xlm.address, &55, &s.usdc.address, &5, &s.seller, &100);
+
+    let fx = s.fx.address.clone();
+    assert_eq!(
+        transfers(&s, &s.usdc.address),
+        [(s.router.clone(), fx.clone(), 5), (fx.clone(), s.seller.clone(), 5)]
+    );
+    assert_eq!(
+        transfers(&s, &s.xlm.address),
+        [(s.payer.clone(), fx.clone(), 55), (fx.clone(), s.router.clone(), 50), (fx.clone(), s.payer.clone(), 5)]
+    );
+    let paid = FxPaid {
+        pay_to: s.seller.clone(),
+        from: s.payer.clone(),
+        send_asset: s.xlm.address.clone(),
+        amount_in: 50,
+        dest_asset: s.usdc.address.clone(),
+        amount_out: 5,
+    };
+    assert_eq!(s.env.events().all().filter_by_contract(&fx), [paid.to_xdr(&s.env, &fx)]);
+}
+
+#[test]
+fn sends_no_refund_when_max_send_is_exactly_the_cost() {
+    let s = setup();
+    authorize_payer(&s, 50, 5);
+    s.fx.pay(&s.payer, &s.xlm.address, &50, &s.usdc.address, &5, &s.seller, &100);
+
+    let fx = s.fx.address.clone();
+    assert_eq!(transfers(&s, &s.xlm.address), [(s.payer.clone(), fx.clone(), 50), (fx, s.router.clone(), 50)]);
+    assert_eq!(s.xlm.balance(&s.payer), 950);
+}
+
+/// FxPay authorizes the router to pull exactly the quoted input. A router that tries to take the
+/// payer's refund as well fails that authorization, and the whole payment reverts.
+#[test]
+fn a_router_cannot_take_more_than_the_quoted_input() {
+    let s = setup();
+    MockRouterClient::new(&s.env, &s.router).set_mode(&GREEDY);
+    authorize_payer(&s, 55, 5);
+
+    let result = s.fx.try_pay(&s.payer, &s.xlm.address, &55, &s.usdc.address, &5, &s.seller, &100);
+
+    // FxPay holds all 55 at that point, so the pull fails on authorization, not on balance.
+    let unauthorized = soroban_sdk::Error::from_type_and_code(xdr::ScErrorType::Context, xdr::ScErrorCode::InvalidAction);
+    assert_eq!(result, Err(Ok(unauthorized)));
+    assert_eq!(s.xlm.balance(&s.payer), 1_000);
+    assert_eq!(s.xlm.balance(&s.router), 0);
+    assert_eq!(s.usdc.balance(&s.seller), 0);
+}
+
+/// FxPay holds none of the seller's asset of its own, so a swap that delivers short cannot be
+/// topped up from it: the delivery fails and the payer keeps everything.
+#[test]
+fn a_router_that_delivers_short_reverts_the_payment() {
+    let s = setup();
+    MockRouterClient::new(&s.env, &s.router).set_mode(&SHORT);
+    authorize_payer(&s, 55, 5);
+
+    let result = s.fx.try_pay(&s.payer, &s.xlm.address, &55, &s.usdc.address, &5, &s.seller, &100);
+
+    // The token's own BalanceError (10), from FxPay's transfer to the seller.
+    assert_eq!(result, Err(Ok(soroban_sdk::Error::from_contract_error(10))));
+    assert_eq!(s.xlm.balance(&s.payer), 1_000);
+    assert_eq!(s.usdc.balance(&s.seller), 0);
+    assert_eq!(s.usdc.balance(&s.fx.address), 0);
+}
+
+#[test]
+fn rejects_amounts_that_are_not_positive() {
+    let s = setup();
+    let invalid = Err(Ok(soroban_sdk::Error::from_contract_error(Error::InvalidAmount as u32)));
+    assert_eq!(s.fx.try_pay(&s.payer, &s.xlm.address, &0, &s.usdc.address, &5, &s.seller, &100), invalid);
+    assert_eq!(s.fx.try_pay(&s.payer, &s.xlm.address, &55, &s.usdc.address, &0, &s.seller, &100), invalid);
+    assert_eq!(s.fx.try_pay(&s.payer, &s.xlm.address, &55, &s.usdc.address, &-5, &s.seller, &100), invalid);
+    assert_eq!(s.xlm.balance(&s.payer), 1_000);
 }
