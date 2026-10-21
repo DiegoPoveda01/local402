@@ -82,6 +82,10 @@ app.use(paymentMiddleware(
 ));
 ```
 
+El vendedor firma cada cotización con `LOCAL402_QUOTE_SECRET` (32+ caracteres, `openssl rand -hex 32`)
+y no arranca sin esto. [`examples/quickstart`](examples/quickstart) es la versión ejecutable, y
+[docs/errors.md](docs/errors.md) lista todos los códigos de error.
+
 **2. `exact-fx`: pagar con otro activo (`local402-fx`, `contracts/fx-pay`).**
 Un esquema x402 nuevo. Quien paga firma una llamada al contrato Soroban **FxPay**, que cambia sus XLM o EURC
 en [Soroswap](https://soroswap.finance) por *exactamente* los USDC que pidió el vendedor, se los entrega, y
@@ -378,7 +382,7 @@ necesita esto — cada `.env.example` lista el resto.
 
 | Variable | Dónde | Por qué importa |
 | --- | --- | --- |
-| `LOCAL402_QUOTE_SECRET` | vendedor | Firma las cotizaciones. Sin esto, un reintento pagado que cae en otra instancia vuelve a cotizar y rechaza un pago que el pagador ya firmó. El mismo valor en todas las instancias. El servidor avisa por consola cuando falta. |
+| `LOCAL402_QUOTE_SECRET` | vendedor | Firma las cotizaciones. Sin esto, un reintento pagado que cae en otra instancia vuelve a cotizar y rechaza un pago que el pagador ya firmó. El mismo valor en todas las instancias, de al menos 32 caracteres (`openssl rand -hex 32`). Desde 1.0 el vendedor no arranca sin esto; `quoteSecret: false` lo desactiva para un vendedor de una sola instancia. `npm run demo` genera uno en cada ejecución. |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | vendedor | Recibos, los topes de pagos de demo y el último valor conocido de la UF. Sin esto cada instancia serverless guarda los suyos, y desaparecen con ella. |
 | `SELF_URL` | vendedor | Dónde compra el agente de demo. Cae al dominio de producción del proyecto en Vercel, y al `Host` del request solo si es localhost, porque el `Host` lo escribe quien llama. |
 | `CORS_ORIGIN` | vendedor | Orígenes del dashboard autorizados a pagar desde la billetera del visitante, separados por coma. |

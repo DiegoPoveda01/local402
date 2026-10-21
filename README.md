@@ -81,6 +81,10 @@ app.use(paymentMiddleware(
 ));
 ```
 
+The seller signs each quote with `LOCAL402_QUOTE_SECRET` (32+ characters, `openssl rand -hex 32`) and
+refuses to start without it. [`examples/quickstart`](examples/quickstart) is the runnable version, and
+[docs/errors.md](docs/errors.md) lists every error code.
+
 **2. `exact-fx`: pay with a different asset (`local402-fx`, `contracts/fx-pay`).**
 A new x402 scheme. The payer signs a call to the **FxPay** Soroban contract, which swaps their XLM or
 EURC on [Soroswap](https://soroswap.finance) for *exactly* the USDC the seller asked for, delivers it,
@@ -370,7 +374,7 @@ money, needs these — each `.env.example` lists the rest.
 
 | Variable | Where | Why it matters |
 | --- | --- | --- |
-| `LOCAL402_QUOTE_SECRET` | seller | Signs quotes. Without it, a paid retry that lands on another instance re-quotes and rejects a payment the payer already signed. Same value on every instance. The server logs a warning when it is missing. |
+| `LOCAL402_QUOTE_SECRET` | seller | Signs quotes. Without it, a paid retry that lands on another instance re-quotes and rejects a payment the payer already signed. Same value on every instance, at least 32 characters (`openssl rand -hex 32`). Since 1.0 the seller refuses to start without it; `quoteSecret: false` opts a single-instance seller out. `npm run demo` generates one per run. |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | seller | Receipts, the demo payment caps and the last known UF value. Without them each serverless instance keeps its own, and they disappear when it does. |
 | `SELF_URL` | seller | Where the demo agent buys from. Falls back to the Vercel project's production domain, and to the request's `Host` only when that is localhost, because `Host` is whatever the caller wrote. |
 | `CORS_ORIGIN` | seller | Dashboard origins allowed to pay from the visitor's wallet, comma-separated. |
