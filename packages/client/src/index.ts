@@ -174,7 +174,10 @@ export class Local402Client {
   /** Reads a resource's price without paying. Returns undefined if the resource is free. */
   async quote(url: string): Promise<Price | undefined> {
     const response = await fetch(url, NO_CACHE);
-    if (response.status !== 402) return undefined;
+    if (response.status !== 402) {
+      await unavailable(response);
+      return undefined;
+    }
     const required = this.http.getPaymentRequiredResponse((name) => response.headers.get(name), await response.json());
     const option = required.accepts.find((accept) => accept.scheme === this.scheme) ?? required.accepts[0];
     return describe(url, option);
@@ -183,7 +186,10 @@ export class Local402Client {
   /** Fetches a resource, paying for it if it returns 402. */
   async pay(url: string): Promise<PaidResult | { free: true; body: unknown }> {
     const first = await fetch(url, NO_CACHE);
-    if (first.status !== 402) return { free: true, body: await readBody(first) };
+    if (first.status !== 402) {
+      await unavailable(first);
+      return { free: true, body: await readBody(first) };
+    }
 
     const required = this.http.getPaymentRequiredResponse((name) => first.headers.get(name), await first.json());
     if (!required.accepts.some((accept) => accept.scheme === this.scheme && accept.network === this.network)) {
@@ -192,12 +198,16 @@ export class Local402Client {
     }
     const payload = await this.http.createPaymentPayload(required);
     const price = describe(url, payload.accepted);
-    await this.checkPrice(price);
+    const budgetUnits = await this.check(price);
     const fx = this.payWith === "USDC" ? undefined : await this.checkFxLeg(price.amount, fxMaxSend(payload));
 
-    // Reserve the amount so concurrent payments cannot overrun the budget together.
+    // Reserve the amount so concurrent payments cannot overrun the budget together. The budget is checked
+    // again here, with no await before the reservation: another payment may have reserved since `check`.
     const charged = BigInt(price.amount);
-    if (this.budget) this.budget.spent += charged;
+    if (this.budget) {
+      this.checkBudget(charged, budgetUnits!);
+      this.budget.spent += charged;
+    }
     const paid = await fetch(url, { ...NO_CACHE, headers: this.http.encodePaymentSignatureHeader(payload) }).catch((error) => {
       if (this.budget) this.budget.spent -= charged;
       throw error;
@@ -225,6 +235,11 @@ export class Local402Client {
 
   /** Checks the charge against the client's own oracle rather than trusting the seller's rate. */
   async checkPrice(price: Price): Promise<void> {
+    await this.check(price);
+  }
+
+  /** `checkPrice`, returning the budget limit in USDC units when there is a budget. */
+  private async check(price: Price): Promise<bigint | undefined> {
     const charged = BigInt(price.amount);
     const [fair, cap, budget] = await Promise.all([
       price.local && quoteLocalPrice(`${price.local.amount} ${price.local.currency}`, { oracle: this.oracle }),
@@ -241,8 +256,15 @@ export class Local402Client {
       const label = fair ? `${fair.localAmount} ${fair.currency}` : `${price.amount} USDC units`;
       throw new Local402Error("REFUSED_MAX_PRICE", `Refusing to pay ${label}: above the ${this.maxPrice} limit`);
     }
-    if (budget && this.budget && this.budget.spent + charged > BigInt(budget.tokenAmount)) {
-      throw new Local402Error("REFUSED_BUDGET", `Refusing to pay: it would exceed the ${this.budget.limit} budget (${this.budget.spent} of ${budget.tokenAmount} USDC units already spent)`);
+    if (!budget) return undefined;
+    const units = BigInt(budget.tokenAmount);
+    this.checkBudget(charged, units);
+    return units;
+  }
+
+  private checkBudget(charged: bigint, units: bigint): void {
+    if (this.budget && this.budget.spent + charged > units) {
+      throw new Local402Error("REFUSED_BUDGET", `Refusing to pay: it would exceed the ${this.budget.limit} budget (${this.budget.spent} of ${units} USDC units already spent)`);
     }
   }
 
@@ -322,6 +344,11 @@ export function fxMaxSend(payload: PaymentPayload): bigint {
   const transaction = new Transaction(String((payload.payload as { transaction?: unknown }).transaction), getNetworkPassphrase(payload.accepted.network));
   const operation = transaction.operations[0] as Operation.InvokeHostFunction;
   return scValToNative(operation.func.invokeContract().args()[2]) as bigint;
+}
+
+/** A resource is free only when it answers 2xx without a 402. An error is not a free resource. */
+async function unavailable(response: Response): Promise<void> {
+  if (!response.ok) throw new Local402Error("RESOURCE_UNAVAILABLE", `The resource answered HTTP ${response.status}, not a price: ${await refusalReason(response)}`);
 }
 
 /**
