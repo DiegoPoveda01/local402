@@ -6,7 +6,7 @@ import express from "express";
 process.env.RECEIPTS_FILE ??= "/tmp/local402-receipts.json";
 
 const [{ app: facilitator }, { app: api }] = await Promise.all([
-  import("../../apps/facilitator/src/app.js"),
+  import("../../packages/facilitator/src/app.js"),
   import("../../apps/demo-api/src/app.js"),
 ]);
 
