@@ -53,6 +53,53 @@ inside 30 days. If kuyfi has not merged by the start of week 4:
 If Pau cannot do the D3 run, another member of the Stellar Chile community who is not part of the project
 does it. The acceptance criterion stays the same.
 
+## D4: tests before and after
+
+Counted with `npm test`, `npm run coverage` and, in `contracts`, `cargo test` and `cargo llvm-cov`. TypeScript
+coverage is of what ships to npm (`packages/*/src`), not of the demo apps.
+
+| | Sprint start (2026-10-06) | Before the D4 suites (2026-10-18) | After (2026-10-18) |
+| --- | --- | --- | --- |
+| TypeScript tests | 41 | 86 (+4 that need testnet) | 140 (+4 that need testnet) |
+| Soroban tests | 11 | 11 | 17 |
+| Statements covered | | 62.89% | 82.93% |
+| Branches covered | | 86.44% | 92.48% |
+| Functions covered | | 68.75% | 88.05% |
+| FxPay (`lib.rs`) regions and lines covered | | 97.73% and 98.70% | 100% and 100% |
+
+By package, statements before and after: pricing 79.68% to 93.48%, client 59.86% to 73.92%, facilitator
+65.39% to 68.25%, server 87.09% (unchanged), fx 50% to 90.57%.
+
+The new suites:
+
+- **Oracle** (`packages/pricing/test/oracle.test.ts`): the median of recent prints, gaps in the history,
+  single-print rates, a missing history, zero prices, the last good rate reused for ten minutes and then
+  dropped, a reused rate that still goes stale, and an RPC that fails or hangs.
+- **Client guards** (`packages/client/test/guards.test.ts`): the cap on a plain x402 price, a stale oracle on
+  the client's side, overcharges, a seller's refusal cut to one bounded line, and the budget given back when a
+  payment does not go through. One test found that two payments running at the same time could both pass the
+  budget check and spend past it; that is fixed (see the CHANGELOG). A seller that answers an error, a 500
+  for example, is no longer read as a free resource.
+- **Facilitator verification rules** (`packages/facilitator/test/verification.test.ts`): every shape check
+  before the scheme runs, the order of the allowlist checks, verify and settle limits counted apart, the
+  `X-Forwarded-For` rule, the one retry of a settlement that never reached the ledger, and `/supported`.
+- **`exact-fx` against the network** (`packages/fx/test/facilitator-rpc.test.ts` and `client-rpc.test.ts`),
+  with the Soroban RPC replaced by stubs so they run offline: the payer's one authorization and what it
+  covers, how far its signature may reach, a failed or too costly simulation, the delivery to the seller
+  and no tokens moved out of the facilitator's accounts, an unsigned payment, every way a settlement ends
+  (sent, refused, failed, still pending), the fee bid, and the client's side, whose signed `pay` is then
+  verified by the facilitator. Breaking any of the four delivery and authorization checks fails a test.
+- **FxPay routing and refunds** (`contracts/fx-pay/src/test.rs`): no hub route when the hub is one of the two
+  assets, the delivery and refund events the facilitator looks for, no refund when nothing is left over, and a
+  router that tries to take more than the quoted input, or delivers short, reverts the whole payment, and
+  amounts that are zero or negative are refused.
+
+The 86 already include D1's `test/compat-0.1.test.ts` (9 tests: the published 0.1 packages against the 1.0 code).
+
+The scheduled smoke test is `.github/workflows/smoke.yml`: every six hours it asks each paid route of the
+mainnet demo for its price and checks the quote against Reflector, with `scripts/smoke.ts`. It never pays and
+needs no secrets.
+
 ## Explicitly not in this sprint
 
 - **An external audit of FxPay.** The code is left audit-ready: [security-review.md](security-review.md)
