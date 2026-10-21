@@ -5,3 +5,4 @@ export { ExactFxFacilitatorScheme, type ExactFxFacilitatorOptions } from "./faci
 export { ChannelPool } from "./channels.js";
 export { feeBumpSigner, inclusionFeeBid } from "./fees.js";
 export { FX_MAINNET, mainnetShadowQuote, type ShadowQuote } from "./mainnet.js";
+export { Local402Error, type Local402ErrorCode } from "@local402/pricing";

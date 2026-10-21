@@ -7,7 +7,7 @@ import { ExactFxFacilitatorScheme, FX_SCHEME, FX_TESTNET } from "../src/index.js
 /**
  * Everything the facilitator rejects before it talks to the network, checked offline. A payload that
  * gets past all of this reaches `simulateTransaction`, and the reasons beyond that point are covered
- * by the live testnet tests in `fx.test.ts`.
+ * in `facilitator-rpc.test.ts` against a stubbed RPC, and by the live testnet tests in `fx.test.ts`.
  */
 
 const SELLER = "GC57EF3M4NJXMYB56JMSS52RCBVPS5OJAT7WMK54CCYSBGPRQ64GVM62";

@@ -1,3 +1,4 @@
+import { Local402Error } from "./errors.js";
 import { toScaled } from "./money.js";
 import type { FiatRate, FiatRateSource } from "./oracle.js";
 
@@ -68,7 +69,7 @@ export function firstUf(...sources: UfValueSource[]): UfValueSource {
         errors.push(error instanceof Error ? error.message : String(error));
       }
     }
-    throw new Error(`No UF source available: ${errors.join("; ")}`);
+    throw new Local402Error("UF_UNAVAILABLE", `No UF source available: ${errors.join("; ")}`);
   };
 }
 

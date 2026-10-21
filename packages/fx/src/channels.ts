@@ -1,4 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { Local402Error } from "@local402/pricing";
+import { integerIn } from "./extra.js";
 
 /**
  * Hands each settlement its own facilitator account, so concurrent settlements never race for one
@@ -17,7 +19,13 @@ export class ChannelPool {
     readonly addresses: string[],
     private readonly maxQueued = 50,
   ) {
-    if (!addresses.length) throw new Error("ChannelPool needs at least one account");
+    if (!Array.isArray(addresses) || !addresses.length) {
+      throw new Local402Error("INVALID_CONFIG", "ChannelPool needs at least one account address.");
+    }
+    if (new Set(addresses).size !== addresses.length) {
+      throw new Local402Error("INVALID_CONFIG", "ChannelPool account addresses must be distinct: two channels sharing one account race for its sequence number.");
+    }
+    integerIn("maxQueued", maxQueued, 0);
     this.next = Math.floor(Math.random() * addresses.length);
   }
 
@@ -49,7 +57,7 @@ export class ChannelPool {
         return address;
       }
     }
-    if (this.waiters.length >= this.maxQueued) throw new Error("All facilitator accounts are busy");
+    if (this.waiters.length >= this.maxQueued) throw new Local402Error("FACILITATOR_BUSY", "All facilitator accounts are busy");
     // The account arrives already reserved for this caller, so there is nothing to retry.
     return new Promise<string>((resolve) => this.waiters.push(resolve));
   }
