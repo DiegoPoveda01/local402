@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    // Inside this repo, compile against the workspace sources; a copy outside it uses the npm package.
+    "paths": { "local402-server": ["../../packages/server/src/index.ts"] }
+  },
+  "include": ["server.ts"]
+}

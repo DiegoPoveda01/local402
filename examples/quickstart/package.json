@@ -1,0 +1,16 @@
+{
+  "name": "local402-quickstart",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx server.ts"
+  },
+  "dependencies": {
+    "@x402/express": "2.25.0",
+    "express": "^5.1.0",
+    "local402-server": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5"
+  }
+}
