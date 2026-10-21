@@ -54,6 +54,10 @@ npm install local402-server@next local402-client@next
 - The refusal a seller sends back (`PAYMENT_FAILED`) is cut to one line of at most 300 characters before
   it reaches the error. Through the MCP server that text is read by a model, so a hostile seller can no
   longer flood it or slip in multi-line instructions.
+- A `SpendingBudget` holds when payments run at the same time. Before, two concurrent `pay` calls could
+  both pass the budget check before either reserved its amount, and together spend past the limit.
+- `Local402Client.quote` and `pay` throw `RESOURCE_UNAVAILABLE` when the resource answers an error. Before,
+  any answer other than 402, a 500 included, came back as a free resource, so a seller that was down looked free.
 - The demo apps treat an empty `MAX_PRICE`, `BUDGET` or `DEMO_MAX_PRICE` as unset and keep their default
   cap. Before, an empty value on the host meant no cap at all.
 - The facilitator treats an empty `PAY_TO_ALLOWLIST` the same way, and on `stellar:pubnet` refuses to

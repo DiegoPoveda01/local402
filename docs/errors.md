@@ -64,6 +64,7 @@ Nothing was signed and nothing moved.
 | `INSUFFICIENT_BALANCE` | The payer holds less than the quote plus slippage. The unused part is refunded, but all of it must be there to sign. |
 | `INVALID_REQUIREMENTS` | The seller's `exact-fx` requirement is malformed. |
 | `NO_PAYMENT_OPTION` | The seller accepts no scheme and network this client pays with. The message lists what it does accept. |
+| `RESOURCE_UNAVAILABLE` | The resource answered an error (4xx other than 402, or 5xx) instead of a price. A client never reads that as free. |
 | `PAYMENT_FAILED` | The client signed, and the seller or facilitator rejected the payment. The message carries their reason. |
 
 ## Facilitator

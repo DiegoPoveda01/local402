@@ -33,6 +33,7 @@ async function main(args: string[]): Promise<void> {
 
   const probe = await fetch(url);
   const header = probe.headers.get("PAYMENT-REQUIRED");
+  if (probe.status !== 402 && !probe.ok) throw new Error(`${url} answered HTTP ${probe.status}: it is down or refused the request, not free`);
   if (probe.status !== 402 || !header) {
     console.log(`${url} is free (HTTP ${probe.status})`);
     return;
