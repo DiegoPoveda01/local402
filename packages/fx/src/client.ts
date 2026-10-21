@@ -10,7 +10,8 @@ import {
   type ClientStellarSigner,
   type RpcConfig,
 } from "@x402/stellar";
-import { FX_SCHEME, parseFxExtra, SIGNING_GRACE_SECONDS } from "./extra.js";
+import { Local402Error } from "@local402/pricing";
+import { contractAddress, FX_SCHEME, integerIn, parseFxExtra, SIGNING_GRACE_SECONDS } from "./extra.js";
 
 export interface ExactFxClientOptions {
   /** FxPay contract this client trusts with its funds. */
@@ -95,7 +96,8 @@ async function explainShortBalance(
   if (balance === undefined || balance >= maxSend) return failure;
   const native = options.sendAsset === Asset.native().contractId(getNetworkPassphrase(network));
   const reserve = native ? " On XLM the account reserve keeps part of the balance unspendable." : "";
-  return new Error(
+  return new Local402Error(
+    "INSUFFICIENT_BALANCE",
     `This payment needs ${formatUnits(maxSend)} available to sign (the quote plus slippage), but ${from} ` +
       `holds ${formatUnits(balance)}. Whatever the swap does not use is refunded, but the full amount must ` +
       `be there first.${reserve}`,
@@ -111,7 +113,15 @@ export class ExactFxClientScheme implements SchemeNetworkClient {
   constructor(
     private readonly signer: ClientStellarSigner,
     private readonly options: ExactFxClientOptions,
-  ) {}
+  ) {
+    if (typeof signer?.address !== "string" || typeof signer.signAuthEntry !== "function") {
+      throw new Local402Error("INVALID_CONFIG", "ExactFxClientScheme needs a signer with an address and signAuthEntry, e.g. createEd25519Signer(secret, network).");
+    }
+    contractAddress("fxContract", options?.fxContract);
+    contractAddress("sendAsset", options.sendAsset);
+    integerIn("slippageBps", options.slippageBps, 0, 10_000);
+    integerIn("signingGraceSeconds", options.signingGraceSeconds, 0);
+  }
 
   async createPaymentPayload(
     x402Version: number,
@@ -121,10 +131,10 @@ export class ExactFxClientScheme implements SchemeNetworkClient {
     const { fxContract, sendAsset, rpcConfig } = this.options;
     const extra = parseFxExtra(requirements.extra);
     if (extra.fxContract !== fxContract) {
-      throw new Error(`Untrusted FX contract ${extra.fxContract}`);
+      throw new Local402Error("REFUSED_UNTRUSTED_FX_CONTRACT", `Untrusted FX contract ${extra.fxContract}`);
     }
     if (!extra.sendAssets.includes(sendAsset)) {
-      throw new Error(`Facilitator does not accept send asset ${sendAsset}`);
+      throw new Local402Error("REFUSED_SEND_ASSET", `Facilitator does not accept send asset ${sendAsset}`);
     }
 
     const from = this.signer.address;
@@ -168,14 +178,14 @@ export class ExactFxClientScheme implements SchemeNetworkClient {
 
     let missingSigners = tx.needsNonInvokerSigningBy();
     if (missingSigners.length !== 1 || missingSigners[0] !== from) {
-      throw new Error(`Expected to sign with [${from}], but got [${missingSigners.join(", ")}]`);
+      throw new Local402Error("SIGNER_MISMATCH", `Expected to sign with [${from}], but got [${missingSigners.join(", ")}]`);
     }
     await tx.signAuthEntries({ address: from, signAuthEntry: this.signer.signAuthEntry, expiration: maxLedger });
     await tx.simulate();
     handleSimulationResult(tx.simulation);
     missingSigners = tx.needsNonInvokerSigningBy();
     if (missingSigners.length > 0) {
-      throw new Error(`unexpected signer(s) required: [${missingSigners.join(", ")}]`);
+      throw new Local402Error("SIGNER_MISMATCH", `unexpected signer(s) required: [${missingSigners.join(", ")}]`);
     }
 
     return { x402Version, payload: { transaction: tx.built!.toXDR() } };

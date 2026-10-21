@@ -2,6 +2,7 @@
 // First run creates and funds throwaway testnet accounts (saved in .demo-keys.local, gitignored).
 // FACILITATOR_PRIVATE_KEY, SELLER_SECRET and DEMO_AGENT_SECRET in the environment take precedence.
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { Asset, Horizon, Keypair, Networks, Operation, TransactionBuilder } from "@stellar/stellar-sdk";
 
@@ -59,5 +60,7 @@ const run = (name: string, workspace: string, extra: Record<string, string>) =>
   });
 
 run("facilitator", "@local402/facilitator", { FACILITATOR_PRIVATE_KEY: keys.facilitator });
-run("demo API", "@local402/demo-api", { PAY_TO: payTo, DEMO_AGENT_SECRET: keys.agent });
+// One local process, so a fresh quote secret per run is enough.
+const quoteSecret = process.env.LOCAL402_QUOTE_SECRET || randomBytes(32).toString("hex");
+run("demo API", "@local402/demo-api", { PAY_TO: payTo, DEMO_AGENT_SECRET: keys.agent, LOCAL402_QUOTE_SECRET: quoteSecret });
 console.log(`Dashboard: http://localhost:${process.env.PORT ?? 3001} (seller ${payTo}, agent ${Keypair.fromSecret(keys.agent).publicKey()})`);

@@ -8,6 +8,7 @@ import {
   scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
+import { Local402Error } from "./errors.js";
 
 export interface FiatRate {
   /** USD value of one unit of the currency, scaled by 10^decimals. */
@@ -89,7 +90,7 @@ export function recentRun(records: OracleRecord[]): OracleRecord[] {
 function withTimeout<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const expiry = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms}ms`)), ms);
+    timer = setTimeout(() => reject(new Local402Error("ORACLE_UNAVAILABLE", `${what} timed out after ${ms}ms`)), ms);
   });
   return Promise.race([work, expiry]).finally(() => clearTimeout(timer)) as Promise<T>;
 }
@@ -113,9 +114,20 @@ export class ReflectorFiatOracle implements FiatRateSource {
     private readonly config: { rpcUrl: string; networkPassphrase: string; contractId: string } = REFLECTOR_FIAT.mainnet,
     options: { records?: number } = {},
   ) {
-    this.server = new rpc.Server(config.rpcUrl);
-    this.contract = new Contract(config.contractId);
+    if (!config?.rpcUrl || !config.networkPassphrase || !config.contractId) {
+      throw new Local402Error("INVALID_CONFIG", "ReflectorFiatOracle needs { rpcUrl, networkPassphrase, contractId }, e.g. REFLECTOR_FIAT.mainnet.");
+    }
     this.records = options.records ?? 5;
+    if (!Number.isInteger(this.records) || this.records < 1 || this.records > 20) {
+      throw new Local402Error("INVALID_CONFIG", `records must be a whole number from 1 to 20, got ${options.records}.`);
+    }
+    try {
+      this.server = new rpc.Server(config.rpcUrl);
+      this.contract = new Contract(config.contractId);
+    } catch (error) {
+      // Not the rpcUrl: a paid RPC provider's URL carries its API key.
+      throw new Local402Error("INVALID_CONFIG", `Invalid Reflector oracle config (contract ${config.contractId}): ${error instanceof Error ? error.message : error}`, { cause: error });
+    }
   }
 
   /** Reads the rate, falling back to the last one read when the RPC is slow or failing. */
@@ -143,11 +155,11 @@ export class ReflectorFiatOracle implements FiatRateSource {
     const last = history?.length ? undefined : ((await this.call("lastprice", asset)) as OracleRecord | undefined);
     const records = history?.length ? recentRun(history) : last ? [last] : [];
     if (!records.length) {
-      throw new Error(`Reflector oracle ${this.config.contractId} has no rate for ${currency}`);
+      throw new Local402Error("ORACLE_NO_RATE", `Reflector oracle ${this.config.contractId} has no rate for ${currency}`);
     }
     const { price, timestamp } = medianRecord(records);
     if (price <= 0n) {
-      throw new Error(`Reflector oracle ${this.config.contractId} reports ${currency} at ${price}`);
+      throw new Local402Error("ORACLE_INVALID_PRICE", `Reflector oracle ${this.config.contractId} reports ${currency} at ${price}`);
     }
     // A single record is one raw print, not a median: say so, because that is the tick the median exists to absorb.
     const smoothed = records.length > 1 ? "" : "#single";
@@ -169,7 +181,7 @@ export class ReflectorFiatOracle implements FiatRateSource {
       .build();
     const result = await withTimeout(this.server.simulateTransaction(tx), RPC_TIMEOUT_MS, `Reflector ${method} simulation`);
     if (rpc.Api.isSimulationError(result) || !result.result) {
-      throw new Error(`Reflector ${method} simulation failed: ${"error" in result ? result.error : "no result"}`);
+      throw new Local402Error("ORACLE_UNAVAILABLE", `Reflector ${method} simulation failed: ${"error" in result ? result.error : "no result"}`);
     }
     return scValToNative(result.result.retval);
   }

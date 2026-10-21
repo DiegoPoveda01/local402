@@ -36,7 +36,7 @@ Object.assign(process.env, {
   KV_REST_API_URL: "",
   UPSTASH_REDIS_REST_URL: "",
 });
-const facilitatorPort = await listen((await import("../../apps/facilitator/src/app.js")).app);
+const facilitatorPort = await listen((await import("../../packages/facilitator/src/app.js")).app);
 process.env.FACILITATOR_URL = `http://localhost:${facilitatorPort}`;
 const apiPort = await listen((await import("../../apps/demo-api/src/app.js")).app);
 

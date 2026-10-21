@@ -8,3 +8,6 @@ apps/demo-api/data/
 .npm/
 video/
 docs/guion-demo.md
+instawards-october-application.md
+images/
+contracts/fx-pay/test_snapshots/test/invariants_hold_*

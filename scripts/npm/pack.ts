@@ -7,17 +7,18 @@
 // The @local402 npm scope belongs to someone else, so packages publish as local402-<name> and the compiled imports
 // of @local402/<name> are rewritten to match.
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const OUT = resolve(".npm");
 // Dependency order: each package compiles against the declarations of the ones before it.
-const PACKAGES = ["pricing", "fx", "client", "server"];
+const PACKAGES = ["pricing", "fx", "client", "server", "facilitator"];
 const DESCRIPTIONS: Record<string, string> = {
   pricing: "Price x402 routes in local currency (CLP, UF, EUR, BRL…) with the Reflector oracle on Stellar",
   fx: "exact-fx: x402 payments on Stellar where the payer spends XLM or EURC and the seller receives exact USDC",
   client: "x402 client for Stellar that checks local-currency quotes against its own oracle and pays with USDC, XLM or EURC",
   server: "One-line local-currency x402 routes and paid MCP tools on Stellar",
+  facilitator: "Deployable x402 facilitator for Stellar: settles exact and exact-fx, with a seller allowlist, separate verify and settle limits, health and readiness",
 };
 
 const published = (workspaceName: string) => workspaceName.replace(/^@local402\//, "local402-");
@@ -81,5 +82,6 @@ for (const name of PACKAGES) {
     )}\n`,
   );
   copyFileSync("LICENSE", join(dir, "LICENSE"));
+  if (existsSync(`packages/${name}/README.md`)) copyFileSync(`packages/${name}/README.md`, join(dir, "README.md"));
   console.log(`${published(source.name)}@${source.version} → ${dir}`);
 }

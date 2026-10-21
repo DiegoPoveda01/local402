@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { encodePaymentSignatureHeader } from "@x402/core/http";
 import type { AssetAmount } from "@x402/core/types";
-import { localPrice, parseLocalPrice, quoteLocalPrice, UfRateSource, type FiatRateSource } from "../src/index.js";
+import { Local402Error, localPrice, parseLocalPrice, quoteLocalPrice, ReflectorFiatOracle, UfRateSource, type FiatRateSource } from "../src/index.js";
 import { chileDate, firstUf, parseSiiUf } from "../src/uf.js";
 import { medianRecord, recentRun } from "../src/oracle.js";
 
 // 1 USD = 948.6902 CLP  =>  1 CLP ≈ 0.00105408 USD (14 decimals, as Reflector publishes)
 const CLP_RATE = 105408590567n;
 const NOW = 1_800_000_000;
+const SECRET = "test-secret-that-is-32-chars-long";
 
 function fixedOracle(usdPerUnit: bigint, timestamp = NOW - 60): FiatRateSource & { calls: number } {
   return {
@@ -30,6 +31,9 @@ describe("parseLocalPrice", () => {
     expect(() => parseLocalPrice("$50")).toThrow();
     expect(() => parseLocalPrice("50")).toThrow();
     expect(() => parseLocalPrice("-1 CLP")).toThrow();
+    expect(() => parseLocalPrice("0.00 CLP")).toThrow(/greater than zero/);
+    expect(() => parseLocalPrice(50 as never)).toThrow();
+    expect(() => parseLocalPrice("$50")).toThrow(expect.objectContaining({ code: "INVALID_PRICE" }));
   });
 });
 
@@ -51,7 +55,15 @@ describe("quoteLocalPrice", () => {
 
   it("rejects stale oracle prices", async () => {
     const oracle = fixedOracle(CLP_RATE, NOW - 3600);
-    await expect(quoteLocalPrice("50 CLP", { oracle, now: () => NOW })).rejects.toThrow(/stale/);
+    await expect(quoteLocalPrice("50 CLP", { oracle, now: () => NOW })).rejects.toMatchObject({ code: "ORACLE_STALE", message: expect.stringMatching(/stale/) });
+  });
+
+  it("rejects options that cannot work, before asking the oracle", async () => {
+    const oracle = fixedOracle(CLP_RATE);
+    for (const options of [{ quoteTtlSeconds: 0 }, { maxOracleAgeSeconds: -1 }, { tokenDecimals: 1.5 }, { oracle: {} }, { now: 5 }]) {
+      await expect(quoteLocalPrice("50 CLP", { oracle, ...options } as never)).rejects.toMatchObject({ code: "INVALID_CONFIG" });
+    }
+    expect(oracle.calls).toBe(0);
   });
 });
 
@@ -59,7 +71,7 @@ describe("localPrice", () => {
   it("returns a USDC requirement with the quote attached and keeps offering it for half its TTL", async () => {
     const oracle = fixedOracle(CLP_RATE);
     let now = NOW;
-    const price = localPrice("50 CLP", { network: "stellar:testnet", oracle, now: () => now });
+    const price = localPrice("50 CLP", { network: "stellar:testnet", oracle, now: () => now, quoteSecret: false });
 
     const first = await price({} as never);
     expect(first).toMatchObject({
@@ -79,8 +91,8 @@ describe("localPrice", () => {
   });
 
   it("honors a signed quote on the paid retry, even from another instance with a newer rate", async () => {
-    const issuer = localPrice("50 CLP", { network: "stellar:testnet", oracle: fixedOracle(CLP_RATE), now: () => NOW, quoteSecret: "s" });
-    const other = localPrice("50 CLP", { network: "stellar:testnet", oracle: fixedOracle(CLP_RATE * 2n), now: () => NOW + 30, quoteSecret: "s" });
+    const issuer = localPrice("50 CLP", { network: "stellar:testnet", oracle: fixedOracle(CLP_RATE), now: () => NOW, quoteSecret: SECRET });
+    const other = localPrice("50 CLP", { network: "stellar:testnet", oracle: fixedOracle(CLP_RATE * 2n), now: () => NOW + 30, quoteSecret: SECRET });
     const offered = (await issuer({} as never)) as { asset: string; amount: string; extra: { local402: Record<string, unknown> } };
     expect(offered.extra.local402.signature).toMatch(/^[0-9a-f]{64}$/);
 
@@ -100,12 +112,43 @@ describe("localPrice", () => {
 
   it("does not honor an expired signed quote", async () => {
     let now = NOW;
-    const price = localPrice("50 CLP", { network: "stellar:testnet", oracle: fixedOracle(CLP_RATE), now: () => now, quoteSecret: "s" });
+    const price = localPrice("50 CLP", { network: "stellar:testnet", oracle: fixedOracle(CLP_RATE), now: () => now, quoteSecret: SECRET });
     const offered = (await price({} as never)) as AssetAmount;
     now += 61;
     const header = encodePaymentSignatureHeader({ x402Version: 2, accepted: { scheme: "exact", network: "stellar:testnet", payTo: "G", maxTimeoutSeconds: 60, ...offered }, payload: {} } as never);
     const retried = (await price({ paymentHeader: header } as never)) as unknown as { extra: { local402: { expiresAt: number } } };
     expect(retried.extra.local402.expiresAt).toBe(now + 60);
+  });
+
+  it("requires a quote secret unless unsigned quotes are asked for", async () => {
+    vi.stubEnv("LOCAL402_QUOTE_SECRET", "");
+    try {
+      const build = (quoteSecret?: string | false) => () => localPrice("50 CLP", { network: "stellar:testnet", oracle: fixedOracle(CLP_RATE), now: () => NOW, quoteSecret });
+      expect(build()).toThrow(expect.objectContaining({ code: "QUOTE_SECRET_MISSING" }));
+      expect(build("short")).toThrow(expect.objectContaining({ code: "QUOTE_SECRET_WEAK" }));
+      expect(build(false)).not.toThrow();
+
+      vi.stubEnv("LOCAL402_QUOTE_SECRET", SECRET);
+      const offered = (await build()()({} as never)) as unknown as { extra: { local402: { signature?: string } } };
+      expect(offered.extra.local402.signature).toMatch(/^[0-9a-f]{64}$/);
+      const unsigned = (await build(false)()({} as never)) as unknown as { extra: { local402: { signature?: string } } };
+      expect(unsigned.extra.local402.signature).toBeUndefined();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("rejects a bad network, price or option when the route is built, not on the first request", () => {
+    const base = { network: "stellar:testnet" as const, oracle: fixedOracle(CLP_RATE), quoteSecret: SECRET };
+    expect(() => localPrice("50 CLP", { ...base, network: "stellar:mainnet" as never })).toThrow(expect.objectContaining({ code: "INVALID_CONFIG" }));
+    expect(() => localPrice("50 CLP", { ...base, network: undefined as never })).toThrow(/network must be one of/);
+    expect(() => localPrice("fifty CLP", base)).toThrow(expect.objectContaining({ code: "INVALID_PRICE" }));
+    expect(() => localPrice("50 CLP", { ...base, quoteTtlSeconds: 0 })).toThrow(/quoteTtlSeconds/);
+    // A quote that outlives the rate it was priced on gives the payer a free option on that rate.
+    expect(() => localPrice("50 CLP", { ...base, quoteTtlSeconds: 901 })).toThrow(/must not exceed maxOracleAgeSeconds \(900\)/);
+    expect(() => localPrice("50 CLP", { ...base, quoteTtlSeconds: 600, maxOracleAgeSeconds: 300 })).toThrow(expect.objectContaining({ code: "INVALID_CONFIG" }));
+    expect(() => localPrice("50 CLP", { ...base, quoteTtlSeconds: 900 })).not.toThrow();
+    expect(() => localPrice("50 CLP", { ...base, oracle: { getRate: 1 } as never })).toThrow(/FiatRateSource/);
   });
 });
 
@@ -149,11 +192,11 @@ describe("recentRun", () => {
 
 describe("quoteLocalPrice guards", () => {
   it("refuses a rate a feed reports as zero", async () => {
-    await expect(quoteLocalPrice("50 CLP", { oracle: fixedOracle(0n), now: () => NOW })).rejects.toThrow(/positive price/);
+    await expect(quoteLocalPrice("50 CLP", { oracle: fixedOracle(0n), now: () => NOW })).rejects.toMatchObject({ code: "ORACLE_INVALID_PRICE" });
   });
 
   it("refuses a rate dated in the future", async () => {
-    await expect(quoteLocalPrice("50 CLP", { oracle: fixedOracle(CLP_RATE, NOW + 5_000), now: () => NOW })).rejects.toThrow(/in the future/);
+    await expect(quoteLocalPrice("50 CLP", { oracle: fixedOracle(CLP_RATE, NOW + 5_000), now: () => NOW })).rejects.toMatchObject({ code: "ORACLE_FUTURE" });
   });
 });
 
@@ -218,7 +261,7 @@ describe("UfRateSource", () => {
       throw new Error("sii down");
     };
     await expect(firstUf(down, async () => ({ clp: "1", source: "b" }))()).resolves.toEqual({ clp: "1", source: "b" });
-    await expect(firstUf(down, down)()).rejects.toThrow("No UF source available: sii down; sii down");
+    await expect(firstUf(down, down)()).rejects.toMatchObject({ code: "UF_UNAVAILABLE", message: "No UF source available: sii down; sii down" });
   });
 
   it("passes other currencies through", async () => {
@@ -226,5 +269,13 @@ describe("UfRateSource", () => {
       throw new Error("should not be called");
     });
     expect((await oracle.getRate("CLP")).usdPerUnit).toBe(CLP_RATE);
+  });
+});
+
+describe("ReflectorFiatOracle", () => {
+  it("rejects a config it could never read from", () => {
+    expect(() => new ReflectorFiatOracle({ rpcUrl: "", networkPassphrase: "x", contractId: "C" })).toThrow(expect.objectContaining({ code: "INVALID_CONFIG" }));
+    expect(() => new ReflectorFiatOracle(undefined, { records: 0 })).toThrow(/records/);
+    expect(() => new ReflectorFiatOracle({ rpcUrl: "https://rpc.test", networkPassphrase: "x", contractId: "not-a-contract" })).toThrow(Local402Error);
   });
 });

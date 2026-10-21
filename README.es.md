@@ -82,6 +82,10 @@ app.use(paymentMiddleware(
 ));
 ```
 
+El vendedor firma cada cotización con `LOCAL402_QUOTE_SECRET` (32+ caracteres, `openssl rand -hex 32`)
+y no arranca sin esto. [`examples/quickstart`](examples/quickstart) es la versión ejecutable, y
+[docs/errors.md](docs/errors.md) lista todos los códigos de error.
+
 **2. `exact-fx`: pagar con otro activo (`local402-fx`, `contracts/fx-pay`).**
 Un esquema x402 nuevo. Quien paga firma una llamada al contrato Soroban **FxPay**, que cambia sus XLM o EURC
 en [Soroswap](https://soroswap.finance) por *exactamente* los USDC que pidió el vendedor, se los entrega, y
@@ -269,9 +273,9 @@ packages/
   fx/        el esquema exact-fx: cliente, resource server, facilitador, puja de comisiones
   client/    Local402Client — paga con USDC/XLM/EURC, con sus propias defensas. También CLI
   server/    localRoute() y localToolPayment() — una línea para ponerle precio a una ruta o a una tool MCP
+  facilitator/  verifica y liquida, paga comisiones, sirve el catálogo x402 Bazaar. Corre con npx
 apps/
   demo-api/      el vendedor: seis rutas pagadas, recibos, el dashboard
-  facilitator/   verifica y liquida, paga comisiones, sirve el catálogo x402 Bazaar
   agent/         cliente pagador mínimo
   mcp/           servidor MCP que un agente de IA usa para descubrir, cotizar y pagar
   mcp-seller/    un servidor MCP cuya tool se cobra por llamada
@@ -378,13 +382,18 @@ necesita esto — cada `.env.example` lista el resto.
 
 | Variable | Dónde | Por qué importa |
 | --- | --- | --- |
-| `LOCAL402_QUOTE_SECRET` | vendedor | Firma las cotizaciones. Sin esto, un reintento pagado que cae en otra instancia vuelve a cotizar y rechaza un pago que el pagador ya firmó. El mismo valor en todas las instancias. El servidor avisa por consola cuando falta. |
+| `LOCAL402_QUOTE_SECRET` | vendedor | Firma las cotizaciones. Sin esto, un reintento pagado que cae en otra instancia vuelve a cotizar y rechaza un pago que el pagador ya firmó. El mismo valor en todas las instancias, de al menos 32 caracteres (`openssl rand -hex 32`). Desde 1.0 el vendedor no arranca sin esto; `quoteSecret: false` lo desactiva para un vendedor de una sola instancia. `npm run demo` genera uno en cada ejecución. |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | vendedor | Recibos, los topes de pagos de demo y el último valor conocido de la UF. Sin esto cada instancia serverless guarda los suyos, y desaparecen con ella. |
 | `SELF_URL` | vendedor | Dónde compra el agente de demo. Cae al dominio de producción del proyecto en Vercel, y al `Host` del request solo si es localhost, porque el `Host` lo escribe quien llama. |
 | `CORS_ORIGIN` | vendedor | Orígenes del dashboard autorizados a pagar desde la billetera del visitante, separados por coma. |
-| `PAY_TO_ALLOWLIST`, `MIN_AMOUNT` | facilitador | Cada liquidación gasta las comisiones del propio facilitador. En `stellar:pubnet` estos vienen por defecto en `PAY_TO` y 100000 (0.01 USDC); ponlos explícitos para atender a otros vendedores. |
+| `PAY_TO_ALLOWLIST`, `MIN_AMOUNT` | facilitador | Cada liquidación gasta las comisiones del propio facilitador. En `stellar:pubnet` no arranca sin una lista de vendedores (el despliegue de demo cae a su propio `PAY_TO`), y el mínimo viene en 100000 (0.01 USDC). |
 | `FACILITATOR_PRIVATE_KEYS` | facilitador | Una llave por liquidación concurrente. `ChannelPool` las separa solo dentro de una instancia, así que dale a cada instancia las suyas. |
+| `VERIFY_RATE_LIMIT`, `SETTLE_RATE_LIMIT`, `TRUST_PROXY` | facilitador | Requests por cliente por minuto (60 y 20), y cuántos proxies se le creen en `X-Forwarded-For` al contar clientes (0; 1 en el despliegue de demo, detrás de Vercel). |
 | `FX_CONTRACT` | ambos | Obligatorio en mainnet: el despliegue de FxPay al que queda fijada la autorización del pagador. |
+
+Para correr un facilitador propio, para tus vendedores o los de otro, `npx local402-facilitator` es toda
+la instalación: [docs/facilitator.md](docs/facilitator.md) tiene cada variable y la configuración de mainnet,
+y [el runbook](docs/facilitator-runbook.md) cubre llaves, fondos, recargas y rotación.
 
 ## Tests
 

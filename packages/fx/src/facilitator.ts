@@ -25,7 +25,8 @@ import {
   type FacilitatorStellarSigner,
   type RpcConfig,
 } from "@x402/stellar";
-import { FX_SCHEME, SIGNING_GRACE_SECONDS, type FxExtra } from "./extra.js";
+import { Local402Error } from "@local402/pricing";
+import { contractAddress, FX_SCHEME, integerIn, SIGNING_GRACE_SECONDS, type FxExtra } from "./extra.js";
 import { inclusionFeeBid } from "./fees.js";
 
 export interface ExactFxFacilitatorOptions {
@@ -109,7 +110,16 @@ export class ExactFxFacilitatorScheme implements SchemeNetworkFacilitator {
     private readonly options: ExactFxFacilitatorOptions,
   ) {
     const list = Array.isArray(signers) ? signers : [signers];
-    if (!list.length) throw new Error("At least one signer is required");
+    if (!list.length) throw new Local402Error("INVALID_CONFIG", "At least one signer is required");
+    contractAddress("fxContract", options?.fxContract);
+    if (!Array.isArray(options.sendAssets) || !options.sendAssets.length) {
+      throw new Local402Error("INVALID_CONFIG", "sendAssets must list at least one asset contract payers may spend, e.g. [FX_TESTNET.xlm].");
+    }
+    options.sendAssets.forEach((asset, i) => contractAddress(`sendAssets[${i}]`, asset));
+    integerIn("maxTransactionFeeStroops", options.maxTransactionFeeStroops, 1);
+    integerIn("maxInclusionFeeStroops", options.maxInclusionFeeStroops, 1);
+    // Past the 60 s cap of a serverless request the host kills settle mid-confirmation (see the option).
+    integerIn("settleBudgetSeconds", options.settleBudgetSeconds, 1, 300);
     this.signers = new Map(list.map((signer) => [signer.address, signer]));
     let next = 0;
     this.selectSigner = options.selectSigner ?? ((addresses) => addresses[next++ % addresses.length]);

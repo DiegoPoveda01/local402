@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Account, Contract, Keypair, nativeToScVal, Networks, TransactionBuilder } from "@stellar/stellar-sdk";
 import type { PaymentPayload } from "@x402/core/types";
 import { UfRateSource, type FiatRateSource } from "@local402/pricing";
@@ -31,7 +31,7 @@ describe("Local402Client.checkPrice", () => {
 
   it("refuses a seller rate that overcharges beyond the tolerance", async () => {
     await expect(client().checkPrice(price("537583"))).resolves.toBeUndefined(); // just under +2%
-    await expect(client().checkPrice(price("540000"))).rejects.toThrow(/seller charges 540000/);
+    await expect(client().checkPrice(price("540000"))).rejects.toMatchObject({ code: "REFUSED_OVERCHARGE", message: expect.stringMatching(/seller charges 540000/) });
   });
 
   it("enforces the limit across currencies", async () => {
@@ -39,7 +39,7 @@ describe("Local402Client.checkPrice", () => {
     const eur = price("577291", { amount: "0.05", currency: "EUR" });
     await expect(client({ maxPrice: "500 CLP" }).checkPrice(eur)).resolves.toBeUndefined();
     await expect(client({ maxPrice: "500 CLP" }).checkPrice(price("57729059", { amount: "5", currency: "EUR" }))).rejects.toThrow();
-    await expect(client({ maxPrice: "40 CLP" }).checkPrice(price("527043"))).rejects.toThrow(/above the 40 CLP limit/);
+    await expect(client({ maxPrice: "40 CLP" }).checkPrice(price("527043"))).rejects.toMatchObject({ code: "REFUSED_MAX_PRICE", message: expect.stringMatching(/above the 40 CLP limit/) });
   });
 
   it("caps prices in UF using the CLP rate", async () => {
@@ -61,7 +61,7 @@ describe("Local402Client.checkPrice", () => {
     budget.spent += 527043n;
     await expect(xlm.checkPrice(price("527043"))).resolves.toBeUndefined();
     budget.spent += 527043n;
-    await expect(usdc.checkPrice(price("527043"))).rejects.toThrow(/exceed the 100 CLP budget/);
+    await expect(usdc.checkPrice(price("527043"))).rejects.toMatchObject({ code: "REFUSED_BUDGET", message: expect.stringMatching(/exceed the 100 CLP budget/) });
   });
 });
 
@@ -86,8 +86,14 @@ describe("Local402Client.checkFxLeg", () => {
 
   it("refuses a swap that may spend too much of the send asset", async () => {
     // 527043 USDC units = 456480 EURC units at 1.1546 USD per euro; a pool pricing EURC at 0.74 USD asks ~56% more.
-    await expect(payer("EURC").checkFxLeg("527043", 712_000n)).rejects.toThrow(/above the 456480 the oracle rate implies \(limit 5%\)/);
+    await expect(payer("EURC").checkFxLeg("527043", 712_000n)).rejects.toMatchObject({ code: "REFUSED_FX_PREMIUM", message: expect.stringMatching(/above the 456480 the oracle rate implies \(limit 5%\)/) });
     await expect(payer("EURC", 6_000).checkFxLeg("527043", 712_000n)).resolves.toMatchObject({ premiumBps: 5597 });
+  });
+
+  it("refuses a stale rate for the send asset", async () => {
+    const stale: FiatRateSource = { getRate: async () => ({ usdPerUnit: 1n, decimals: 14, timestamp: 0, source: "old" }) };
+    const client = new Local402Client({ secret: Keypair.random().secret(), oracle, assetOracle: stale, payWith: "XLM" });
+    await expect(client.checkFxLeg("527043", 1n)).rejects.toMatchObject({ code: "REFUSED_FX_ORACLE_STALE" });
   });
 
   it("reads maxSend from the signed FxPay call", () => {
@@ -105,3 +111,53 @@ describe("Local402Client.checkFxLeg", () => {
 });
 
 const FX = "CD6PUDBJNDYWLTQPHYU26OCEH4GWR7WN3UIXAEKUP3DQIS3DKJQIF7DL";
+
+describe("Local402Client options", () => {
+  const secret = Keypair.random().secret();
+  const invalid = expect.objectContaining({ code: "INVALID_CONFIG" });
+
+  it("rejects options it could never pay with, at construction", () => {
+    expect(() => new Local402Client({})).toThrow(invalid);
+    expect(() => new Local402Client({ secret: "SNOTAKEY" })).toThrow(/secret must be a Stellar secret key/);
+    expect(() => new Local402Client({ secret: "SNOTAKEY" })).not.toThrow(/SNOTAKEY/);
+    expect(() => new Local402Client({ secret, signer: {} as never })).toThrow(/not both/);
+    expect(() => new Local402Client({ secret, payWith: "BTC" as never })).toThrow(/payWith must be one of/);
+    expect(() => new Local402Client({ secret, network: "stellar:mainnet" as never })).toThrow(invalid);
+    expect(() => new Local402Client({ secret, rpcUrl: "soroban-testnet.stellar.org" })).toThrow(/rpcUrl/);
+    expect(() => new Local402Client({ secret, rpcUrl: "ftp://rpc.test/?apikey=hunter2" })).toThrow(/rpcUrl must be an http\(s\) URL/);
+    expect(() => new Local402Client({ secret, rpcUrl: "ftp://rpc.test/?apikey=hunter2" })).not.toThrow(/hunter2/);
+    expect(() => new Local402Client({ secret, maxOverchargeBps: -5 })).toThrow(/maxOverchargeBps/);
+    expect(() => new Local402Client({ secret, oracle: {} as never })).toThrow(/FiatRateSource/);
+    expect(() => new Local402Client({ secret, budget: { limit: "1 CLP", spent: 0n } as never })).toThrow(/SpendingBudget/);
+    expect(() => new Local402Client({ secret, network: "stellar:pubnet", payWith: "XLM" })).toThrow(/needs fxContract/);
+  });
+
+  it("rejects a cap or budget it cannot read", () => {
+    expect(() => new Local402Client({ secret, maxPrice: "500" })).toThrow(expect.objectContaining({ code: "INVALID_PRICE" }));
+    expect(() => new SpendingBudget("5000 pesos")).toThrow(expect.objectContaining({ code: "INVALID_PRICE" }));
+  });
+
+  it("rejects FX slippage that the premium limit would always refuse", () => {
+    expect(() => new Local402Client({ secret, payWith: "XLM", fxSlippageBps: 500 })).toThrow(/fxSlippageBps \(500\) must stay below maxFxPremiumBps \(500\)/);
+    expect(() => new Local402Client({ secret, payWith: "XLM", fxSlippageBps: 500, maxFxPremiumBps: 800 })).not.toThrow();
+    expect(() => new Local402Client({ secret, fxSlippageBps: 500 })).not.toThrow();
+  });
+});
+
+describe("Local402Client.pay", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("says which options the seller offers when none matches the client", async () => {
+    const required = {
+      x402Version: 2,
+      resource: { url: "http://seller.test/data" },
+      accepts: [{ scheme: "exact", network: "stellar:pubnet", asset: FX, amount: "1", payTo: Keypair.random().publicKey(), maxTimeoutSeconds: 60, extra: {} }],
+    };
+    const header = Buffer.from(JSON.stringify(required)).toString("base64");
+    vi.stubGlobal("fetch", async () => new Response("{}", { status: 402, headers: { "PAYMENT-REQUIRED": header } }));
+    await expect(client().pay("http://seller.test/data")).rejects.toMatchObject({
+      code: "NO_PAYMENT_OPTION",
+      message: "The seller accepts exact on stellar:pubnet; this client pays exact (USDC) on stellar:testnet.",
+    });
+  });
+});
