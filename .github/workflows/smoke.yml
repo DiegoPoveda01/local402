@@ -1,0 +1,24 @@
+name: Mainnet smoke test
+
+# Asks every paid route of the mainnet demo for its price and checks the quote against Reflector.
+# It never pays and needs no secrets: the client key is random and unfunded.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/smoke.ts https://local402-mainnet.vercel.app
