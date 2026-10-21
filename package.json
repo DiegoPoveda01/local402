@@ -20,6 +20,10 @@
     "@stellar/freighter-api": "^6.0.1",
     "@types/express": "^5.0.3",
     "@types/node": "^22.18.0",
+    "local402-client-0.1": "npm:local402-client@0.1.3",
+    "local402-fx-0.1": "npm:local402-fx@0.1.2",
+    "local402-pricing-0.1": "npm:local402-pricing@0.1.4",
+    "local402-server-0.1": "npm:local402-server@0.1.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
