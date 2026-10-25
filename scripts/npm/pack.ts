@@ -13,19 +13,24 @@ import { join, resolve } from "node:path";
 const OUT = resolve(".npm");
 // Dependency order: each package compiles against the declarations of the ones before it.
 const PACKAGES = ["pricing", "fx", "client", "server"];
+// The MCP server is packed last, paying through the compiled client, and is the only packed app under apps/.
+const PACKED = [...PACKAGES, "mcp"];
 const DESCRIPTIONS: Record<string, string> = {
   pricing: "Price x402 routes in local currency (CLP, UF, EUR, BRL…) with the Reflector oracle on Stellar",
   fx: "exact-fx: x402 payments on Stellar where the payer spends XLM or EURC and the seller receives exact USDC",
   client: "x402 client for Stellar that checks local-currency quotes against its own oracle and pays with USDC, XLM or EURC",
   server: "One-line local-currency x402 routes and paid MCP tools on Stellar",
+  mcp: "MCP server that lets an AI agent discover, quote and pay x402 APIs priced in local currency on Stellar",
 };
 
 const published = (workspaceName: string) => workspaceName.replace(/^@local402\//, "local402-");
+// The four libraries live in packages/; the MCP server is an app, in apps/.
+const workspace = (name: string) => (name === "mcp" ? `apps/${name}` : `packages/${name}`);
 
 rmSync(OUT, { recursive: true, force: true });
 
-for (const name of PACKAGES) {
-  const source = JSON.parse(readFileSync(`packages/${name}/package.json`, "utf8"));
+for (const name of PACKED) {
+  const source = JSON.parse(readFileSync(`${workspace(name)}/package.json`, "utf8"));
   const dir = join(OUT, name);
   const tsconfig = join(OUT, `tsconfig.${name}.json`);
   mkdirSync(dir, { recursive: true });
@@ -36,11 +41,11 @@ for (const name of PACKAGES) {
       compilerOptions: {
         noEmit: false,
         declaration: true,
-        rootDir: resolve(`packages/${name}/src`),
+        rootDir: resolve(workspace(name), "src"),
         outDir: join(dir, "dist"),
         paths: Object.fromEntries(PACKAGES.map((p) => [`@local402/${p}`, [join(OUT, p, "dist/index.d.ts")]])),
       },
-      include: [resolve(`packages/${name}/src`)],
+      include: [resolve(workspace(name), "src")],
     }),
   );
   execFileSync(process.execPath, [resolve("node_modules/typescript/bin/tsc"), "-p", tsconfig], { stdio: "inherit" });
@@ -49,8 +54,9 @@ for (const name of PACKAGES) {
     writeFileSync(path, readFileSync(path, "utf8").replace(/(["'])@local402\/([a-z]+)(["'\/])/g, "$1local402-$2$3"));
   }
 
+  // apps/mcp is a bin-only package: no exports map, the bin is the whole surface.
   const exports = Object.fromEntries(
-    Object.entries(source.exports as Record<string, string>).map(([key, file]) => {
+    Object.entries((source.exports ?? {}) as Record<string, string>).map(([key, file]) => {
       const js = file.replace("./src/", "./dist/").replace(/\.ts$/, ".js");
       return [key, { types: js.replace(/\.js$/, ".d.ts"), import: js }];
     }),
@@ -67,10 +73,10 @@ for (const name of PACKAGES) {
         description: DESCRIPTIONS[name],
         keywords: ["x402", "stellar", "soroban", "payments", "usdc", "oracle", "mcp"],
         license: "MIT",
-        repository: { type: "git", url: "git+https://github.com/DiegoPoveda01/local402.git", directory: `packages/${name}` },
+        repository: { type: "git", url: "git+https://github.com/DiegoPoveda01/local402.git", directory: workspace(name) },
         type: "module",
-        exports,
-        types: exports["."].types,
+        exports: Object.keys(exports).length ? exports : undefined,
+        types: exports["."]?.types,
         bin: source.bin && Object.fromEntries(Object.entries(source.bin as Record<string, string>).map(([cmd, file]) => [cmd, file.replace("./src/", "dist/").replace(/\.ts$/, ".js")])),
         files: ["dist"],
         engines: { node: ">=20" },
