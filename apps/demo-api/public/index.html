@@ -618,6 +618,7 @@
   command: <span class="s">"npx"</span>,
   args: [<span class="s">"-y"</span>, <span class="s">"local402-mcp"</span>],
   env: { STELLAR_PRIVATE_KEY: <span class="s">"S…"</span>, MAX_PRICE: <span class="s">"500 CLP"</span> },
+  clientSessionTimeoutSeconds: 30, <span class="c">// npx can take more than the default 5 s</span>
 });
 <span class="k">await</span> local402.connect();
 
