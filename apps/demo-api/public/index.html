@@ -166,6 +166,13 @@
   pre.code { margin: 0; padding: 18px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.75; overflow-x: auto; color: var(--fg); }
   .k { color: var(--xlm); } .s { color: var(--green); } .c { color: var(--fg-dim); }
   .wallet { margin: 8px 0 40px; }
+  /* Framework tabs: one snippet per MCP client, all tested against the published local402-mcp */
+  .tabs { flex-wrap: wrap; gap: 2px; padding: 6px 8px; }
+  .split:has(.tabs) { align-items: start; }
+  .tabs button { flex: none; font: 500 13px var(--sans); color: var(--fg-dim); background: none; border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+  .tabs button:hover { color: var(--fg); }
+  .tabs button[aria-selected="true"] { color: var(--fg); background: var(--bg-elev-2); }
+  .tab-file { padding: 10px 20px 0; font-family: var(--mono); font-size: 11px; color: var(--fg-dim); }
   .wallet h3 { margin: 10px 0; font-size: 22px; font-weight: 500; }
   .wallet .buttons { margin-top: 14px; }
   .wallet #wallet-status { margin-top: 10px; min-height: 1.5em; }
@@ -581,14 +588,65 @@
         <div class="eyebrow">Para agentes de IA</div>
         <h2>Tu agente paga, con los límites que tú fijas.</h2>
         <p>El agente verifica la tasa del vendedor con su propio oráculo, respeta <code>MAX_PRICE</code> y un presupuesto por sesión (<code>BUDGET</code>). En código: <code>npm install local402-client</code>.</p>
+        <p>Como servidor MCP (<code>npx -y local402-mcp</code>) le da cuatro herramientas: <code>local402_discover</code>, <code>local402_quote</code>, <code>local402_pay</code> y <code>local402_wallet</code>.</p>
         <div class="discovery" id="discovery-count">…</div>
       </div>
       <div class="window">
-        <div class="window-bar"><i></i><i></i><i></i><span>.mcp.json → local402</span></div>
-<pre class="code">local402_discover  <span class="c">busca servicios (x402 Bazaar)</span>
-local402_quote     <span class="c">precio local y tasa</span>
-local402_pay       <span class="c">paga con USDC, XLM o EURC</span>
-local402_wallet    <span class="c">saldo y presupuesto</span></pre>
+        <div class="window-bar tabs" role="tablist" aria-label="MCP"><button role="tab" id="tab-claude-code" aria-controls="panel-claude-code" aria-selected="true">Claude Code</button><button role="tab" id="tab-claude-desktop" aria-controls="panel-claude-desktop" aria-selected="false" tabindex="-1">Claude Desktop</button><button role="tab" id="tab-openai" aria-controls="panel-openai" aria-selected="false" tabindex="-1">OpenAI Agents SDK</button><button role="tab" id="tab-vercel" aria-controls="panel-vercel" aria-selected="false" tabindex="-1">Vercel AI SDK</button></div>
+        <div role="tabpanel" id="panel-claude-code" aria-labelledby="tab-claude-code">
+<pre class="code">claude mcp add local402 \
+  -e STELLAR_PRIVATE_KEY=S… \
+  -e <span class="s">"MAX_PRICE=500 CLP"</span> \
+  -- npx -y local402-mcp</pre>
+        </div>
+        <div role="tabpanel" id="panel-claude-desktop" aria-labelledby="tab-claude-desktop" hidden>
+<div class="tab-file">claude_desktop_config.json · Cursor: .cursor/mcp.json</div>
+<pre class="code">{
+  <span class="s">"mcpServers"</span>: {
+    <span class="s">"local402"</span>: {
+      <span class="s">"command"</span>: <span class="s">"npx"</span>,
+      <span class="s">"args"</span>: [<span class="s">"-y"</span>, <span class="s">"local402-mcp"</span>],
+      <span class="s">"env"</span>: { <span class="s">"STELLAR_PRIVATE_KEY"</span>: <span class="s">"S…"</span>, <span class="s">"MAX_PRICE"</span>: <span class="s">"500 CLP"</span> }
+    }
+  }
+}</pre>
+        </div>
+        <div role="tabpanel" id="panel-openai" aria-labelledby="tab-openai" hidden>
+<pre class="code"><span class="k">import</span> { Agent, run, MCPServerStdio } <span class="k">from</span> <span class="s">"@openai/agents"</span>;
+
+<span class="k">const</span> local402 = <span class="k">new</span> MCPServerStdio({
+  command: <span class="s">"npx"</span>,
+  args: [<span class="s">"-y"</span>, <span class="s">"local402-mcp"</span>],
+  env: { STELLAR_PRIVATE_KEY: <span class="s">"S…"</span>, MAX_PRICE: <span class="s">"500 CLP"</span> },
+});
+<span class="k">await</span> local402.connect();
+
+<span class="k">const</span> agent = <span class="k">new</span> Agent({ name: <span class="s">"buyer"</span>, mcpServers: [local402] });
+<span class="k">const</span> result = <span class="k">await</span> run(agent, <span class="s">"Pay https://local402.vercel.app/indicadores"</span>);
+console.log(result.finalOutput);
+<span class="k">await</span> local402.close();</pre>
+        </div>
+        <div role="tabpanel" id="panel-vercel" aria-labelledby="tab-vercel" hidden>
+<pre class="code"><span class="k">import</span> { generateText, stepCountIs } <span class="k">from</span> <span class="s">"ai"</span>;
+<span class="k">import</span> { anthropic } <span class="k">from</span> <span class="s">"@ai-sdk/anthropic"</span>;
+<span class="k">import</span> { createMCPClient } <span class="k">from</span> <span class="s">"@ai-sdk/mcp"</span>;
+<span class="k">import</span> { Experimental_StdioMCPTransport } <span class="k">from</span> <span class="s">"@ai-sdk/mcp/mcp-stdio"</span>;
+
+<span class="k">const</span> mcp = <span class="k">await</span> createMCPClient({
+  transport: <span class="k">new</span> Experimental_StdioMCPTransport({
+    command: <span class="s">"npx"</span>,
+    args: [<span class="s">"-y"</span>, <span class="s">"local402-mcp"</span>],
+    env: { STELLAR_PRIVATE_KEY: <span class="s">"S…"</span>, MAX_PRICE: <span class="s">"500 CLP"</span> },
+  }),
+});
+<span class="k">const</span> { text } = <span class="k">await</span> generateText({
+  model: anthropic(<span class="s">"claude-sonnet-5-5"</span>),
+  tools: <span class="k">await</span> mcp.tools(),
+  stopWhen: stepCountIs(5),
+  prompt: <span class="s">"Pay https://local402.vercel.app/indicadores"</span>,
+});
+<span class="k">await</span> mcp.close();</pre>
+        </div>
       </div>
     </div>
   </section>
@@ -1890,6 +1948,7 @@ const EN = [
   [".split > div:first-child > p", [
     'Accept USDC (<code>exact</code>) and XLM or EURC (<code>exact-fx</code>) from the same quote. It also works for MCP tools with <code>localToolPayment(server, "20 CLP", …)</code>.',
     "The agent checks the seller's rate against its own oracle, and respects <code>MAX_PRICE</code> and a per-session <code>BUDGET</code>. In code: <code>npm install local402-client</code>.",
+    "As an MCP server (<code>npx -y local402-mcp</code>) it gives the agent four tools: <code>local402_discover</code>, <code>local402_quote</code>, <code>local402_pay</code> and <code>local402_wallet</code>.",
   ]],
   ["main > section:nth-of-type(5) h2", "x402 today and with Local402."],
   ["main > section:nth-of-type(5) .sub", "What changes for whoever sells and whoever pays."],
@@ -1962,6 +2021,26 @@ function setLang(lang) {
 }
 $("lang").addEventListener("click", () => setLang(document.documentElement.lang === "en" ? "es" : "en"));
 $("copy-console").onclick = copyConsole;
+// Framework tabs: click, or the arrow keys once a tab has focus
+const tabs = [...document.querySelectorAll(".tabs [role=tab]")];
+function selectTab(tab) {
+  for (const t of tabs) {
+    const on = t === tab;
+    t.setAttribute("aria-selected", on);
+    t.tabIndex = on ? 0 : -1;
+    $(t.getAttribute("aria-controls")).hidden = !on;
+  }
+}
+tabs.forEach((tab, i) => {
+  tab.onclick = () => selectTab(tab);
+  tab.onkeydown = (event) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    if (!step) return;
+    const next = tabs[(i + step + tabs.length) % tabs.length];
+    selectTab(next);
+    next.focus();
+  };
+});
 updateCopyButton();
 try { if (localStorage.getItem("lang") === "en") setLang("en"); } catch {}
 
