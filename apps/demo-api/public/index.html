@@ -258,9 +258,37 @@
     .pager { gap: 4px; }
     .pager button.ghost { min-width: 32px; padding: 6px 8px; }
   }
+
+  /* ux-hero */
+  .proof { margin: 14px 0 0; font-family: var(--mono); font-size: 11.5px; letter-spacing: .02em; color: var(--fg-dim); }
+  .cta .btn:not(.primary) { color: var(--fg-muted); border-color: var(--border); }
+  .cta .btn:not(.primary):hover { color: var(--fg); border-color: var(--fg); }
+  .stats-head { font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-dim); margin: 0; padding: 20px 0 12px; }
+  .ticket-controls { display: flex; justify-content: flex-end; padding-top: 2px; }
+  .ticket-toggle { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 1px solid var(--border-strong); background: transparent; color: var(--fg-dim); font-size: 14px; line-height: 1; }
+  .ticket-toggle:hover { border-color: var(--fg); color: var(--fg); }
+  .ticket-toggle[hidden] { display: none; }
+  section[id] { scroll-margin-top: 72px; }
+  @media (max-width: 900px) {
+    nav .wrap { flex-wrap: wrap; height: auto; padding-block: 10px 6px; row-gap: 0; }
+    nav .wrap .badge { min-width: 0; }
+    .links { display: flex; flex: 1 1 100%; gap: 18px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+    .links::-webkit-scrollbar { display: none; }
+    .links a { display: inline-flex; align-items: center; min-height: 44px; }
+    .lang { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
+    .pager button.ghost { min-width: 44px; min-height: 44px; }
+    .presets button { min-height: 44px; padding-inline: 14px; }
+    section[id] { scroll-margin-top: 156px; }
+  }
+  .skip { position: fixed; top: 12px; left: 12px; z-index: 100; padding: 12px 18px; border-radius: 999px; background: var(--fg); color: var(--bg); font-size: 13.5px; font-weight: 500; text-decoration: none; transform: translateY(-72px); }
+  .skip:focus { transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
 </style>
 </head>
 <body>
+<a class="skip" href="#probar">Saltar al contenido</a>
 <nav>
   <div class="wrap">
     <a class="logo" href="#"><img src="/logo.svg" alt=""><span>Local<i>402</i></span></a>
@@ -287,6 +315,7 @@
         <a class="btn" href="#mainnet">Pagar en mainnet con tu wallet</a>
         <a class="btn" href="#calculadora">Calcular un precio</a>
       </div>
+      <p class="proof">6 monedas · paga con USDC, XLM o EURC · en vivo en mainnet</p>
     </div>
     <div class="ticket">
       <div class="row"><span id="ticket-path">GET /indicadores</span><span class="status">402 · pago requerido</span></div>
@@ -296,10 +325,12 @@
       <div class="row"><span>tasa</span><span class="v" id="ticket-rate">—</span></div>
       <div class="row"><span>fuente</span><span class="v" id="ticket-source">Oráculo Reflector</span></div>
       <div class="row"><span>pagar con</span><span class="assets"><span class="pill usdc">USDC</span><span class="pill xlm">XLM</span><span class="pill eurc">EURC</span></span></div>
+      <div class="ticket-controls"><button class="ticket-toggle" id="ticket-toggle" type="button" hidden aria-pressed="false"></button></div>
     </div>
   </div>
 </header>
 
+<div class="wrap"><h2 class="stats-head">Actividad de la demo (testnet)</h2></div>
 <div class="wrap stats">
   <div class="stat"><div class="label">Pagos</div><div class="value" id="stat-count">0</div><div class="note">en testnet, on-chain</div></div>
   <div class="stat"><div class="label">Vendido</div><div class="value" id="stat-local">—</div><div class="note" id="stat-local-note">en moneda local</div></div>
@@ -547,6 +578,7 @@ async function loadCatalog() {
     // Keeps the last catalog on screen if there is one; the 30 s refresh retries, sooner on the first load.
     if (!catalog) {
       $("network").textContent = tr("API no disponible · reintentando", "API unavailable · retrying");
+      renderTicketError();
       setTimeout(loadCatalog, 5_000);
     }
     return;
@@ -572,7 +604,8 @@ function renderCatalog() {
 let ticketIndex = 0;
 function renderTicket() {
   const quoted = catalog.items.filter((item) => !item.error);
-  if (!quoted.length) return;
+  if (!quoted.length) { renderTicketError(); return; }
+  ticketFailed = false;
   const item = quoted[ticketIndex % quoted.length];
   const q = item.quote;
   $("ticket-path").textContent = `GET ${item.path}`;
@@ -580,10 +613,42 @@ function renderTicket() {
   $("ticket-usdc").textContent = `≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC ${tr("para el vendedor", "for the seller")}`;
   $("ticket-rate").innerHTML = `1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD`;
   $("ticket-source").innerHTML = sourceLabel(q.oracleSource);
+  syncTicketToggle();
 }
 
+// The rotation pauses while the ticket is hovered or focused, and stops entirely with reduced motion;
+// the small button gives explicit control and hides when there is nothing to rotate.
+const heroTicket = document.querySelector(".hero .ticket");
+const ticketToggle = $("ticket-toggle");
+const ticketReduced = matchMedia("(prefers-reduced-motion: reduce)");
+let ticketPaused = false;
+let ticketHover = false;
+let ticketFailed = false;
+const syncTicketToggle = () => {
+  const idle = ticketReduced.matches || !catalog?.items?.some((item) => !item.error);
+  ticketToggle.hidden = idle;
+  ticketToggle.textContent = ticketPaused ? "▶" : "⏸";
+  ticketToggle.setAttribute("aria-pressed", String(ticketPaused));
+  ticketToggle.setAttribute("aria-label", ticketPaused ? tr("Reanudar la rotación de cotizaciones", "Resume quote rotation") : tr("Pausar la rotación de cotizaciones", "Pause quote rotation"));
+};
+ticketReduced.addEventListener("change", syncTicketToggle);
+// A catalog that never loads (or loads with every quote down) must not say "cotizando…" forever;
+// the 5 s retry refreshes this, which also picks up language changes.
+function renderTicketError() {
+  ticketFailed = true;
+  $("ticket-price").textContent = "—";
+  $("ticket-usdc").textContent = tr("No pudimos cotizar ahora", "We could not quote right now");
+  $("ticket-rate").textContent = "—";
+  syncTicketToggle();
+}
+ticketToggle.onclick = () => { ticketPaused = !ticketPaused; if (!ticketPaused) ticketHover = false; syncTicketToggle(); };
+heroTicket.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") ticketHover = true; });
+heroTicket.addEventListener("pointerleave", (event) => { if (event.pointerType === "mouse") ticketHover = false; });
+heroTicket.addEventListener("focusin", () => (ticketHover = true));
+heroTicket.addEventListener("focusout", (event) => { if (!heroTicket.contains(event.relatedTarget)) ticketHover = false; });
+
 setInterval(() => {
-  if (!catalog || document.hidden) return;
+  if (!catalog || document.hidden || ticketPaused || ticketHover || ticketReduced.matches) return;
   ticketIndex++;
   renderTicket();
 }, 4_000);
@@ -1047,6 +1112,10 @@ const EN = [
   ["footer p", "x402 payments priced in local currency, settled in USDC on Stellar. For any currency. Made in Chile for Find Your Way."],
   ["footer .label", ["Project", "Built with"]],
   ["footer .cols a[href='/receipts.csv']", "Receipts CSV"],
+  [".hero .proof", "6 currencies · pay with USDC, XLM or EURC · live on mainnet"],
+  [".stats-head", "Demo activity (testnet)"],
+  [".skip", "Skip to content"],
+  ["#ticket-usdc", "quoting with Reflector…"],
 ];
 
 function setLang(lang) {
@@ -1062,7 +1131,7 @@ function setLang(lang) {
   $("lang").textContent = lang === "en" ? "ES" : "EN";
   $("lang").setAttribute("aria-label", lang === "en" ? "Cambiar a español" : "Switch to English");
   try { localStorage.setItem("lang", lang); } catch {}
-  if (catalog) renderCatalog();
+  if (catalog) renderCatalog(); else if (ticketFailed) renderTicketError();
   if (peeked) peek(peeked);
   if (receipts.length) renderReceipts();
   if (mainnetList.length) renderMainnet();
