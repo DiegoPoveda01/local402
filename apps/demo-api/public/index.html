@@ -258,6 +258,38 @@
     .pager { gap: 4px; }
     .pager button.ghost { min-width: 32px; padding: 6px 8px; }
   }
+
+  /* ux-mainnet */
+  #mainnet button.pay, #mainnet .wallet-card button, #mainnet .mainnet-retry { min-height: 44px; }
+  #mainnet .convert-form input, #mainnet .convert-form select { min-height: 44px; }
+  #wallet-status .wallet-detected { color: var(--green); }
+  #wallet-status .install-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--copper); }
+  #mainnet .wallet-card { margin-top: 14px; padding: 16px; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--bg-elev-2); color: var(--fg); }
+  #mainnet .wallet-card h4 { margin: 0 0 12px; font-size: 16px; font-weight: 500; }
+  #mainnet .wallet-card dl { display: grid; gap: 9px; margin: 0; }
+  #mainnet .wallet-card .review-row { display: grid; grid-template-columns: minmax(120px, .8fr) 1.4fr; gap: 12px; }
+  #mainnet .wallet-card dt { color: var(--fg-dim); }
+  #mainnet .wallet-card dd { margin: 0; font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+  #mainnet .wallet-card .wallet-note { margin: 12px 0 0; color: var(--fg-muted); font-size: 12.5px; }
+  #mainnet .wallet-card .wallet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  #mainnet .wallet-card .wallet-loading-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  #mainnet .wallet-card .wallet-loading-head h4 { flex: 1; margin: 0; }
+  #mainnet .wallet-card button.wallet-confirm { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  #mainnet .wallet-card.is-error { border-color: rgba(255,138,122,.45); }
+  #mainnet .wallet-card.is-success { border-color: rgba(139,227,168,.4); }
+  #mainnet .wallet-card.is-error h4 { color: var(--red); }
+  #mainnet .wallet-card.is-success h4 { color: var(--green); }
+  #mainnet .wallet-card .cv-result { font-family: var(--serif); font-size: 30px; line-height: 1.15; overflow-wrap: anywhere; }
+  #mainnet .wallet-card .cv-tx { margin-top: 10px; font-size: 12.5px; }
+  #mainnet .wallet-card .cv-tx a { display: inline-flex; align-items: center; min-height: 44px; }
+  #mainnet #cv-status:empty { min-height: 0; }
+  #mainnet-premium-note { margin: 10px 2px 0; font-size: 12px; }
+  #mainnet .mainnet-retry { margin-left: 8px; font-family: var(--sans); font-style: normal; }
+  #mainnet-pager[hidden] { display: none; }
+  @media (max-width: 560px) {
+    #mainnet .wallet-card .review-row { grid-template-columns: 1fr; gap: 2px; }
+    #mainnet .wallet-card .wallet-actions button { flex: 1; }
+  }
 </style>
 </head>
 <body>
@@ -458,7 +490,8 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
         <div class="buttons">
           <button class="pay usdc" data-asset="USDC">USDC</button><button class="pay xlm" data-asset="XLM">XLM</button><button class="pay eurc" data-asset="EURC">EURC</button>
         </div>
-        <div class="meta" id="wallet-status"></div>
+        <div class="meta" id="wallet-status" role="status" aria-live="polite" aria-atomic="true"></div>
+        <div id="wallet-review" aria-live="polite" aria-atomic="true"></div>
       </div>
       <div class="window">
         <div class="window-bar"><i></i><i></i><i></i><span>tu-wallet@mainnet</span></div>
@@ -468,7 +501,8 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
     <div class="convert">
       <div class="label">Conversor en vivo</div>
       <h3 id="convert-title">Convierte tu monto y paga por <em>tu</em> resultado.</h3>
-      <p id="convert-text">Un pago de <code>GET /convertir</code> (100 NGN ≈ 0,08 USDC) te devuelve tu conversión con la tasa del oráculo Reflector en ese instante. Elige el monto y las monedas, y paga con Freighter. La respuesta llega a la consola de arriba.</p>
+      <p id="convert-text">Elige el monto y las monedas. Al pagar con Freighter, recibirás tu conversión con la tasa del oráculo Reflector de ese instante; el resultado aparece debajo.</p>
+      <p class="meta" id="convert-price">Precio de esta llamada: <code>GET /convertir</code> · <b>100 NGN ≈ 0,08 USDC</b>.</p>
       <div class="convert-form">
         <input id="cv-monto" type="number" min="0" step="any" value="100" aria-label="Monto a convertir">
         <select id="cv-de" aria-label="Moneda de origen"></select>
@@ -478,14 +512,15 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
           <button class="pay usdc" data-cv-asset="USDC">USDC</button><button class="pay xlm" data-cv-asset="XLM">XLM</button><button class="pay eurc" data-cv-asset="EURC">EURC</button>
         </div>
       </div>
-      <div class="meta" id="cv-status"></div>
+      <div class="meta" id="cv-status" aria-live="polite" aria-atomic="true"></div>
     </div>
     <div class="table-wrap">
       <table class="cards">
-        <thead><tr><th>Fecha</th><th>Precio</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Prima vs Reflector</th><th>Transacción</th></tr></thead>
-        <tbody id="mainnet-payments"></tbody>
+        <thead><tr><th>Fecha</th><th>Precio</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Prima máx. autorizada</th><th>Transacción</th></tr></thead>
+        <tbody id="mainnet-payments" aria-live="polite" aria-atomic="true"><tr><td colspan="6" class="empty">Cargando pagos en mainnet…</td></tr></tbody>
       </table>
     </div>
+    <p class="meta" id="mainnet-premium-note">máx. = tope firmado, no lo gastado</p>
     <nav class="pager" id="mainnet-pager" aria-label="Páginas de pagos en mainnet"></nav>
   </section>
 </main>
@@ -861,50 +896,91 @@ async function loadReceipts() {
 // Mainnet deployment of the same API and facilitator, paid from the visitor's own wallet.
 const MAINNET_API = "https://local402-mainnet.vercel.app";
 const CLI = `STELLAR_SECRET=S… npx -y local402-client pay ${MAINNET_API}/indicadores --with XLM --max "100 CLP"`;
+const mainnetTxLink = (hash) => {
+  const label = tr(`Ver transacción ${short(hash)} en Stellar Expert (nueva pestaña)`, `View transaction ${short(hash)} on Stellar Expert (new tab)`);
+  return `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/${encodeURIComponent(hash)}" aria-label="${escape(label)}">${short(escape(hash))}</a>`;
+};
 
 // scripts/mainnet/pay.ts writes the first payments to a file; visitors' payments are receipts of the mainnet API.
 async function loadMainnet() {
-  const [scripted, live] = await Promise.all([
-    fetch("/mainnet-payments.json").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    fetch(`${MAINNET_API}/receipts`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
-  ]);
-  const known = new Set(scripted.map((p) => p.transaction));
-  const payments = [
-    ...scripted,
-    ...live.filter((r) => !known.has(r.transaction)).map((r) => ({
-      paidAt: r.paidAt,
-      local: r.local,
-      usdc: r.settled.amount,
-      payWith: r.spent ? symbolMainnet(r.spent.asset) : "USDC",
-      spent: r.spent ? r.spent.amount : r.settled.amount,
-      spentPremiumBps: r.fxPremiumBps,
-      transaction: r.transaction,
-    })),
-  ].sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
-  if (!payments.length) return;
-  // Newest first, so a new payment brings the table back to page 1.
-  if (payments.length !== mainnetList.length) mainnetPage = 1;
-  mainnetList = payments;
+  const run = ++mainnetRun;
+  clearTimeout(mainnetRefresh);
+  mainnetState = "loading";
   renderMainnet();
-  $("mainnet").hidden = false;
-  mainnetPayments = payments.length;
-  renderNetwork();
+  try {
+    const [scripted, live] = await Promise.all([
+      fetch("/mainnet-payments.json").then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+      fetch(`${MAINNET_API}/receipts`).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+    ]);
+    if (run !== mainnetRun) return;
+    const known = new Set(scripted.map((p) => p.transaction));
+    const payments = [
+      ...scripted,
+      ...live.filter((r) => !known.has(r.transaction)).map((r) => ({
+        paidAt: r.paidAt,
+        local: r.local,
+        usdc: r.settled.amount,
+        payWith: r.spent ? symbolMainnet(r.spent.asset) : "USDC",
+        spent: r.spent ? r.spent.amount : r.settled.amount,
+        spentPremiumBps: r.fxPremiumBps,
+        transaction: r.transaction,
+      })),
+    ].sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
+    // Newest first, so a new payment brings the table back to page 1.
+    if (payments.length !== mainnetList.length) mainnetPage = 1;
+    mainnetList = payments;
+    mainnetState = "ready";
+    renderMainnet();
+    $("mainnet").hidden = false;
+    mainnetPayments = payments.length;
+    renderNetwork();
+  } catch {
+    if (run !== mainnetRun) return;
+    mainnetList = [];
+    mainnetPage = 1;
+    mainnetState = "error";
+    mainnetPayments = 0;
+    renderMainnet();
+    renderNetwork();
+  }
 }
 
 let mainnetList = [];
 let mainnetPage = 1;
+let mainnetState = "loading";
+let mainnetRun = 0;
+let mainnetRefresh;
 function renderMainnet() {
+  const body = $("mainnet-payments");
+  const pager = $("mainnet-pager");
+  body.setAttribute("aria-busy", String(mainnetState === "loading"));
+  if (mainnetState !== "ready") {
+    body.innerHTML = mainnetState === "loading"
+      ? `<tr><td colspan="6" class="empty">${tr("Cargando pagos en mainnet…", "Loading mainnet payments…")}</td></tr>`
+      : `<tr><td colspan="6" class="empty"><span>${tr("No pudimos cargar los pagos —", "We couldn't load the payments —")}</span><button type="button" class="ghost mainnet-retry" id="mainnet-retry">${tr("Reintentar", "Retry")}</button></td></tr>`;
+    pager.innerHTML = "";
+    pager.hidden = true;
+    if (mainnetState === "error") $("mainnet-retry").onclick = () => loadMainnet();
+    return;
+  }
+  if (!mainnetList.length) {
+    body.innerHTML = `<tr><td colspan="6" class="empty">${tr("Aún no hay pagos en mainnet", "No mainnet payments yet")}</td></tr>`;
+    pager.innerHTML = "";
+    pager.hidden = true;
+    return;
+  }
   const shown = paginate("mainnet-pager", mainnetList, mainnetPage, (page) => { mainnetPage = page; renderMainnet(); });
   mainnetPage = shown.page;
-  $("mainnet-payments").innerHTML = shown.rows.map((p) => `<tr>
+  pager.hidden = mainnetList.length <= PER_PAGE;
+  body.innerHTML = shown.rows.map((p) => `<tr>
       <td class="mono">${new Date(p.paidAt).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" })}</td>
       <td><b>${local(p.local.amount)} ${currencyLabel(p.local.currency)}</b></td>
       <td>${fmt(p.usdc)} USDC</td>
       <td><span class="pill ${escape(p.payWith.toLowerCase())}">${escape(p.payWith)}</span> ${fmt(p.spent)}</td>
-      <td class="mono">${p.spentPremiumBps !== undefined ? bps(p.spentPremiumBps) : p.fxPremiumBps !== undefined ? `${bps(p.fxPremiumBps)} máx.` : "—"}</td>
-      <td>${txLink(p.transaction, "public")}</td>
+      <td class="mono">${p.fxPremiumBps !== undefined ? `${bps(p.fxPremiumBps)} ${tr("máx.", "max.")}` : p.spentPremiumBps !== undefined ? `${bps(p.spentPremiumBps)} ${tr("gastado", "spent")}` : "—"}</td>
+      <td>${mainnetTxLink(p.transaction)}</td>
     </tr>`).join("");
-  labelCells($("mainnet-payments"));
+  labelCells(body);
 }
 
 // Swap premium over the oracle: what was spent, or for the first scripted payments the most the swap could spend.
@@ -913,19 +989,233 @@ const MAINNET_SYMBOLS = { CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOW
 const symbolMainnet = (asset) => MAINNET_SYMBOLS[asset] ?? short(asset);
 
 $("wallet-console").innerHTML = [span("c", "# desde tu wallet: elige USDC, XLM o EURC"), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`)].join("\n");
-async function payFromWallet(asset, resource = `${MAINNET_API}/indicadores`) {
+
+// This is the same non-interactive probe as Freighter's isConnected(); requestAccess only runs after confirmation.
+let freighterInstalled;
+let walletAddress = "";
+function detectFreighter() {
+  if (globalThis.freighter) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const messageId = Date.now() + Math.random();
+    const receive = (event) => {
+      if (event.source !== globalThis || event.data?.source !== "FREIGHTER_EXTERNAL_MSG_RESPONSE" || event.data.messagedId !== messageId) return;
+      finish(Boolean(event.data.isConnected));
+    };
+    const finish = (connected) => {
+      clearTimeout(timer);
+      globalThis.removeEventListener("message", receive);
+      resolve(connected);
+    };
+    const timer = setTimeout(() => finish(false), 2000);
+    globalThis.addEventListener("message", receive);
+    globalThis.postMessage({ source: "FREIGHTER_EXTERNAL_MSG_REQUEST", messageId, type: "REQUEST_CONNECTION_STATUS" }, location.origin);
+  });
+}
+function renderWalletStatus() {
+  const status = $("wallet-status");
+  if (walletAddress) {
+    status.innerHTML = `${tr("Conectada:", "Connected:")} <a target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/account/${escape(walletAddress)}">${short(escape(walletAddress))}</a>`;
+  } else if (freighterInstalled === undefined) {
+    status.textContent = tr("Buscando Freighter…", "Checking for Freighter…");
+  } else if (freighterInstalled) {
+    status.innerHTML = `<span class="wallet-detected">${tr("Freighter detectado — listo para pagar", "Freighter detected — ready to pay")}</span>`;
+  } else {
+    status.innerHTML = `${tr("Falta Freighter —", "Freighter missing —")} <a class="install-link" href="https://www.freighter.app" target="_blank" rel="noopener" aria-label="${tr("Instalar Freighter (nueva pestaña)", "Install Freighter (new tab)")}">${tr("Instalar", "Install")}</a>`;
+  }
+}
+async function showFreighterStatus() {
+  freighterInstalled = await detectFreighter();
+  renderWalletStatus();
+}
+renderWalletStatus();
+showFreighterStatus();
+
+const walletRegion = (pending) => (pending.converting ? $("cv-status") : $("wallet-review"));
+const setWalletBusy = (busy) => document.querySelectorAll(".wallet button[data-asset], .convert button[data-cv-asset]").forEach((b) => (b.disabled = busy));
+const resourceLabel = (resource) => {
+  const url = new URL(resource);
+  return `GET ${url.pathname}${url.search}`;
+};
+const staticWalletQuote = (converting) => converting
+  ? { localAmount: "100", currency: "NGN", tokenAmount: "800000", tokenDecimals: 7 }
+  : { localAmount: "50", currency: "CLP", tokenAmount: "500000", tokenDecimals: 7 };
+const walletLoading = (pending, message, cancelable = false) => {
+  const region = walletRegion(pending);
+  const cancel = cancelable ? `<button type="button" class="ghost wallet-cancel">${tr("Cancelar", "Cancel")}</button>` : "";
+  region.innerHTML = `<div class="wallet-card is-loading"><div class="wallet-loading-head"><h4>${message}</h4>${cancel}</div></div>`;
+  if (!cancelable) return;
+  const onEscape = (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    cancelWalletPending(pending);
+  };
+  pending.cancelEscape = onEscape;
+  document.addEventListener("keydown", onEscape);
+  region.querySelector(".wallet-cancel").onclick = () => cancelWalletPending(pending);
+};
+function stopWalletLoadingEscape(pending) {
+  if (!pending.cancelEscape) return;
+  document.removeEventListener("keydown", pending.cancelEscape);
+  pending.cancelEscape = undefined;
+}
+function cancelWalletPending(pending) {
+  if (walletPending !== pending) return;
+  stopWalletLoadingEscape(pending);
+  walletPending = undefined;
+  setWalletBusy(false);
+  walletRegion(pending).innerHTML = "";
+  pending.trigger?.focus();
+}
+
+// The 402 quotes USDC exactly. For XLM/EURC, the existing read-only mainnet quote provides an estimate;
+// wallet.pay quotes again on confirmation, and Freighter shows the final authorization before signing.
+async function quoteWalletAsset(asset, q) {
+  if (asset === "USDC") return undefined;
+  const price = encodeURIComponent(`${q.localAmount} ${q.currency}`);
+  const response = await fetch(`/demo/quote?price=${price}`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  return data.mainnet?.[asset]?.soroswap;
+}
+let walletPending;
+async function prepareWalletPayment(asset, resource = `${MAINNET_API}/indicadores`, trigger) {
+  const pending = { asset, resource, trigger, converting: new URL(resource).pathname === "/convertir" };
+  walletPending = pending;
+  setWalletBusy(true);
+  walletLoading(pending, tr("Consultando el 402 y la cotización…", "Fetching the 402 and quote…"), true);
+  try {
+    const required = await fetch402(resource);
+    const scheme = asset === "USDC" ? "exact" : "exact-fx";
+    const accepted = required.accepts.find((a) => a.scheme === scheme && a.network === "stellar:pubnet");
+    const quote = accepted?.extra?.local402;
+    if (!accepted || !quote) throw new Error("invalid_402");
+    pending.accepted = accepted;
+    pending.quote = quote;
+    pending.assetUnits = await quoteWalletAsset(asset, quote).catch(() => undefined);
+  } catch {
+    pending.fallback = true;
+    pending.quote = staticWalletQuote(pending.converting);
+  }
+  if (walletPending === pending) renderWalletReview(pending);
+}
+
+function renderWalletReview(pending) {
+  stopWalletLoadingEscape(pending);
+  const { asset, quote: q } = pending;
+  const amount = asset === "USDC"
+    ? `${pending.fallback ? "≈ " : ""}${fmt(pending.accepted?.amount ?? q.tokenAmount, q.tokenDecimals)} USDC`
+    : pending.assetUnits
+      ? `≈ ${fmt(pending.assetUnits)} ${asset}`
+      : tr("FxPay lo calcula antes de firmar", "FxPay calculates it before signing");
+  const guards = asset === "USDC" ? "200 CLP" : `200 CLP · ${tr("prima FX ≤ 5% sobre Reflector", "FX premium ≤ 5% over Reflector")}`;
+  const maximum = asset === "USDC"
+    ? `${pending.fallback ? "≈ " : ""}${fmt(pending.accepted?.amount ?? q.tokenAmount, q.tokenDecimals)} USDC · ${guards}`
+    : pending.assetUnits
+      ? `${tr("Hasta", "Up to")} ${fmt((BigInt(pending.assetUnits) * 10200n + 9999n) / 10000n)} ${asset} ${tr("con esta cotización", "at this quote")} · ${guards}`
+      : guards;
+  const note = pending.fallback
+    ? tr("No pudimos leer el 402 actual. Precio estático aproximado; Freighter mostrará la autorización actualizada antes de firmar.", "We couldn't read the current 402. Approximate static price; Freighter will show the updated authorization before you sign.")
+    : tr("Al confirmar se solicita un 402 nuevo; el monto del activo y su tope se recalculan antes de firmar.", "Confirming requests a fresh 402; the asset amount and its ceiling are recalculated before signing.");
+  const region = walletRegion(pending);
+  region.innerHTML = `<div class="wallet-card">
+    <h4>${tr("Revisa antes de pagar", "Review before paying")}</h4>
+    <dl>
+      <div class="review-row"><dt>${tr("Recurso", "Resource")}</dt><dd>${escape(resourceLabel(pending.resource))}</dd></div>
+      <div class="review-row"><dt>${tr("Precio local", "Local price")}</dt><dd>${local(q.localAmount)} ${currencyLabel(q.currency)}</dd></div>
+      <div class="review-row"><dt>${tr(`Monto en ${asset}`, `Amount in ${asset}`)}</dt><dd>${amount}</dd></div>
+      ${asset !== "USDC" ? `<div class="review-row"><dt>${tr("Vendedor recibe", "Seller receives")}</dt><dd>${pending.fallback ? "≈ " : ""}${fmt(pending.accepted?.amount ?? q.tokenAmount, q.tokenDecimals)} USDC</dd></div>` : ""}
+      <div class="review-row"><dt>${tr("Máximo autorizado", "Maximum authorized")}</dt><dd>${maximum}</dd></div>
+      <div class="review-row"><dt>${tr("Red", "Network")}</dt><dd>Stellar mainnet</dd></div>
+      <div class="review-row"><dt>${tr("Comisión de red", "Network fee")}</dt><dd>${tr("La paga el facilitador", "Paid by the facilitator")}</dd></div>
+    </dl>
+    <p class="wallet-note">${note}</p>
+    <div class="wallet-actions"><button type="button" class="ghost wallet-confirm">${tr("Pagar con Freighter", "Pay with Freighter")}</button><button type="button" class="ghost wallet-cancel">${tr("Cancelar", "Cancel")}</button></div>
+  </div>`;
+  region.querySelector(".wallet-confirm").onclick = () => payFromWallet(pending);
+  region.querySelector(".wallet-cancel").onclick = () => cancelWalletPending(pending);
+  region.querySelector(".wallet-confirm").focus();
+}
+
+function walletErrorCopy(error, asset) {
+  const message = String(error?.message ?? error);
+  const text = `${error?.code ?? ""} ${message}`.toLowerCase();
+  if (/no_freighter|freighter.*(?:missing|not found)/.test(text)) return {
+    title: tr("No encontramos Freighter", "We couldn't find Freighter"),
+    next: tr('Instala <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a>, recarga la página y reintenta.', 'Install <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a>, reload the page and retry.'),
+  };
+  if (/wrong_network|wrong network|network mismatch/.test(text)) return {
+    title: tr("Freighter está en otra red", "Freighter is on another network"),
+    next: tr("Cambia a Stellar Mainnet (Public) en Freighter y reintenta.", "Switch to Stellar Mainnet (Public) in Freighter and retry."),
+  };
+  if (/reject|declin|denied|cancelled|canceled/.test(text)) return {
+    title: tr("No autorizaste el pago", "You didn't authorize the payment"),
+    next: tr("Cuando estés listo, reintenta y autoriza la solicitud en Freighter.", "When you're ready, retry and authorize the request in Freighter."),
+  };
+  if (/trustline|trust line|no_trust/.test(text)) return {
+    title: tr("Falta una trustline para este activo", "This asset needs a trustline"),
+    next: asset === "XLM"
+      ? tr("Revisa el saldo y la reserva de tu cuenta, y luego reintenta.", "Check your account balance and reserve, then retry.")
+      : tr(`Añade la trustline de ${asset} en Freighter y reintenta.`, `Add the ${asset} trustline in Freighter and retry.`),
+  };
+  if (/insufficient_balance|insufficient (?:funds|balance)|not enough|balance.*(?:low|insufficient)/.test(text)) return {
+    title: tr("Saldo insuficiente", "Insufficient balance"),
+    next: tr(`Añade suficiente ${asset} para cubrir el máximo autorizado.${asset === "XLM" ? " Deja también la reserva mínima de la cuenta." : ""}`, `Add enough ${asset} to cover the authorized maximum.${asset === "XLM" ? " Keep the minimum account reserve too." : ""}`),
+  };
+  if (/deadline_expired|deadline.*expired|quote.*expired|expired.*quote|signature.*expired|expirado|expirada/.test(text)) return {
+    title: tr("La cotización venció", "The quote expired"),
+    next: tr("Reintenta para solicitar un 402 y una cotización nuevos.", "Retry to request a fresh 402 and quote."),
+  };
+  if (/simulation|simulate|simulaci/.test(text)) return {
+    title: tr("La simulación del pago falló", "The payment simulation failed"),
+    next: tr("Revisa el saldo, la trustline y la red. Si todo está bien, espera un momento y reintenta.", "Check the balance, trustline and network. If they're correct, wait a moment and retry."),
+  };
+  return {
+    title: tr("No pudimos completar el pago", "We couldn't complete the payment"),
+    next: tr("Revisa Freighter y tu conexión, y luego reintenta con una cotización nueva.", "Check Freighter and your connection, then retry with a fresh quote."),
+  };
+}
+function renderWalletError(pending, error) {
+  const copy = walletErrorCopy(error, pending.asset);
+  const region = walletRegion(pending);
+  region.innerHTML = `<div class="wallet-card is-error"><h4>${copy.title}</h4><p class="wallet-note">${copy.next}</p><div class="wallet-actions"><button type="button" class="ghost wallet-retry">${tr("Reintentar", "Retry")}</button></div></div>`;
+  const retry = region.querySelector(".wallet-retry");
+  retry.onclick = () => prepareWalletPayment(pending.asset, pending.resource, pending.trigger);
+  retry.focus();
+}
+
+function scrollWalletResult(region) {
+  const reduced = globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  region.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
+}
+function renderConvertSuccess(data, pending) {
+  const body = data.body;
+  const valid = body && body.monto != null && body.resultado != null && body.de && body.a && Number.isFinite(Number(body.monto)) && Number.isFinite(Number(body.resultado));
+  const result = valid
+    ? `${local(body.monto)} ${currencyLabel(body.de)} = ${local(body.resultado)} ${currencyLabel(body.a)}`
+    : tr("Conversión recibida; el detalle está en la consola de tu wallet.", "Conversion received; the details are in your wallet console.");
+  const region = walletRegion(pending);
+  region.innerHTML = `<div class="wallet-card is-success"><h4>${tr("Pago confirmado", "Payment confirmed")}</h4><div class="cv-result">${result}</div><div class="cv-tx">${tr("Transacción:", "Transaction:")} ${mainnetTxLink(data.transaction)}</div></div>`;
+  scrollWalletResult(region);
+}
+
+// Only the review's confirm button reaches this function and wallet.pay.
+async function payFromWallet(pending) {
+  if (walletPending !== pending) return;
+  walletPending = undefined;
+  const { asset, resource } = pending;
   const term = $("wallet-console");
-  const buttons = document.querySelectorAll(".wallet button, .convert button");
   const lines = [];
   const show = (...more) => { lines.push(...more); term.innerHTML = lines.join("\n"); term.scrollTop = term.scrollHeight; };
-  buttons.forEach((b) => (b.disabled = true));
+  setWalletBusy(true);
+  walletLoading(pending, tr("Conectando con Freighter…", "Connecting to Freighter…"));
   try {
     show(span("c", "cargando el cliente (≈500 KB)…"));
     await import("/wallet.js");
     const wallet = globalThis.local402Wallet;
     // Asked on every payment, so switching accounts in Freighter needs no reload.
-    const walletAddress = await wallet.connect();
-    $("wallet-status").innerHTML = `Conectada: <a target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/account/${escape(walletAddress)}">${short(escape(walletAddress))}</a>`;
+    walletAddress = await wallet.connect();
+    renderWalletStatus();
+    walletLoading(pending, tr("Preparando el pago; revisa Freighter cuando se abra…", "Preparing the payment; check Freighter when it opens…"));
     show(span("h", `$ GET ${resource.replace(MAINNET_API, "")}`), span("y", "HTTP/1.1 402 Payment Required"),
       span("h", asset === "USDC" ? "→ Freighter firma una transferencia de USDC (exact)" : `→ Freighter firma FxPay.pay con ${asset} (exact-fx)`),
       span("c", "  el cliente revisa la tasa con Reflector y el tope de 200 CLP antes de enviar…"),
@@ -934,24 +1224,24 @@ async function payFromWallet(asset, resource = `${MAINNET_API}/indicadores`) {
     const data = await wallet.pay(resource, walletAddress, asset);
     const seconds = ((performance.now() - started) / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 });
     show(
-      span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${txLink(data.transaction, "public")}`),
+      span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${mainnetTxLink(data.transaction)}`),
       data.spent ? `  gastaste ${span("v", `${fmt(data.spent.amount)} ${asset}`)} · el vendedor recibió ${fmt(data.price.amount)} USDC` : `  el vendedor recibió ${fmt(data.price.amount)} USDC`,
       ...(data.spent && data.fx ? [`  prima vs Reflector: ${span("g", bps(Number(((BigInt(data.spent.amount) - BigInt(data.fx.oracleSend)) * 10000n) / BigInt(data.fx.oracleSend))))} (tope firmado ${bps(data.fx.premiumBps)})`] : []),
       escape(JSON.stringify(data.body, null, 2)),
     );
-    setTimeout(loadMainnet, 1500);
+    if (pending.converting) renderConvertSuccess(data, pending);
+    else walletRegion(pending).innerHTML = "";
+    clearTimeout(mainnetRefresh);
+    mainnetRefresh = setTimeout(loadMainnet, 1500);
   } catch (error) {
     const message = String(error?.message ?? error);
-    const hint = {
-      no_freighter: 'No se encontró Freighter. Instálala desde <a href="https://www.freighter.app" target="_blank" rel="noopener">freighter.app</a> y recarga la página.',
-      wrong_network: "Freighter está en otra red. Cámbiala a Mainnet (Public) e inténtalo de nuevo.",
-    }[message];
-    show(span("r", hint ?? `Error: ${escape(message)}`), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`));
+    show(span("r", `Error: ${escape(message)}`), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`));
+    renderWalletError(pending, error);
   } finally {
-    buttons.forEach((b) => (b.disabled = false));
+    setWalletBusy(false);
   }
 }
-document.querySelectorAll(".wallet button[data-asset]").forEach((b) => (b.onclick = () => payFromWallet(b.dataset.asset)));
+document.querySelectorAll(".wallet button[data-asset]").forEach((b) => (b.onclick = () => prepareWalletPayment(b.dataset.asset, `${MAINNET_API}/indicadores`, b)));
 
 // Converter widget (section 08): builds a /convertir URL from the visitor's input and pays it from
 // Freighter, real money on mainnet. Only currencies the oracle publishes are offered, so a settled
@@ -968,10 +1258,16 @@ document.querySelectorAll(".convert button[data-cv-asset]").forEach((b) => (b.on
   const monto = ($("cv-monto").value || "1").trim();
   const de = $("cv-de").value, a = $("cv-a").value;
   const status = $("cv-status");
-  if (!(Number(monto) > 0)) { status.textContent = tr("Escribe un monto mayor que cero.", "Enter an amount above zero."); return; }
-  if (de === a) { status.textContent = tr("Elige dos monedas distintas.", "Pick two different currencies."); return; }
+  if (!(Number(monto) > 0)) {
+    status.innerHTML = `<div class="wallet-card is-error"><h4>${tr("Escribe un monto mayor que cero.", "Enter an amount above zero.")}</h4></div>`;
+    return;
+  }
+  if (de === a) {
+    status.innerHTML = `<div class="wallet-card is-error"><h4>${tr("Elige dos monedas distintas.", "Pick two different currencies.")}</h4></div>`;
+    return;
+  }
   status.textContent = "";
-  payFromWallet(b.dataset.cvAsset, `${MAINNET_API}/convertir?monto=${encodeURIComponent(monto)}&de=${de}&a=${a}`);
+  prepareWalletPayment(b.dataset.cvAsset, `${MAINNET_API}/convertir?monto=${encodeURIComponent(monto)}&de=${de}&a=${a}`, b);
 }));
 
 // English copy for the static page, keyed by selector (and index when a selector matches several elements).
@@ -1042,8 +1338,10 @@ const EN = [
   ["#wallet-text", 'With <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a> on Mainnet, pay <code>GET /indicadores</code> (50 CLP ≈ 0.05 USDC) with USDC, XLM or EURC. XLM alone is enough. You only sign the authorization: the facilitator pays the network fee, and the client refuses any charge above 200 CLP.'],
   ["#wallet-agents", "An agent? The same from the terminal, with your own key and a per-payment cap."],
   ["#convert-title", "Convert your amount and pay for <em>your</em> result."],
-  ["#convert-text", 'A <code>GET /convertir</code> payment (100 NGN ≈ 0.08 USDC) returns your conversion at the Reflector oracle rate at that instant. Pick the amount and currencies, and pay with Freighter. The answer prints in the console above.'],
-  ["#mainnet th", ["Date", "Price", "Seller receives", "Payer paid", "Premium vs Reflector", "Transaction"]],
+  ["#convert-text", "Pick the amount and currencies. After you pay with Freighter, your conversion at that instant's Reflector oracle rate appears below."],
+  ["#convert-price", 'Price of this call: <code>GET /convertir</code> · <b>100 NGN ≈ 0.08 USDC</b>.'],
+  ["#mainnet th", ["Date", "Price", "Seller receives", "Payer paid", "Max. authorized premium", "Transaction"]],
+  ["#mainnet-premium-note", "max. = signed ceiling, not the amount spent"],
   ["footer p", "x402 payments priced in local currency, settled in USDC on Stellar. For any currency. Made in Chile for Find Your Way."],
   ["footer .label", ["Project", "Built with"]],
   ["footer .cols a[href='/receipts.csv']", "Receipts CSV"],
@@ -1065,7 +1363,7 @@ function setLang(lang) {
   if (catalog) renderCatalog();
   if (peeked) peek(peeked);
   if (receipts.length) renderReceipts();
-  if (mainnetList.length) renderMainnet();
+  renderMainnet(); renderWalletStatus();
 }
 $("lang").addEventListener("click", () => setLang(document.documentElement.lang === "en" ? "es" : "en"));
 try { if (localStorage.getItem("lang") === "en") setLang("en"); } catch {}
