@@ -156,7 +156,7 @@
   .window, .ticket { position: relative; background: var(--bg-term); border: 1px solid var(--border-strong); min-width: 0; }
   .window-bar { position: absolute; top: 0; left: 12px; transform: translateY(-50%); display: flex; align-items: center; gap: 2px; padding: 0 6px; background: linear-gradient(var(--bg) 50%, var(--bg-term) 50%); font-family: var(--mono); font-size: 11.5px; line-height: 1.6; color: var(--fg-dim); z-index: 1; }
   .window-bar span::before, .window-bar button::before { content: "[ "; } .window-bar span::after, .window-bar button::after { content: " ]"; }
-  .term { padding: 22px 18px 16px; min-height: 210px; max-height: 440px; overflow: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; white-space: pre; color: var(--fg-dim);
+  .term { padding: 22px 18px 16px; min-height: 210px; max-height: 440px; overflow: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; white-space: pre; color: var(--fg-dim); scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
     background-image: repeating-linear-gradient(to bottom, rgba(243,239,231,.025) 0 1px, transparent 1px 3px); }
   .term .h { color: var(--fg); } .term .y { color: var(--accent); } .term .g { color: var(--ok); } .term .r { color: var(--err); } .term .v { color: var(--xlm); }
   .term a { color: var(--accent); }
@@ -244,8 +244,9 @@
   .routes.manual .bar { display: none; }
   @keyframes fill { to { transform: scaleX(1); } }
   .route-side { display: grid; gap: 12px; min-width: 0; align-content: start; }
-  #routes > .window { display: flex; flex-direction: column; }
-  #routes > .window .term { flex: 1; }
+  /* The console fills the column's height and scrolls inside it; the top padding keeps scrolled lines clear of the title. */
+  #routes > .window { display: flex; flex-direction: column; padding-top: 10px; }
+  #routes > .window .term { flex: 1 1 0; max-height: none; padding-top: 12px; }
   .card h3 { margin: 0; font-weight: 500; font-size: 13px; letter-spacing: 0; color: var(--accent); }
   .price { font-family: var(--mono); font-size: 40px; line-height: 1; letter-spacing: -.02em; margin-top: 6px; }
   .price small { display: block; font-size: 12px; color: var(--fg-dim); letter-spacing: 0; margin-top: 10px; }
@@ -413,6 +414,7 @@
     .hero .wrap { padding-block: 64px; gap: 44px; }
     .receipt-card { margin: -14px 14px 0 -6px; }
     .grid4, .routes { grid-template-columns: 1fr; }
+    #routes > .window .term { flex: none; max-height: 440px; }
     .route-list { grid-template-columns: 1fr 1fr; }
     .route { flex-direction: column; align-items: start; gap: 2px; padding: 10px 12px; border-left: 1px solid var(--border); margin-left: -1px; }
     .route:nth-child(2) { border-top: 0; }
