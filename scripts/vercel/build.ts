@@ -1,5 +1,6 @@
 // Builds a Vercel Build Output API bundle in .vercel/output: `npx tsx scripts/vercel/build.ts`,
 // then `vercel deploy --prebuilt`. The function is a single ESM file, so no node_modules ship.
+import { execSync } from "node:child_process";
 import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { build } from "esbuild";
 
@@ -36,6 +37,9 @@ writeFileSync(
   JSON.stringify({ runtime: "nodejs22.x", handler: "index.mjs", launcherType: "Nodejs", supportsResponseStreaming: true, maxDuration: 60 }),
 );
 cpSync("apps/demo-api/public", `${OUT}/static`, { recursive: true });
+// The landing (apps/web, a static Next.js export) goes over it; the rest of public/ (fonts, logos, og.png) stays.
+execSync("npm run build -w @local402/web", { stdio: "inherit" });
+cpSync("apps/web/out", `${OUT}/static`, { recursive: true });
 
 // The dashboard's "pay from your wallet" button, loaded only when clicked. The Node-only modules it pulls in
 // (quote signing, settlement channels) are never called in the browser, so they resolve to empty stubs.
