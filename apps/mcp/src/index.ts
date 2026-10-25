@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -67,7 +68,14 @@ const clients: Record<PayAsset, Local402Client> = {
   EURC: new Local402Client({ ...common, payWith: "EURC" }),
 };
 const client = clients[payWith];
-const bazaar = withBazaar(new HTTPFacilitatorClient({ url: process.env.FACILITATOR_URL ?? "http://localhost:4022" }));
+// An explicit FACILITATOR_URL keeps local overrides working; a stranger with no config gets the hosted
+// facilitator for the network they selected.
+const bazaar = withBazaar(
+  new HTTPFacilitatorClient({
+    url: process.env.FACILITATOR_URL ||
+      (MAINNET ? "https://local402-mainnet.vercel.app/facilitator" : "https://local402.vercel.app/facilitator"),
+  }),
+);
 
 const text = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] });
 const failure = (error: unknown) => ({
