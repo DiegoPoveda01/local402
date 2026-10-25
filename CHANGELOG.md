@@ -1,8 +1,7 @@
 # Changelog
 
 The four packages (`local402-pricing`, `local402-fx`, `local402-client` and `local402-server`) share one
-version from 1.0 on. `local402-facilitator`, the facilitator kit new in 1.0, is released with them under
-the same version.
+version from 1.0 on.
 
 ## 1.0.0
 
