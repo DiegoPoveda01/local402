@@ -26,8 +26,24 @@ const MAINNET = NETWORK === "stellar:pubnet";
 const PAY_TO_ALLOWLIST = (process.env.PAY_TO_ALLOWLIST ?? (MAINNET ? process.env.PAY_TO ?? "" : "")).split(",").map((a) => a.trim()).filter(Boolean);
 const MIN_AMOUNT = BigInt(process.env.MIN_AMOUNT || (MAINNET ? "100000" : "0"));
 
-// Bazaar catalog: every resource that settles here and declares discovery info, keyed by URL.
+// Bazaar catalog: every resource that settles here and declares discovery info, keyed by URL. Serverless instances
+// start empty, so with Redis configured (Vercel's Upstash integration) the catalog lives there; memory is the fallback.
 const catalog = new Map<string, DiscoveryResource>();
+const CATALOG_KEY = `local402:bazaar:${NETWORK}`;
+const REDIS_URL = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+const REDIS = Boolean(REDIS_URL && REDIS_TOKEN);
+
+/** One command over Upstash's REST API (the facilitator stays independent of the demo API's client). */
+async function redis(...command: string[]): Promise<unknown> {
+  const response = await fetch(REDIS_URL!, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+    body: JSON.stringify(command),
+  });
+  if (!response.ok) throw new Error(`Redis ${response.status}`);
+  return ((await response.json()) as { result: unknown }).result;
+}
 
 const signers = SECRETS.map((secret) => createEd25519Signer(secret, NETWORK));
 const channels = new ChannelPool(signers.map((signer) => signer.address));
@@ -46,15 +62,30 @@ const facilitator = new x402Facilitator()
     const discovered = result.success && extractDiscoveryInfo(paymentPayload, requirements);
     if (!discovered) return;
     const { resourceUrl, x402Version, discoveryInfo, ...metadata } = discovered;
-    const accepts = (catalog.get(resourceUrl)?.accepts ?? []).filter((a) => a.scheme !== requirements.scheme);
-    catalog.set(resourceUrl, {
+    // Another instance may have stored the route's other scheme; keep it.
+    let previous = catalog.get(resourceUrl);
+    if (!previous && REDIS) {
+      previous = await redis("HGET", CATALOG_KEY, resourceUrl).then(
+        (value) => (typeof value === "string" ? (JSON.parse(value) as DiscoveryResource) : undefined),
+        () => undefined,
+      );
+    }
+    const accepts = (previous?.accepts ?? []).filter((a) => a.scheme !== requirements.scheme);
+    const entry: DiscoveryResource = {
       ...metadata,
       resource: resourceUrl,
       type: discoveryInfo.input.type,
       x402Version,
       accepts: [...accepts, requirements],
       lastUpdated: new Date().toISOString(),
-    });
+    };
+    catalog.set(resourceUrl, entry);
+    // The payment has settled by now: a Redis failure only costs the catalog entry, never the result.
+    if (REDIS) {
+      await redis("HSET", CATALOG_KEY, resourceUrl, JSON.stringify(entry)).catch(() =>
+        console.warn("bazaar: could not save the catalog entry to Redis"),
+      );
+    }
   });
 
 // Per-client request caps per minute. Verification simulates on RPC and settlement spends fees, so both are bounded.
@@ -111,8 +142,16 @@ app.get("/supported", (_req, res) => {
   res.json(facilitator.getSupported());
 });
 
-app.get("/discovery/resources", (req, res) => {
-  const items = [...catalog.values()].filter((item) => !req.query.type || item.type === req.query.type);
+app.get("/discovery/resources", async (req, res) => {
+  let all = [...catalog.values()];
+  if (REDIS) {
+    try {
+      all = ((await redis("HVALS", CATALOG_KEY)) as string[]).map((value) => JSON.parse(value) as DiscoveryResource);
+    } catch {
+      console.warn("bazaar: could not read the catalog from Redis, serving this instance's copy");
+    }
+  }
+  const items = all.filter((item) => !req.query.type || item.type === req.query.type);
   const limit = Number(req.query.limit ?? 100);
   const offset = Number(req.query.offset ?? 0);
   res.json({ x402Version: 2, items: items.slice(offset, offset + limit), pagination: { limit, offset, total: items.length } });
