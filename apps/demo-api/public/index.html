@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Local402 · Cobra en tu moneda</title>
 <meta name="description" content="x402 en Stellar con precios en moneda local (24 monedas: MXN, BRL, EUR, INR, NGN, JPY, CLP y la UF…) vía el oráculo Reflector. El cliente paga con USDC, XLM o EURC y el vendedor recibe USDC exacto.">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#0a0908">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://local402.vercel.app/">
 <meta property="og:title" content="Local402 · Cobra en tu moneda, recibe USDC exacto">
@@ -19,19 +19,18 @@
 <link rel="icon" href="/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #ffffff; --bg-elev: #f7f7f5; --bg-elev-2: #efefec;
-    --fg: #16181d; --fg-muted: #4a4f59; --fg-dim: #646a75;
-    --border: #e4e4e0; --border-strong: #cfcfca;
-    --copper: #b4541f; --copper-muted: rgba(180,84,31,.08);
-    --green: #157f3c; --red: #b42318;
-    --usdc: #1d5bd8; --xlm: #6d3fc8; --eurc: #0f766e;
-    /* One family on purpose: headings, prices and labels all use the sans; --serif stays as an alias. */
-    --serif: var(--sans);
-    --sans: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
-    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+    --bg: #0a0908; --bg-elev: #110f0d; --bg-elev-2: #171512;
+    --fg: #f3efe7; --fg-muted: rgba(243,239,231,.66); --fg-dim: rgba(243,239,231,.54);
+    --border: rgba(243,239,231,.09); --border-strong: rgba(243,239,231,.18);
+    --copper: #e38b5a; --copper-muted: rgba(227,139,90,.12);
+    --green: #8be3a8; --red: #ff8a7a;
+    --usdc: #8ab4ff; --xlm: #c8a8ff; --eurc: #7fdccf;
+    --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+    --sans: "Geist", -apple-system, "Segoe UI", system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -58,9 +57,11 @@
   /* Hero */
   .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--border); }
   .hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(640px 420px at 78% 45%, rgba(227,139,90,.14), transparent 70%), radial-gradient(900px 500px at 10% 0%, rgba(243,239,231,.04), transparent 60%); pointer-events: none; }
+  .rings { position: absolute; right: -120px; top: 50%; width: 720px; height: 720px; transform: translateY(-50%); pointer-events: none; }
   .hero .wrap { position: relative; display: grid; grid-template-columns: 1.45fr 1fr; gap: 48px; align-items: center; padding-block: 96px 88px; }
   .eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--copper); }
   h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(50px, 6.6vw, 84px); line-height: .98; letter-spacing: -.025em; margin: 20px 0 0; }
+  .problem { font-family: var(--mono); font-size: 13px; color: var(--fg-muted); max-width: 520px; margin: 26px 0 0; padding-left: 12px; border-left: 2px solid var(--copper); }
   .lead { color: var(--fg-muted); font-size: 18px; max-width: 520px; margin: 18px 0 0; }
   .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px; }
   .btn { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 500; font-size: 14.5px; border-radius: 999px; padding: 11px 20px; border: 1px solid var(--border-strong); }
@@ -166,13 +167,6 @@
   pre.code { margin: 0; padding: 18px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.75; overflow-x: auto; color: var(--fg); }
   .k { color: var(--xlm); } .s { color: var(--green); } .c { color: var(--fg-dim); }
   .wallet { margin: 8px 0 40px; }
-  /* Framework tabs: one snippet per MCP client, all tested against the published local402-mcp */
-  .tabs { flex-wrap: wrap; gap: 2px; padding: 6px 8px; }
-  .split:has(.tabs) { align-items: start; }
-  .tabs button { flex: none; font: 500 13px var(--sans); color: var(--fg-dim); background: none; border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
-  .tabs button:hover { color: var(--fg); }
-  .tabs button[aria-selected="true"] { color: var(--fg); background: var(--bg-elev-2); }
-  .tab-file { padding: 10px 20px 0; font-family: var(--mono); font-size: 11px; color: var(--fg-dim); }
   .wallet h3 { margin: 10px 0; font-size: 22px; font-weight: 500; }
   .wallet .buttons { margin-top: 14px; }
   .wallet #wallet-status { margin-top: 10px; min-height: 1.5em; }
@@ -264,185 +258,9 @@
     .pager { gap: 4px; }
     .pager button.ghost { min-width: 32px; padding: 6px 8px; }
   }
-
-  /* ux-hero */
-  .proof { margin: 14px 0 0; font-family: var(--mono); font-size: 11.5px; letter-spacing: .02em; color: var(--fg-dim); }
-  .cta .btn:not(.primary) { color: var(--fg-muted); border-color: var(--border); }
-  .cta .btn:not(.primary):hover { color: var(--fg); border-color: var(--fg); }
-  .stats-head { font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-dim); margin: 0; padding: 20px 0 12px; }
-  .ticket-controls { display: flex; justify-content: flex-end; padding-top: 2px; }
-  .ticket-toggle { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 1px solid var(--border-strong); background: transparent; color: var(--fg-dim); font-size: 14px; line-height: 1; }
-  .ticket-toggle:hover { border-color: var(--fg); color: var(--fg); }
-  .ticket-toggle[hidden] { display: none; }
-  section[id] { scroll-margin-top: 72px; }
-  @media (max-width: 900px) {
-    nav .wrap { flex-wrap: wrap; height: auto; padding-block: 10px 6px; row-gap: 0; }
-    nav .wrap .badge { min-width: 0; }
-    .links { display: flex; flex: 1 1 100%; gap: 18px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
-    .links::-webkit-scrollbar { display: none; }
-    .links a { display: inline-flex; align-items: center; min-height: 44px; }
-    .lang { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
-    .pager button.ghost { min-width: 44px; min-height: 44px; }
-    .presets button { min-height: 44px; padding-inline: 14px; }
-    section[id] { scroll-margin-top: 156px; }
-  }
-  .skip { position: fixed; top: 12px; left: 12px; z-index: 100; padding: 12px 18px; border-radius: 999px; background: var(--fg); color: var(--bg); font-size: 13.5px; font-weight: 500; text-decoration: none; transform: translateY(-72px); }
-  .skip:focus { transform: none; }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-  }
-  /* ux-pay */
-  [hidden] { display: none !important; }
-  .skeleton { background: linear-gradient(90deg, var(--bg-elev) 25%, var(--bg-elev-2) 50%, var(--bg-elev) 75%); background-size: 200% 100%; animation: skeleton 1.2s infinite; }
-  @keyframes skeleton { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-  .skeleton-line { height: 12px; background: var(--border); border-radius: 6px; opacity: .35; }
-  .skeleton-line.short { width: 45%; }
-  .skeleton-price { height: 48px; width: 70%; background: var(--border); border-radius: 8px; opacity: .4; margin: 6px 0; }
-  .skeleton-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
-  .skeleton-buttons span { height: 32px; background: var(--border); border-radius: 999px; opacity: .3; }
-  .skeleton-status { grid-column: 1 / -1; text-align: center; color: var(--fg-dim); font-family: var(--mono); font-size: 13px; padding: 16px 0 6px; }
-  .error-card { grid-column: 1 / -1; gap: 14px; }
-  .error-card h3 { margin: 0; color: var(--red); font-weight: 500; font-size: 17px; }
-
-  .quote-card { margin-top: 14px; background: var(--bg-elev); border: 1px solid var(--border-strong); border-radius: 14px; padding: 18px 20px; display: grid; grid-template-columns: 1fr auto; gap: 10px 18px; align-items: center; transition: opacity .2s; }
-  .quote-card.expired { opacity: .5; }
-  .quote-main { min-width: 0; }
-  .quote-route { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; color: var(--fg-dim); }
-  .quote-route .label { margin: 0; }
-  .quote-price { font-family: var(--serif); font-size: 32px; line-height: 1.1; margin-top: 4px; }
-  .quote-pay { color: var(--fg-muted); font-size: 14px; margin-top: 4px; }
-  .quote-receive { color: var(--green); font-size: 14px; margin-top: 2px; }
-  .quote-meta { color: var(--fg-dim); font-size: 12px; font-family: var(--mono); margin-top: 8px; }
-  .quote-countdown { grid-column: 1 / -1; font-family: var(--mono); font-size: 12px; color: var(--copper); display: flex; align-items: center; gap: 6px; }
-  .quote-refresh { grid-column: 1 / -1; justify-self: start; }
-  .pay-progress { margin-top: 14px; }
-  .stepper { display: flex; gap: 8px; align-items: center; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 999px; padding: 6px; width: fit-content; max-width: 100%; flex-wrap: wrap; }
-  .stepper .step { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; font-size: 13px; color: var(--fg-dim); }
-  .stepper .step.done { color: var(--green); }
-  .stepper .step.active { background: var(--copper-muted); color: var(--copper); }
-  .stepper .step.error { color: var(--red); }
-  .step-dot { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid currentColor; font-size: 11px; font-family: var(--mono); }
-  .success-wrap { display: flex; align-items: center; gap: 16px; margin-top: 14px; padding: 14px 18px; background: rgba(139,227,168,.08); border: 1px solid rgba(139,227,168,.25); border-radius: 14px; }
-  .check { width: 40px; height: 40px; flex-shrink: 0; }
-  .check path { stroke: var(--green); stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 52; stroke-dashoffset: 52; animation: draw 600ms ease forwards; }
-  @keyframes draw { to { stroke-dashoffset: 0; } }
-  .mini-receipt { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; color: var(--fg); }
-  .mini-receipt .mr-arrow { color: var(--fg-dim); }
-  .pay-error { margin-top: 14px; padding: 14px 18px; background: rgba(255,138,122,.08); border: 1px solid rgba(255,138,122,.25); border-radius: 14px; color: var(--red); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-  .pay-error p { margin: 0; }
-  .copy-console { margin-left: auto; font-size: 12px; padding: 5px 12px; min-height: 44px; }
-  @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } .check path { animation: none; stroke-dashoffset: 0; } }
-  @media (max-width: 900px) { .quote-card { grid-template-columns: 1fr; } }
-  /* ux-mainnet */
-  #mainnet button.pay, #mainnet .wallet-card button, #mainnet .mainnet-retry { min-height: 44px; }
-  #mainnet .convert-form input, #mainnet .convert-form select { min-height: 44px; }
-  #wallet-status .wallet-detected { color: var(--green); }
-  #wallet-status .install-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--copper); }
-  #mainnet .wallet-card { margin-top: 14px; padding: 16px; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--bg-elev-2); color: var(--fg); }
-  #mainnet .wallet-card h4 { margin: 0 0 12px; font-size: 16px; font-weight: 500; }
-  #mainnet .wallet-card dl { display: grid; gap: 9px; margin: 0; }
-  #mainnet .wallet-card .review-row { display: grid; grid-template-columns: minmax(120px, .8fr) 1.4fr; gap: 12px; }
-  #mainnet .wallet-card dt { color: var(--fg-dim); }
-  #mainnet .wallet-card dd { margin: 0; font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
-  #mainnet .wallet-card .wallet-note { margin: 12px 0 0; color: var(--fg-muted); font-size: 12.5px; }
-  #mainnet .wallet-card .wallet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-  #mainnet .wallet-card .wallet-loading-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  #mainnet .wallet-card .wallet-loading-head h4 { flex: 1; margin: 0; }
-  #mainnet .wallet-card button.wallet-confirm { background: var(--fg); color: var(--bg); border-color: var(--fg); }
-  #mainnet .wallet-card.is-error { border-color: rgba(255,138,122,.45); }
-  #mainnet .wallet-card.is-success { border-color: rgba(139,227,168,.4); }
-  #mainnet .wallet-card.is-error h4 { color: var(--red); }
-  #mainnet .wallet-card.is-success h4 { color: var(--green); }
-  #mainnet .wallet-card .cv-result { font-family: var(--serif); font-size: 30px; line-height: 1.15; overflow-wrap: anywhere; }
-  #mainnet .wallet-card .cv-tx { margin-top: 10px; font-size: 12.5px; }
-  #mainnet .wallet-card .cv-tx a { display: inline-flex; align-items: center; min-height: 44px; }
-  #mainnet #cv-status:empty { min-height: 0; }
-  #mainnet-premium-note { margin: 10px 2px 0; font-size: 12px; }
-  #mainnet .mainnet-retry { margin-left: 8px; font-family: var(--sans); font-style: normal; }
-  #mainnet-pager[hidden] { display: none; }
-  @media (max-width: 560px) {
-    #mainnet .wallet-card .review-row { grid-template-columns: 1fr; gap: 2px; }
-    #mainnet .wallet-card .wallet-actions button { flex: 1; }
-  }
-
-  /* ux-receipts */
-  .rc-vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  /* The scroll cap exists to feed the sticky header; phones hide that header, so they keep the natural flow. */
-  @media (min-width: 561px) {
-    #recibos .table-wrap { max-height: min(72vh, 620px); overflow-y: auto; }
-    #recibos thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-elev); box-shadow: inset 0 -1px 0 var(--border-strong); }
-    #recibos th, #recibos td { padding-inline: 12px; }
-  }
-  #recibos th.num, #recibos td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  #recibos .rc-btn { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 10px 14px; }
-  #recibos .rc-btn .caret::before { content: "▸"; }
-  #recibos .rc-btn .caret { display: inline-block; font-size: 9px; color: var(--fg-dim); transform: rotate(0); transition: transform .15s; }
-  #recibos [aria-expanded="true"] .caret { transform: rotate(90deg); }
-  @media (prefers-reduced-motion: reduce) { #recibos .rc-btn .caret { transition: none; } }
-  #recibos tr.open > td { background: var(--copper-muted); border-bottom-color: transparent; }
-  #recibos tr.detail > td { padding: 0 18px 18px; white-space: normal; }
-  #recibos .sheet { background: var(--bg-elev-2); border: 1px solid var(--border-strong); border-radius: 12px; padding: 16px 18px 18px; }
-  #recibos .sheet-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; }
-  #recibos .sheet-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px 28px; margin: 14px 0 0; }
-  #recibos .sheet-fields dt { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-dim); }
-  #recibos .sheet-fields dd { margin: 4px 0 0; font-size: 13.5px; min-width: 0; overflow-wrap: anywhere; }
-  #recibos .sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
-  #recibos td.empty { padding-block: 44px; }
-  #recibos td.empty p { margin: 0 0 8px; }
-  #recibos td.empty .hint { font-family: var(--sans); font-style: normal; font-size: 14px; color: var(--fg-muted); margin-bottom: 18px; }
-  #recibos td.empty .rc-btn { font-family: var(--sans); font-style: normal; }
-  @media (max-width: 560px) {
-    #recibos tr.detail > td { grid-column: 1 / -1; padding: 0 10px 12px; }
-    #recibos tr.detail > td[data-label]::before { content: none; }
-  }
-
-  /* light theme: one sans family, the product (402, payment, receipt) carries the page; no glows, tilts or serif */
-  ::selection { color: #fff; }
-  em, .logo i { font-style: normal; color: inherit; }
-  .logo { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
-  .logo i { color: var(--copper); }
-  nav { background: rgba(255,255,255,.92); }
-  .dot { box-shadow: none; }
-  .hero::before { content: none; }
-  h1 { font-weight: 600; font-size: clamp(30px, 3.4vw, 46px); line-height: 1.14; letter-spacing: -.03em; margin-top: 16px; }
-  .amount div { font-size: 30px; }
-  .stat .value { font-size: 32px; }
-  .h1-problem { color: var(--fg-dim); }
-  h2 { font-weight: 600; font-size: clamp(26px, 3vw, 38px); line-height: 1.15; letter-spacing: -.025em; }
-  .split h2 { font-size: clamp(24px, 2.4vw, 30px); line-height: 1.2; letter-spacing: -.02em; }
-  .step h3 { font-weight: 600; font-size: 18px; letter-spacing: -.01em; }
-  .price, .stat .value, .ticket .big, .amount div, .quote-price, #mainnet .wallet-card .cv-result, .calc input { font-weight: 500; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-  .compare td:first-child { font-size: 15px; font-weight: 600; }
-  .eyebrow, .label, th, .stat .note, .stats-head, .link, .discovery, .proof, .badge, button.pay, #recibos .sheet-fields dt, .compare td:not(:first-child)::before, .cards td[data-label]::before { font-family: var(--sans); text-transform: none; letter-spacing: 0; }
-  .eyebrow { font-size: 14px; font-weight: 600; }
-  .label, th, #recibos .sheet-fields dt { font-size: 12.5px; font-weight: 500; }
-  .stat .note { font-size: 12.5px; }
-  .stats-head { font-size: 14px; font-weight: 600; color: var(--fg); }
-  .link { font-size: 14px; font-weight: 500; color: var(--copper); }
-  .proof { font-size: 13.5px; }
-  .badge { font-size: 12.5px; }
-  .empty { font-family: var(--sans); font-style: normal; font-size: 15px; }
-  .btn, button.ghost, button.pay, .skip, .convert-form input, .convert-form select, .skeleton-buttons span { border-radius: 8px; }
-  .btn.primary:hover { background: #000; }
-  .ticket { background: var(--bg); border-color: var(--border); border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 16px 40px -16px rgba(16,24,40,.16); transform: none; }
-  .ticket .cut::before, .ticket .cut::after { content: none; }
-  .window { background: var(--bg-elev); }
-  .window-bar i { display: none; }
-  .window-bar span { margin-left: 0; }
-  button.pay { font-size: 13px; }
-  button.usdc { border-color: rgba(29,91,216,.3); background: rgba(29,91,216,.05); }
-  button.xlm { border-color: rgba(109,63,200,.3); background: rgba(109,63,200,.05); }
-  button.eurc { border-color: rgba(15,118,110,.3); background: rgba(15,118,110,.05); }
-  button.pay:hover:not(:disabled) { color: #fff; }
-  .pill.usdc { border-color: rgba(29,91,216,.3); } .pill.xlm { border-color: rgba(109,63,200,.3); } .pill.eurc { border-color: rgba(15,118,110,.3); }
-  .success-wrap { background: rgba(21,127,60,.05); border-color: rgba(21,127,60,.25); }
-  .pay-error { background: rgba(180,35,24,.04); border-color: rgba(180,35,24,.25); }
-  #mainnet .wallet-card.is-error { border-color: rgba(180,35,24,.4); }
-  #mainnet .wallet-card.is-success { border-color: rgba(21,127,60,.4); }
 </style>
 </head>
 <body>
-<a class="skip" href="#probar">Saltar al contenido</a>
 <nav>
   <div class="wrap">
     <a class="logo" href="#"><img src="/logo.svg" alt=""><span>Local<i>402</i></span></a>
@@ -453,17 +271,22 @@
 </nav>
 
 <header class="hero">
+  <svg class="rings" viewBox="0 0 720 720" fill="none" aria-hidden="true">
+    <circle cx="360" cy="360" r="150" stroke="rgba(243,239,231,.07)"/>
+    <circle cx="360" cy="360" r="240" stroke="rgba(243,239,231,.05)"/>
+    <circle cx="360" cy="360" r="340" stroke="rgba(243,239,231,.035)"/>
+  </svg>
   <div class="wrap">
     <div>
-      <div class="eyebrow">x402 en Stellar · precios en moneda local</div>
-      <h1><span class="h1-problem">x402 solo cobra en dólares.</span> Local402 deja que cualquier API cobre en su moneda y reciba USDC exacto.</h1>
+      <div class="eyebrow"><span class="dot"></span>x402 en Stellar · precios en moneda local</div>
+      <h1>Cobra en <em>tu moneda</em>.<br>Recibe USDC exacto.</h1>
+      <p class="problem">Hoy x402 solo cobra en dólares y en un único activo. Pero el comercio real factura en pesos, reales, rupias, nairas, euros o yenes.</p>
       <p class="lead">Tus clientes, personas o agentes de IA, pagan con USDC, XLM o EURC. Una sola transacción, tasa de un oráculo on-chain, y el vendedor recibe siempre el monto justo.</p>
       <div class="cta">
         <a class="btn primary" href="#probar">Probar gratis en testnet →</a>
         <a class="btn" href="#mainnet">Pagar en mainnet con tu wallet</a>
         <a class="btn" href="#calculadora">Calcular un precio</a>
       </div>
-      <p class="proof">6 monedas · paga con USDC, XLM o EURC · en vivo en mainnet</p>
     </div>
     <div class="ticket">
       <div class="row"><span id="ticket-path">GET /indicadores</span><span class="status">402 · pago requerido</span></div>
@@ -473,12 +296,10 @@
       <div class="row"><span>tasa</span><span class="v" id="ticket-rate">—</span></div>
       <div class="row"><span>fuente</span><span class="v" id="ticket-source">Oráculo Reflector</span></div>
       <div class="row"><span>pagar con</span><span class="assets"><span class="pill usdc">USDC</span><span class="pill xlm">XLM</span><span class="pill eurc">EURC</span></span></div>
-      <div class="ticket-controls"><button class="ticket-toggle" id="ticket-toggle" type="button" hidden aria-pressed="false"></button></div>
     </div>
   </div>
 </header>
 
-<div class="wrap"><h2 class="stats-head">Actividad de la demo (testnet)</h2></div>
 <div class="wrap stats">
   <div class="stat"><div class="label">Pagos</div><div class="value" id="stat-count">0</div><div class="note">en testnet, on-chain</div></div>
   <div class="stat"><div class="label">Vendido</div><div class="value" id="stat-local">—</div><div class="note" id="stat-local-note">en moneda local</div></div>
@@ -516,31 +337,19 @@
 
 <main class="wrap">
   <section id="probar">
-    <div class="eyebrow">Demo en testnet</div>
-    <h2>Paga una de estas APIs con dinero de prueba.</h2>
+    <div class="eyebrow">01 — Pruébalo</div>
+    <h2>Seis APIs, seis monedas. <em>Un solo</em> USDC al otro lado.</h2>
     <p class="sub">«Ver el 402» muestra lo que recibe cualquier cliente x402, sin wallet ni pago. Los botones de color hacen un pago real en testnet con una wallet de demo, gratis para cualquiera. Los pagos con dinero real, con el mismo código, están en <a href="#mainnet">mainnet</a>.</p>
     <div class="products" id="products"></div>
-    <div class="quote-card" id="quote-card" hidden></div>
-    <div class="pay-progress" id="pay-progress" hidden>
-      <div class="stepper" id="stepper" role="status" aria-live="polite"></div>
-      <div class="success-wrap" id="success-wrap" hidden>
-        <svg class="check" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 24 L20 34 L38 14"/></svg>
-        <div class="mini-receipt" id="mini-receipt"></div>
-      </div>
-      <div class="pay-error" id="pay-error" role="alert" hidden>
-        <p id="pay-error-msg"></p>
-        <button class="ghost" id="pay-retry" type="button">Reintentar</button>
-      </div>
-    </div>
     <div class="window">
-      <div class="window-bar"><i></i><i></i><i></i><span>agente@local402</span><button class="ghost copy-console" id="copy-console" type="button">Copiar</button></div>
+      <div class="window-bar"><i></i><i></i><i></i><span>agente@local402</span></div>
       <div class="term" id="console" aria-live="polite">Cargando…</div>
     </div>
   </section>
 
   <section id="calculadora">
-    <div class="eyebrow">Calculadora</div>
-    <h2>¿Cuánto USDC es tu precio?</h2>
+    <div class="eyebrow">02 — Calculadora</div>
+    <h2>Pon tu precio. <em>Nosotros</em> hacemos el cambio.</h2>
     <p class="sub">Cualquier monto en USD, UF o las 24 monedas de Reflector (MXN, BRL, EUR, INR, NGN, KES, JPY, CLP…), convertido con el oráculo, y lo que costaría ahora pagarlo con cada activo según el contrato FxPay.</p>
     <div class="calc">
       <div class="card">
@@ -554,8 +363,8 @@
   </section>
 
   <section>
-    <div class="eyebrow">Cómo funciona</div>
-    <h2>Del precio local al USDC del vendedor.</h2>
+    <div class="eyebrow">03 — Cómo funciona</div>
+    <h2>Cuatro pasos y <em>ningún</em> tipo de cambio a mano.</h2>
     <p class="sub">Todo ocurre dentro del flujo x402 estándar. Si algo no cuadra, la transacción entera se revierte.</p>
     <div class="grid4">
       <div class="step"><div class="eyebrow">01</div><h3>Precio local</h3><p>El vendedor fija <code>"70 NGN"</code> en su ruta x402.</p></div>
@@ -568,7 +377,7 @@
   <section id="integracion">
     <div class="split">
       <div>
-        <div class="eyebrow">Para vendedores</div>
+        <div class="eyebrow">04 — Vendedores</div>
         <h2>Una línea por ruta.</h2>
         <p>Acepta USDC (<code>exact</code>) y XLM o EURC (<code>exact-fx</code>) con la misma cotización. También sirve para herramientas MCP con <code>localToolPayment(server, "20 CLP", …)</code>.</p>
       </div>
@@ -585,76 +394,24 @@
     </div>
     <div class="split">
       <div>
-        <div class="eyebrow">Para agentes de IA</div>
-        <h2>Tu agente paga, con los límites que tú fijas.</h2>
+        <div class="eyebrow">05 — Agentes</div>
+        <h2>MCP, pero con <em>límites</em>.</h2>
         <p>El agente verifica la tasa del vendedor con su propio oráculo, respeta <code>MAX_PRICE</code> y un presupuesto por sesión (<code>BUDGET</code>). En código: <code>npm install local402-client</code>.</p>
-        <p>Como servidor MCP (<code>npx -y local402-mcp</code>) le da cuatro herramientas: <code>local402_discover</code>, <code>local402_quote</code>, <code>local402_pay</code> y <code>local402_wallet</code>.</p>
         <div class="discovery" id="discovery-count">…</div>
       </div>
       <div class="window">
-        <div class="window-bar tabs" role="tablist" aria-label="MCP"><button role="tab" id="tab-claude-code" aria-controls="panel-claude-code" aria-selected="true">Claude Code</button><button role="tab" id="tab-claude-desktop" aria-controls="panel-claude-desktop" aria-selected="false" tabindex="-1">Claude Desktop</button><button role="tab" id="tab-openai" aria-controls="panel-openai" aria-selected="false" tabindex="-1">OpenAI Agents SDK</button><button role="tab" id="tab-vercel" aria-controls="panel-vercel" aria-selected="false" tabindex="-1">Vercel AI SDK</button></div>
-        <div role="tabpanel" id="panel-claude-code" aria-labelledby="tab-claude-code">
-<pre class="code">claude mcp add local402 \
-  -e STELLAR_PRIVATE_KEY=S… \
-  -e <span class="s">"MAX_PRICE=500 CLP"</span> \
-  -- npx -y local402-mcp</pre>
-        </div>
-        <div role="tabpanel" id="panel-claude-desktop" aria-labelledby="tab-claude-desktop" hidden>
-<div class="tab-file">claude_desktop_config.json · Cursor: .cursor/mcp.json</div>
-<pre class="code">{
-  <span class="s">"mcpServers"</span>: {
-    <span class="s">"local402"</span>: {
-      <span class="s">"command"</span>: <span class="s">"npx"</span>,
-      <span class="s">"args"</span>: [<span class="s">"-y"</span>, <span class="s">"local402-mcp"</span>],
-      <span class="s">"env"</span>: { <span class="s">"STELLAR_PRIVATE_KEY"</span>: <span class="s">"S…"</span>, <span class="s">"MAX_PRICE"</span>: <span class="s">"500 CLP"</span> }
-    }
-  }
-}</pre>
-        </div>
-        <div role="tabpanel" id="panel-openai" aria-labelledby="tab-openai" hidden>
-<pre class="code"><span class="k">import</span> { Agent, run, MCPServerStdio } <span class="k">from</span> <span class="s">"@openai/agents"</span>;
-
-<span class="k">const</span> local402 = <span class="k">new</span> MCPServerStdio({
-  command: <span class="s">"npx"</span>,
-  args: [<span class="s">"-y"</span>, <span class="s">"local402-mcp"</span>],
-  env: { STELLAR_PRIVATE_KEY: <span class="s">"S…"</span>, MAX_PRICE: <span class="s">"500 CLP"</span> },
-  clientSessionTimeoutSeconds: 30, <span class="c">// npx can take more than the default 5 s</span>
-});
-<span class="k">await</span> local402.connect();
-
-<span class="k">const</span> agent = <span class="k">new</span> Agent({ name: <span class="s">"buyer"</span>, mcpServers: [local402] });
-<span class="k">const</span> result = <span class="k">await</span> run(agent, <span class="s">"Pay https://local402.vercel.app/indicadores"</span>);
-console.log(result.finalOutput);
-<span class="k">await</span> local402.close();</pre>
-        </div>
-        <div role="tabpanel" id="panel-vercel" aria-labelledby="tab-vercel" hidden>
-<pre class="code"><span class="k">import</span> { generateText, stepCountIs } <span class="k">from</span> <span class="s">"ai"</span>;
-<span class="k">import</span> { anthropic } <span class="k">from</span> <span class="s">"@ai-sdk/anthropic"</span>;
-<span class="k">import</span> { createMCPClient } <span class="k">from</span> <span class="s">"@ai-sdk/mcp"</span>;
-<span class="k">import</span> { Experimental_StdioMCPTransport } <span class="k">from</span> <span class="s">"@ai-sdk/mcp/mcp-stdio"</span>;
-
-<span class="k">const</span> mcp = <span class="k">await</span> createMCPClient({
-  transport: <span class="k">new</span> Experimental_StdioMCPTransport({
-    command: <span class="s">"npx"</span>,
-    args: [<span class="s">"-y"</span>, <span class="s">"local402-mcp"</span>],
-    env: { STELLAR_PRIVATE_KEY: <span class="s">"S…"</span>, MAX_PRICE: <span class="s">"500 CLP"</span> },
-  }),
-});
-<span class="k">const</span> { text } = <span class="k">await</span> generateText({
-  model: anthropic(<span class="s">"claude-sonnet-5-5"</span>),
-  tools: <span class="k">await</span> mcp.tools(),
-  stopWhen: stepCountIs(5),
-  prompt: <span class="s">"Pay https://local402.vercel.app/indicadores"</span>,
-});
-<span class="k">await</span> mcp.close();</pre>
-        </div>
+        <div class="window-bar"><i></i><i></i><i></i><span>.mcp.json → local402</span></div>
+<pre class="code">local402_discover  <span class="c">busca servicios (x402 Bazaar)</span>
+local402_quote     <span class="c">precio local y tasa</span>
+local402_pay       <span class="c">paga con USDC, XLM o EURC</span>
+local402_wallet    <span class="c">saldo y presupuesto</span></pre>
       </div>
     </div>
   </section>
 
   <section>
-    <div class="eyebrow">Comparación</div>
-    <h2>x402 hoy y con Local402.</h2>
+    <div class="eyebrow">06 — Comparación</div>
+    <h2>x402 hoy, y <em>con</em> Local402.</h2>
     <p class="sub">Lo que cambia para quien vende y para quien paga.</p>
     <div class="table-wrap">
       <table class="compare">
@@ -674,25 +431,23 @@ console.log(result.finalOutput);
   <section id="recibos">
     <div class="row-head">
       <div>
-        <div class="eyebrow">Recibos en vivo</div>
-        <h2>Cada pago deja un recibo con su tasa.</h2>
+        <div class="eyebrow">07 — Recibos en vivo</div>
+        <h2>Cada venta, <em>lista</em> para contabilidad.</h2>
       </div>
       <a href="/receipts.csv" class="link">Exportar CSV →</a>
     </div>
-    <p class="rc-vh" id="receipts-live" role="status" aria-live="polite"></p>
     <div class="table-wrap">
       <table class="cards">
-        <caption class="rc-vh">Recibos de los pagos x402 cobrados en moneda local y liquidados en testnet: fecha, recurso, precio, tasa del oráculo, USDC que recibió el vendedor, activo con el que pagó el cliente y transacción.</caption>
-        <thead><tr><th>Fecha</th><th>Recurso</th><th class="num">Precio</th><th class="num">Tasa (USD)</th><th class="num">Vendedor recibe</th><th class="num">Cliente pagó</th><th>Transacción</th><th><span class="rc-vh">Detalles</span></th></tr></thead>
-        <tbody id="receipts"></tbody>
+        <thead><tr><th>Hora</th><th>Recurso</th><th>Precio</th><th>Tasa (USD)</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Transacción</th></tr></thead>
+        <tbody id="receipts"><tr><td colspan="7" class="empty">Aún no hay pagos. Prueba uno arriba.</td></tr></tbody>
       </table>
     </div>
     <nav class="pager" id="receipts-pager" aria-label="Páginas de recibos"></nav>
   </section>
 
   <section id="mainnet">
-    <div class="eyebrow">Mainnet</div>
-    <h2>Pagos reales en mainnet.</h2>
+    <div class="eyebrow">08 — Mainnet</div>
+    <h2>Lo mismo, con <em>dinero real</em>.</h2>
     <p class="sub">Pagos hechos en Stellar mainnet con el mismo código: USDC y EURC de Circle, Soroswap y Reflector reales. Con las guardias por defecto: 2% sobre el oráculo y 5% en el swap.</p>
     <div class="split wallet">
       <div>
@@ -703,8 +458,7 @@ console.log(result.finalOutput);
         <div class="buttons">
           <button class="pay usdc" data-asset="USDC">USDC</button><button class="pay xlm" data-asset="XLM">XLM</button><button class="pay eurc" data-asset="EURC">EURC</button>
         </div>
-        <div class="meta" id="wallet-status" role="status" aria-live="polite" aria-atomic="true"></div>
-        <div id="wallet-review" aria-live="polite" aria-atomic="true"></div>
+        <div class="meta" id="wallet-status"></div>
       </div>
       <div class="window">
         <div class="window-bar"><i></i><i></i><i></i><span>tu-wallet@mainnet</span></div>
@@ -714,8 +468,7 @@ console.log(result.finalOutput);
     <div class="convert">
       <div class="label">Conversor en vivo</div>
       <h3 id="convert-title">Convierte tu monto y paga por <em>tu</em> resultado.</h3>
-      <p id="convert-text">Elige el monto y las monedas. Al pagar con Freighter, recibirás tu conversión con la tasa del oráculo Reflector de ese instante; el resultado aparece debajo.</p>
-      <p class="meta" id="convert-price">Precio de esta llamada: <code>GET /convertir</code> · <b>100 NGN ≈ 0,08 USDC</b>.</p>
+      <p id="convert-text">Un pago de <code>GET /convertir</code> (100 NGN ≈ 0,08 USDC) te devuelve tu conversión con la tasa del oráculo Reflector en ese instante. Elige el monto y las monedas, y paga con Freighter. La respuesta llega a la consola de arriba.</p>
       <div class="convert-form">
         <input id="cv-monto" type="number" min="0" step="any" value="100" aria-label="Monto a convertir">
         <select id="cv-de" aria-label="Moneda de origen"></select>
@@ -725,15 +478,14 @@ console.log(result.finalOutput);
           <button class="pay usdc" data-cv-asset="USDC">USDC</button><button class="pay xlm" data-cv-asset="XLM">XLM</button><button class="pay eurc" data-cv-asset="EURC">EURC</button>
         </div>
       </div>
-      <div class="meta" id="cv-status" aria-live="polite" aria-atomic="true"></div>
+      <div class="meta" id="cv-status"></div>
     </div>
     <div class="table-wrap">
       <table class="cards">
         <thead><tr><th>Fecha</th><th>Precio</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Prima vs Reflector</th><th>Transacción</th></tr></thead>
-        <tbody id="mainnet-payments" aria-live="polite" aria-atomic="true"><tr><td colspan="6" class="empty">Cargando pagos en mainnet…</td></tr></tbody>
+        <tbody id="mainnet-payments"></tbody>
       </table>
     </div>
-    <p class="meta" id="mainnet-premium-note">máx. = tope firmado, no lo gastado</p>
     <nav class="pager" id="mainnet-pager" aria-label="Páginas de pagos en mainnet"></nav>
   </section>
 </main>
@@ -764,7 +516,7 @@ const sourceLabel = (source) => (source.includes(":uf*") ? `${tr("UF de", "UF fr
 const currencyLabel = (code) => (code === "CLF" ? "UF" : escape(code));
 const symbol = (asset) => escape(catalog?.assetSymbols?.[asset] ?? short(asset));
 const short = (s) => `${s.slice(0, 6)}…${s.slice(-6)}`;
-const txLink = (hash, net = "testnet", label) => `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/${net}/tx/${hash}"${label ? ` aria-label="${label.replace(/"/g, "&quot;")}"` : ""}>${short(hash)}</a>`;
+const txLink = (hash, net = "testnet") => `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/${net}/tx/${hash}">${short(hash)}</a>`;
 // Accounts (G…) and contracts (C…) open in the explorer too.
 const idLink = (id) => `<a target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/${id.startsWith("C") ? "contract" : "account"}/${escape(id)}">${short(escape(id))}</a>`;
 const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -786,191 +538,20 @@ function renderNetwork() {
   $("network").innerHTML = `<span class="dot"></span>${net}${mainnet} · ${tr("vendedor", "seller")} ${idLink(catalog.payTo)}`;
 }
 
-function renderSkeletons() {
-  const container = $("products");
-  container.innerHTML = "";
-  for (let i = 0; i < 6; i++) {
-    const card = document.createElement("div");
-    card.className = "card skeleton";
-    card.innerHTML = `
-      <div class="skeleton-line short"></div>
-      <div class="skeleton-line"></div>
-      <div class="skeleton-price"></div>
-      <div class="skeleton-line"></div>
-      <div class="skeleton-line short"></div>
-      <div class="skeleton-buttons"><span></span><span></span><span></span></div>`;
-    container.append(card);
-  }
-  const status = document.createElement("div");
-  status.className = "skeleton-status";
-  status.textContent = tr("Cargando cotizaciones en vivo…", "Loading live quotes…");
-  container.append(status);
-}
-
-function clearSkeletons() {
-  for (const el of $("products").querySelectorAll(".skeleton, .skeleton-status, .error-card")) el.remove();
-}
-
-function renderCatalogError() {
-  if ($("catalog-retry")) return;
-  clearSkeletons();
-  $("products").innerHTML = `
-    <div class="card error-card">
-      <h3>${tr("Error al cargar el catálogo", "Error loading catalog")}</h3>
-      <p class="meta">${tr("No pudimos contactar a la API de cotizaciones. Revisa tu conexión o inténtalo de nuevo.", "We couldn't reach the quote API. Check your connection and try again.")}</p>
-      <button class="ghost" id="catalog-retry" type="button">${tr("Reintentar", "Retry")}</button>
-    </div>`;
-  $("catalog-retry").onclick = loadCatalog;
-}
-
-function getQuoteFrom402(required) {
-  const exact = required.accepts.find((a) => a.scheme === "exact");
-  const fx = required.accepts.find((a) => a.scheme === "exact-fx");
-  return { exact, fx, q: (exact ?? fx).extra.local402 };
-}
-
-function formatAge(timestamp) {
-  const seconds = Math.max(0, Math.round(Date.now() / 1000 - timestamp));
-  if (seconds < 60) return tr(`hace ${seconds} s`, `${seconds} s ago`);
-  return tr(`hace ${Math.round(seconds / 60)} min`, `${Math.round(seconds / 60)} min ago`);
-}
-
-let liveQuote;
-let quoteCountdown;
-let paying = false;
-function stopQuoteCountdown() {
-  if (quoteCountdown) { clearInterval(quoteCountdown); quoteCountdown = null; }
-}
-
-function startQuoteCountdown(expiresAt) {
-  stopQuoteCountdown();
-  const el = $("quote-countdown");
-  if (!el) return;
-  const update = () => {
-    const remaining = Math.max(0, Math.round(expiresAt - Date.now() / 1000));
-    el.querySelector("b").textContent = `${remaining} s`;
-    if (remaining === 0) {
-      $("quote-card").classList.add("expired");
-      const refresh = $("quote-refresh");
-      if (refresh && !paying) refresh.hidden = false;
-      stopQuoteCountdown();
-    }
-  };
-  quoteCountdown = setInterval(update, 1000);
-  update();
-}
-
-function refreshQuote() {
-  if (!liveQuote || paying) return;
-  if (liveQuote.mode === "peek") peek(liveQuote.path);
-  else pay(liveQuote.path, liveQuote.asset);
-}
-
-function renderQuoteCard(path, required, asset) {
-  const { exact, fx, q } = getQuoteFrom402(required);
-  liveQuote = { path, required, asset, mode: asset ? "pay" : "peek" };
-  const card = $("quote-card");
-  card.hidden = false;
-  card.classList.remove("expired");
-
-  const payLine = (() => {
-    if (asset === "USDC" && exact) return `${tr("Pagas", "You pay")} ≈ ${fmt(exact.amount, q.tokenDecimals)} USDC`;
-    if (asset && fx) return `${tr("Pagas con", "You pay with")} ${escape(asset)}`;
-    if (exact) return `${tr("Pagas", "You pay")} ≈ ${fmt(exact.amount, q.tokenDecimals)} USDC`;
-    if (fx) return `${tr("Pagas con", "You pay with")} ${fx.extra.sendAssets.map(symbol).join(tr(" o ", " or "))}`;
-    return "";
-  })();
-  const receiveLine = exact
-    ? `${tr("El vendedor recibe exactamente", "Seller receives exactly")} ${fmt(exact.amount, q.tokenDecimals)} USDC`
-    : "";
-
-  card.innerHTML = `
-    <div class="quote-main">
-      <div class="quote-route"><span class="label">${tr("Ruta", "Route")}</span><span>GET ${escape(path)}</span></div>
-      <div class="quote-price">${local(q.localAmount)} ${currencyLabel(q.currency)}</div>
-      ${payLine ? `<div class="quote-pay">${payLine}</div>` : ""}
-      ${receiveLine ? `<div class="quote-receive">${receiveLine}</div>` : ""}
-      <div class="quote-meta">1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD · ${sourceLabel(q.oracleSource)} · ${formatAge(q.oracleTimestamp)}</div>
-    </div>
-    ${q.expiresAt ? `<div class="quote-countdown" id="quote-countdown"><span>${tr("Precio garantizado:", "Guaranteed price:")}</span> <b></b></div>` : ""}
-    ${q.expiresAt ? `<button class="ghost quote-refresh" id="quote-refresh" type="button" hidden>${tr("Actualizar precio", "Refresh price")}</button>` : ""}`;
-
-  if (q.expiresAt) {
-    startQuoteCountdown(q.expiresAt);
-    $("quote-refresh").onclick = refreshQuote;
-  } else {
-    stopQuoteCountdown();
-  }
-}
-
-function hidePayProgress() {
-  $("pay-progress").hidden = true;
-  $("stepper").hidden = true;
-  $("stepper").innerHTML = "";
-  $("success-wrap").hidden = true;
-  $("pay-error").hidden = true;
-}
-
-function renderStepper(state) {
-  const steps = [
-    { key: "quote", label: tr("Cotizada", "Quoted") },
-    { key: "sign", label: tr("Firmando y enviando", "Signing and sending") },
-    { key: "confirm", label: tr("Confirmada", "Confirmed") },
-  ];
-  const cls = (key) => {
-    if (key === "quote") return state === "error-quote" ? "error" : state === "quote" ? "active" : "done";
-    if (key === "sign") {
-      if (state === "error-sign") return "error";
-      if (state === "sign") return "active";
-      if (state === "confirm") return "done";
-      return "";
-    }
-    if (key === "confirm") return state === "confirm" ? "done" : "";
-    return "";
-  };
-  $("stepper").hidden = false;
-  $("stepper").innerHTML = steps.map((s, i) => {
-    const c = cls(s.key);
-    const dot = c === "done" ? "✓" : c === "error" ? "!" : String(i + 1);
-    return `<div class="step ${c}"><span class="step-dot">${dot}</span><span>${s.label}</span></div>`;
-  }).join("");
-}
-
-function renderSuccess(path, required, data) {
-  const { q } = getQuoteFrom402(required);
-  stopQuoteCountdown();
-  const refresh = $("quote-refresh");
-  if (refresh) refresh.hidden = true;
-  $("success-wrap").hidden = false;
-  $("mini-receipt").innerHTML = `
-    <span class="mr-label">${tr("Precio local", "Local price")}</span>
-    <span class="mr-local">${local(q.localAmount)} ${currencyLabel(q.currency)}</span>
-    <span class="mr-arrow">→</span>
-    <span class="mr-label">${tr("USDC recibido", "USDC received")}</span>
-    <span class="mr-usdc">${fmt(data.price.amount)} USDC</span>
-    <span class="mr-arrow">→</span>
-    ${txLink(data.transaction, "testnet", tr(`Ver transacción ${short(data.transaction)} en Stellar Expert (nueva pestaña)`, `View transaction ${short(data.transaction)} on Stellar Expert (new tab)`))}`;
-}
-
-let catalogRetry;
 async function loadCatalog() {
-  clearTimeout(catalogRetry);
-  if (!catalog && !$("products").querySelector(".card")) renderSkeletons();
   try {
     const response = await fetch("/catalog");
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     catalog = await response.json();
   } catch {
+    // Keeps the last catalog on screen if there is one; the 30 s refresh retries, sooner on the first load.
     if (!catalog) {
       $("network").textContent = tr("API no disponible · reintentando", "API unavailable · retrying");
-      renderTicketError();
-      renderCatalogError();
-      catalogRetry = setTimeout(loadCatalog, 5_000);
+      setTimeout(loadCatalog, 5_000);
     }
     return;
   }
-  clearSkeletons();
-  const first = !$("products").querySelector(".card");
+  const first = !$("products").children.length;
   renderCatalog();
   const quoted = catalog.items.find((item) => !item.error);
   if (first && quoted) peek(quoted.path);
@@ -991,8 +572,7 @@ function renderCatalog() {
 let ticketIndex = 0;
 function renderTicket() {
   const quoted = catalog.items.filter((item) => !item.error);
-  if (!quoted.length) { renderTicketError(); return; }
-  ticketFailed = false;
+  if (!quoted.length) return;
   const item = quoted[ticketIndex % quoted.length];
   const q = item.quote;
   $("ticket-path").textContent = `GET ${item.path}`;
@@ -1000,42 +580,10 @@ function renderTicket() {
   $("ticket-usdc").textContent = `≈ ${fmt(item.usdcAmount, q.tokenDecimals)} USDC ${tr("para el vendedor", "for the seller")}`;
   $("ticket-rate").innerHTML = `1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD`;
   $("ticket-source").innerHTML = sourceLabel(q.oracleSource);
-  syncTicketToggle();
 }
-
-// The rotation pauses while the ticket is hovered or focused, and stops entirely with reduced motion;
-// the small button gives explicit control and hides when there is nothing to rotate.
-const heroTicket = document.querySelector(".hero .ticket");
-const ticketToggle = $("ticket-toggle");
-const ticketReduced = matchMedia("(prefers-reduced-motion: reduce)");
-let ticketPaused = false;
-let ticketHover = false;
-let ticketFailed = false;
-const syncTicketToggle = () => {
-  const idle = ticketReduced.matches || !catalog?.items?.some((item) => !item.error);
-  ticketToggle.hidden = idle;
-  ticketToggle.textContent = ticketPaused ? "▶" : "⏸";
-  ticketToggle.setAttribute("aria-pressed", String(ticketPaused));
-  ticketToggle.setAttribute("aria-label", ticketPaused ? tr("Reanudar la rotación de cotizaciones", "Resume quote rotation") : tr("Pausar la rotación de cotizaciones", "Pause quote rotation"));
-};
-ticketReduced.addEventListener("change", syncTicketToggle);
-// A catalog that never loads (or loads with every quote down) must not say "cotizando…" forever;
-// the 5 s retry refreshes this, which also picks up language changes.
-function renderTicketError() {
-  ticketFailed = true;
-  $("ticket-price").textContent = "—";
-  $("ticket-usdc").textContent = tr("No pudimos cotizar ahora", "We could not quote right now");
-  $("ticket-rate").textContent = "—";
-  syncTicketToggle();
-}
-ticketToggle.onclick = () => { ticketPaused = !ticketPaused; if (!ticketPaused) ticketHover = false; syncTicketToggle(); };
-heroTicket.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") ticketHover = true; });
-heroTicket.addEventListener("pointerleave", (event) => { if (event.pointerType === "mouse") ticketHover = false; });
-heroTicket.addEventListener("focusin", () => (ticketHover = true));
-heroTicket.addEventListener("focusout", (event) => { if (!heroTicket.contains(event.relatedTarget)) ticketHover = false; });
 
 setInterval(() => {
-  if (!catalog || document.hidden || ticketPaused || ticketHover || ticketReduced.matches) return;
+  if (!catalog || document.hidden) return;
   ticketIndex++;
   renderTicket();
 }, 4_000);
@@ -1065,8 +613,7 @@ function renderProduct(item) {
       <button class="ghost peek"></button>
       <div class="label"></div>
       <div class="buttons"></div>`;
-    const peekBtn = card.querySelector(".peek");
-    peekBtn.onclick = () => { peek(item.path); $("console").scrollIntoView({ behavior: "smooth", block: "nearest" }); };
+    card.querySelector(".peek").onclick = () => { peek(item.path); $("console").scrollIntoView({ behavior: "smooth", block: "nearest" }); };
     for (const asset of catalog.payAssets) {
       const button = document.createElement("button");
       button.className = `pay ${asset.toLowerCase()}`;
@@ -1078,8 +625,6 @@ function renderProduct(item) {
   }
   card.querySelector("h3").textContent = `GET ${item.path}`;
   card.querySelector(".peek").textContent = tr("Ver el 402 · gratis, sin wallet", "See the 402 · free, no wallet");
-  card.querySelector(".peek").setAttribute("aria-label", tr(`Ver el 402 de GET ${item.path}`, `See the 402 for GET ${item.path}`));
-  for (const button of card.querySelectorAll("button.pay")) button.setAttribute("aria-label", tr(`Pagar GET ${item.path} con ${button.textContent}`, `Pay GET ${item.path} with ${button.textContent}`));
   card.querySelector(".label").textContent = tr("Pagar con", "Pay with");
   card.querySelector(".desc").textContent = tr(item.description, DESCRIPTIONS_EN[item.path] ?? item.description);
   // A rate source can be down (the UF comes from off-chain sites); the other products keep working.
@@ -1133,42 +678,28 @@ function describe402(path, required) {
 let peeked;
 async function peek(path) {
   peeked = path;
-  hidePayProgress();
   const term = $("console");
   try {
-    const required = await fetch402(path);
-    renderQuoteCard(path, required);
-    term.innerHTML = describe402(path, required).join("\n");
+    term.innerHTML = describe402(path, await fetch402(path)).join("\n");
   } catch (error) {
-    $("quote-card").hidden = true;
-    stopQuoteCountdown();
     term.innerHTML = span("r", `Error: ${escape(error.message)}`);
   }
 }
 
 async function pay(path, asset) {
-  if (paying) return;
-  paying = true;
   peeked = undefined;
-  hidePayProgress();
   const term = $("console");
   const buttons = document.querySelectorAll("#products button");
   buttons.forEach((b) => (b.disabled = true));
   term.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  $("pay-progress").hidden = false;
   const lines = [];
   const show = (...more) => { lines.push(...more); term.innerHTML = lines.join("\n"); term.scrollTop = term.scrollHeight; };
-  let required;
   try {
-    required = await fetch402(path);
-    renderQuoteCard(path, required, asset);
-    renderStepper("quote");
-    show(...describe402(path, required), "");
+    show(...describe402(path, await fetch402(path)), "");
     show(asset === "USDC"
       ? span("h", tr("→ el agente firma una transferencia de USDC (exact)", "→ the agent signs a USDC transfer (exact)"))
       : span("h", `${tr(`→ el agente firma FxPay.pay con ${asset}`, `→ the agent signs FxPay.pay with ${asset}`)} (exact-fx)${asset === "EURC" ? tr(", ruta EURC → XLM → USDC", ", route EURC → XLM → USDC") : ""}`));
     show(span("c", tr("  reintenta con PAYMENT-SIGNATURE; el facilitador verifica, simula y liquida…", "  retries with PAYMENT-SIGNATURE; the facilitator verifies, simulates and settles…")));
-    renderStepper("sign");
     const started = performance.now();
     // A settlement takes several seconds; a live counter shows the demo is working.
     const waitingLabel = tr("  esperando confirmación on-chain", "  waiting for on-chain confirmation");
@@ -1180,11 +711,6 @@ async function pay(path, asset) {
     const response = await fetch(`/demo/pay?with=${asset}&path=${encodeURIComponent(path)}`, { method: "POST" }).finally(() => { clearInterval(waiting); lines.pop(); });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
-    renderStepper("confirm");
-    if (data.spent) {
-      const payEl = $("quote-card").querySelector(".quote-pay");
-      if (payEl) payEl.textContent = `${tr("Pagaste", "You paid")} ${fmt(data.spent.amount)} ${symbol(data.spent.asset)}`;
-    }
     const seconds = ((performance.now() - started) / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 });
     show(
       span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${txLink(data.transaction)}`),
@@ -1194,17 +720,10 @@ async function pay(path, asset) {
       ...(data.fx ? [`  ${tr("guardia FX: gasto máx.", "FX guard: max spend")} ${fmt(data.fx.maxSend)} ${asset} · Reflector ${fmt(data.fx.oracleSend)} · ${tr("prima", "premium")} ${span(data.fx.premiumBps > 500 ? "y" : "g", premium(data.fx.maxSend, data.fx.oracleSend))}${data.fx.premiumBps > 500 ? span("y", tr(" (pool de testnet; en mainnet el cliente rechaza > 5%)", " (testnet pool; on mainnet the client refuses > 5%)")) : span("g", tr(" ✓ bajo el límite de 5%", " ✓ under the 5% limit"))}`] : []),
       escape(JSON.stringify(data.body, null, 2)),
     );
-    renderSuccess(path, required, data);
     loadReceipts().catch(() => {});
   } catch (error) {
-    const state = required ? "error-sign" : "error-quote";
-    renderStepper(state);
-    $("pay-error").hidden = false;
-    $("pay-error-msg").textContent = `${tr("Error en el pago", "Payment error")}: ${error.message}`;
-    $("pay-retry").onclick = () => pay(path, asset);
     show(span("r", `Error: ${escape(error.message)}`));
   } finally {
-    paying = false;
     // Restores each card's state, including products whose quote is unavailable.
     for (const item of catalog.items) renderProduct(item);
   }
@@ -1290,141 +809,28 @@ function labelCells(tbody) {
   for (const row of tbody.rows) [...row.cells].forEach((td, i) => { td.dataset.label = labels[i]; });
 }
 
-// Money with a fixed number of decimals per asset, so right-aligned columns compare at a glance.
-// XLM and the contracts this demo accepts publish 7 decimals, like the API's SEND_ASSET_DECIMALS.
-const SEND_DECIMALS = 7;
-const receiptAmount = (units, decimals, max = decimals) => Number(units).toLocaleString(locale(), { minimumFractionDigits: decimals, maximumFractionDigits: max });
-const receiptUSDC = (r) => receiptAmount(Number(r.settled.amount) / 10 ** r.settled.decimals, r.settled.decimals);
-const receiptPaid = (r) => (r.spent ? receiptAmount(Number(r.spent.amount) / 10 ** SEND_DECIMALS, SEND_DECIMALS) : receiptUSDC(r));
-// Minor units per code, read from the same CLDR table Intl formats with: CLP has no decimals at all
-// and the UF has four, so no price grows cents its currency never uses (nor do the stats disagree).
-const codeDecimals = (code) => {
-  try {
-    return new Intl.NumberFormat(locale(), { style: "currency", currency: code }).resolvedOptions().maximumFractionDigits;
-  } catch {
-    return 2;
-  }
-};
-const priceText = (amount, code) => receiptAmount(amount, codeDecimals(code));
-const receiptDate = (iso) => new Date(iso).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" });
-// Clipboard twin of `escape`: the four things it shadows, read back by name instead of written out
-// (writing them in this file is what the HTML source can't survive).
-const plainText = (html) => String(html).replace(/&(amp|lt|gt|quot);/g, (_, name) => ({ amp: "&", lt: "<", gt: ">", quot: '"' })[name]);
-
-// Like `txLink` (shared with the mainnet table), but the anchor announces what it opens and where.
-const txLinkNamed = (hash, text = short(hash)) =>
-  `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/tx/${hash}" aria-label="${escape(tr(`Ver transacción ${short(hash)} en Stellar Expert (nueva pestaña)`, `View transaction ${short(hash)} on Stellar Expert (opens in a new tab)`))}">${text}</a>`;
-
-// Every field the receipt really has, as plain text ready for an invoice or a chat.
-function receiptText(r) {
-  const assetName = r.spent ? plainText(symbol(r.spent.asset)) : "USDC";
-  return [
-    `${tr("Comprobante de pago · Local402", "Payment receipt · Local402")}`,
-    `${tr("Recibo", "Receipt")}: ${r.id}`,
-    `${tr("Fecha y hora", "Date and time")}: ${new Date(r.paidAt).toLocaleString(locale(), { dateStyle: "long", timeStyle: "medium" })}`,
-    `${tr("Recurso", "Resource")}: ${r.resource || "—"}`,
-    `${tr("Precio", "Price")}: ${priceText(r.local.amount, r.local.currency)} ${plainText(currencyLabel(r.local.currency))}`,
-    `${tr("Tasa", "Rate")}: 1 ${plainText(currencyLabel(r.local.currency))} = ${rate(r.rate.usdPerUnit)} USD`,
-    `${tr("Fuente", "Source")}: ${r.rate.source ? plainText(sourceLabel(r.rate.source)) : "—"}${r.rate.oracleTimestamp ? ` · ${receiptDate(new Date(r.rate.oracleTimestamp * 1000).toISOString())}` : ""}`,
-    `${tr("El cliente pagó", "The payer paid")}: ${receiptPaid(r)} ${assetName}`,
-    `${tr("El vendedor recibió", "The seller received")}: ${receiptUSDC(r)} USDC`,
-    ...(r.fxPremiumBps !== undefined ? [`${tr("Prima sobre el oráculo", "Premium over the oracle")}: ${bps(r.fxPremiumBps)}`] : []),
-    `${tr("Esquema", "Scheme")}: ${r.scheme}`,
-    `${tr("Red", "Network")}: ${r.network}`,
-    ...(r.payer ? [`${tr("Pagador", "Payer")}: ${r.payer}`] : []),
-    `${tr("Vendedor", "Seller")}: ${r.payTo}`,
-    `${tr("Transacción", "Transaction")}: ${r.transaction}`,
-    `https://stellar.expert/explorer/testnet/tx/${r.transaction}`,
-  ].join("\n");
-}
-
-// Mirrors /receipts.csv (same columns and quoting), so the copied row pastes under that header.
-const receiptCsvCell = (value) => {
-  const text = String(value ?? "");
-  const safe = /^[=+\-@\t\r]/.test(text) && !/^-?\d+(\.\d+)?$/.test(text) ? `'${text}` : text;
-  return /[",\n\r]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
-};
-function receiptCsvRow(r) {
-  const received = Number(r.settled.amount) / 10 ** r.settled.decimals;
-  return [
-    r.id, r.paidAt, r.resource, r.local.amount, r.local.currency, r.rate.usdPerUnit, r.rate.source, received,
-    r.spent ? plainText(symbol(r.spent.asset)) : "USDC",
-    r.spent ? Number(r.spent.amount) / 10 ** SEND_DECIMALS : received,
-    r.fxPremiumBps ?? "", r.scheme, r.payer ?? "", r.transaction,
-  ].map(receiptCsvCell).join(",");
-}
-
-// The "comprobante": a row that opens into every detail field of one payment, with its copy buttons.
-function receiptPanel(r) {
-  const oracleAt = r.rate.oracleTimestamp ? ` · ${receiptDate(new Date(r.rate.oracleTimestamp * 1000).toISOString())}` : "";
-  return `<tr class="detail"><td colspan="8">
-    <div class="sheet" id="comprobante-${r.id}" role="group" aria-label="${escape(tr(`Comprobante del pago ${r.id}`, `Receipt for payment ${r.id}`))}">
-      <div class="sheet-head">
-        <div class="label">${tr("Comprobante", "Receipt")} <b>#${escape(r.id)}</b></div>
-        <div class="meta mono">${escape(r.scheme)} · ${escape(r.network)}</div>
-      </div>
-      <dl class="sheet-fields">
-        <div><dt>${tr("Fecha y hora", "Date and time")}</dt><dd class="mono">${new Date(r.paidAt).toLocaleString(locale(), { dateStyle: "long", timeStyle: "medium" })}</dd></div>
-        <div><dt>${tr("Recurso", "Resource")}</dt><dd class="mono">${escape(r.resource || "—")}</dd></div>
-        <div><dt>${tr("Precio", "Price")}</dt><dd><b>${priceText(r.local.amount, r.local.currency)} ${currencyLabel(r.local.currency)}</b></dd></div>
-        <div><dt>${tr("Tasa del oráculo", "Oracle rate")}</dt><dd class="mono">1 ${currencyLabel(r.local.currency)} = ${rate(r.rate.usdPerUnit)} USD${r.rate.source ? `<br>${sourceLabel(r.rate.source)}${oracleAt}` : ""}</dd></div>
-        <div><dt>${tr("El cliente pagó", "The payer paid")}</dt><dd>${r.spent ? `<span class="pill ${plainText(symbol(r.spent.asset)).toLowerCase()}">${symbol(r.spent.asset)}</span> ${receiptPaid(r)}` : `<span class="pill usdc">USDC</span> ${receiptUSDC(r)}`}</dd></div>
-        <div><dt>${tr("El vendedor recibió", "The seller received")}</dt><dd><b>${receiptUSDC(r)} USDC</b></dd></div>
-        ${r.fxPremiumBps !== undefined ? `<div><dt>${tr("Prima sobre el oráculo", "Premium over the oracle")}</dt><dd class="mono">${bps(r.fxPremiumBps)}</dd></div>` : ""}
-        <div><dt>${tr("Esquema", "Scheme")}</dt><dd class="mono">${escape(r.scheme)}</dd></div>
-        <div><dt>${tr("Red", "Network")}</dt><dd class="mono">${escape(r.network)}</dd></div>
-        <div><dt>${tr("Pagador", "Payer")}</dt><dd class="mono">${r.payer ? idLink(r.payer) : tr("no informado", "not reported")}</dd></div>
-        <div><dt>${tr("Vendedor", "Seller")}</dt><dd class="mono">${idLink(r.payTo)}</dd></div>
-        <div><dt>${tr("Transacción", "Transaction")}</dt><dd class="mono">${txLinkNamed(r.transaction, escape(r.transaction))}</dd></div>
-      </dl>
-      <div class="sheet-actions">
-        <button class="ghost rc-btn" type="button" data-action="copy-text" data-receipt="${r.id}" data-focus="copy-text-${r.id}">${tr("Copiar comprobante", "Copy receipt")}</button>
-        <button class="ghost rc-btn" type="button" data-action="copy-csv" data-receipt="${r.id}" data-focus="copy-csv-${r.id}">${tr("Copiar fila CSV", "Copy row as CSV")}</button>
-      </div>
-    </div>
-  </td></tr>`;
-}
-
 function renderReceipts(newId) {
   const body = $("receipts");
-  if (!receipts.length) {
-    // The empty table still teaches: it names what a receipt holds and points straight at the demo.
-    $("receipts-pager").innerHTML = "";
-    body.innerHTML = `<tr><td colspan="8" class="empty">
-      <p>${tr("Aún no hay pagos en testnet.", "No testnet payments yet.")}</p>
-      <p class="hint">${tr("Cada pago con la wallet de demo deja aquí su recibo: tasa, monto y transacción.", "Every payment with the demo wallet leaves its receipt here: rate, amount and transaction.")}</p>
-      <button class="ghost rc-btn" type="button" data-action="demo">${tr("Hacer un pago de prueba", "Make a test payment")}</button>
-    </td></tr>`;
-    return;
-  }
-  // Newest receipts are first, so a new payment brings the table back to page 1 — and gets announced.
-  if (newId) {
-    receiptsPage = 1;
-    announceReceipt(receipts.find((r) => r.id === newId));
-  }
+  if (!receipts.length) return;
+  // Newest receipts are first, so a new payment brings the table back to page 1.
+  if (newId) receiptsPage = 1;
   const shown = paginate("receipts-pager", receipts, receiptsPage, (page) => { receiptsPage = page; renderReceipts(); });
   receiptsPage = shown.page;
-  // Polls and streams redraw the table at any moment; whoever was reading or writing keeps their place.
-  const focus = body.querySelector(":focus");
   body.innerHTML = shown.rows.map((r) => {
     const paidWith = r.spent
-      ? `<span class="pill ${symbol(r.spent.asset).toLowerCase()}">${symbol(r.spent.asset)}</span> ${receiptPaid(r)}`
-      : `<span class="pill usdc">USDC</span> ${receiptUSDC(r)}`;
-    const open = r.id === openReceipt;
-    const classes = `${r.id === newId ? "new " : ""}${open ? "open" : ""}`.trim();
-    return `<tr data-receipt="${r.id}"${classes ? ` class="${classes}"` : ""}>
-      <td class="mono"><time datetime="${escape(r.paidAt)}">${receiptDate(r.paidAt)}</time></td>
+      ? `<span class="pill ${symbol(r.spent.asset).toLowerCase()}">${symbol(r.spent.asset)}</span> ${fmt(r.spent.amount)}`
+      : `<span class="pill usdc">USDC</span> ${fmt(r.settled.amount, r.settled.decimals)}`;
+    return `<tr class="${r.id === newId ? "new" : ""}">
+      <td class="mono">${new Date(r.paidAt).toLocaleTimeString(locale())}</td>
       <td class="mono">${escape(new URL(r.resource || "http://x/").pathname)}</td>
-      <td class="num"><b>${priceText(r.local.amount, r.local.currency)} ${currencyLabel(r.local.currency)}</b></td>
-      <td class="num mono">${rate(r.rate.usdPerUnit)}</td>
-      <td class="num">${receiptUSDC(r)} USDC</td>
-      <td class="num">${paidWith}</td>
-      <td>${txLinkNamed(r.transaction)}</td>
-      <td><button class="ghost rc-btn" type="button" data-action="toggle" data-receipt="${r.id}" data-focus="toggle-${r.id}" aria-expanded="${open}"${open ? ` aria-controls="comprobante-${r.id}"` : ""}><span class="caret" aria-hidden="true"></span>${tr("Ver comprobante", "View receipt")}</button></td>
-    </tr>${open ? receiptPanel(r) : ""}`;
+      <td><b>${local(r.local.amount)} ${currencyLabel(r.local.currency)}</b></td>
+      <td class="mono">${rate(r.rate.usdPerUnit)}</td>
+      <td>${fmt(r.settled.amount, r.settled.decimals)} USDC</td>
+      <td>${paidWith}</td>
+      <td>${txLink(r.transaction)}</td>
+    </tr>`;
   }).join("");
   labelCells(body);
-  if (focus?.dataset.focus) body.querySelector(`[data-focus="${focus.dataset.focus}"]`)?.focus();
 
   const byCurrency = {};
   let usdc = 0;
@@ -1434,13 +840,13 @@ function renderReceipts(newId) {
   }
   $("stat-count").textContent = receipts.length;
   // Two currencies fit as amounts; more are counted, with the amounts underneath.
-  const sold = Object.entries(byCurrency).map(([c, v]) => `${receiptAmount(v, codeDecimals(c))} ${c === "CLF" ? "UF" : c}`);
+  const sold = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString(locale(), { maximumFractionDigits: 4 })} ${c === "CLF" ? "UF" : c}`);
   const many = sold.length > 2;
   $("stat-local").textContent = many ? `${sold.length} ${tr("monedas", "currencies")}` : sold.join(" · ");
   $("stat-local-note").textContent = many ? sold.join(" · ") : tr("en moneda local", "in local currency");
-  $("stat-usdc").textContent = `${receiptAmount(usdc, SEND_DECIMALS)} USDC`;
+  $("stat-usdc").textContent = `${usdc.toLocaleString(locale(), { maximumFractionDigits: 4 })} USDC`;
   $("stat-xlm").textContent = receipts.filter((r) => r.spent).length;
-  $("judges-tx").innerHTML = txLinkNamed(receipts[0].transaction);
+  $("judges-tx").innerHTML = txLink(receipts[0].transaction);
 }
 
 // Receipts come from the shared list; the stream only makes this instance feel instant.
@@ -1448,173 +854,57 @@ async function loadReceipts() {
   const latest = await (await fetch("/receipts")).json();
   const known = new Set(receipts.map((r) => r.transaction));
   const fresh = receipts.length ? latest.find((r) => !known.has(r.transaction)) : undefined;
-  // Receipts are append-only, so the same count and no fresh id means the same list: a redraw would
-  // only throw away the open receipt and the focused button for no reason.
-  if (!fresh && latest.length === receipts.length) return;
   receipts.splice(0, receipts.length, ...latest);
   renderReceipts(fresh?.id);
 }
 
-// Which receipt is open: a table can show one comprobante at a time.
-let openReceipt;
-function toggleReceipt(id) {
-  openReceipt = openReceipt === id ? undefined : id;
-  renderReceipts();
-}
-
-// Transient "Copiado" on the button that was pressed; "busy" stops a second copy landing mid-state.
-function copyReceipt(button, text) {
-  const label = button.textContent;
-  if (button.dataset.busy) return;
-  button.dataset.busy = "1";
-  const finish = (state, ok) => {
-    button.textContent = state;
-    // A redraw may have replaced the button already; only restore what is still on screen.
-    setTimeout(() => { if (button.isConnected) button.textContent = label; delete button.dataset.busy; }, 1600);
-    if (ok) $("receipts-live").textContent = tr("Comprobante copiado al portapapeles", "Receipt copied to the clipboard");
-  };
-  // On non-secure origins `clipboard` is absent and the call throws before any promise exists.
-  const write = navigator.clipboard?.writeText?.(text) ?? Promise.reject(new Error("clipboard unavailable"));
-  write.then(() => finish(tr("Copiado ✓", "Copied ✓"), true))
-    .catch(() => finish(tr("No se pudo copiar", "Could not copy"), false));
-}
-
-// The flash tells the eye; this region tells assistive tech the same news, politely.
-function announceReceipt(receipt) {
-  if (!receipt) return;
-  $("receipts-live").textContent = `${tr("Nuevo pago recibido", "New payment received")}: ${priceText(receipt.local.amount, receipt.local.currency)} ${plainText(currencyLabel(receipt.local.currency))} → ${receiptUSDC(receipt)} USDC`;
-}
-
-// The empty state's next step: scroll to the demo, clearing the sticky nav, and hand the keyboard
-// to the pay button — the first one that is enabled, in case demo payments are off.
-function goToTestPayment() {
-  const motion = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-  window.scrollTo({ top: $("probar").getBoundingClientRect().top + scrollY - 72, behavior: motion });
-  $("probar").querySelector("button.pay:not(:disabled)")?.focus({ preventScroll: true });
-}
-
-// One click handler serves every row the table ever shows, so redraws never mean re-wiring.
-$("receipts").addEventListener("click", (event) => {
-  const control = event.target.closest("[data-action]");
-  if (control) {
-    if (control.dataset.action === "toggle") toggleReceipt(control.dataset.receipt);
-    else if (control.dataset.action === "demo") goToTestPayment();
-    else {
-      const receipt = receipts.find((r) => r.id === control.dataset.receipt);
-      if (receipt) copyReceipt(control, control.dataset.action === "copy-csv" ? receiptCsvRow(receipt) : receiptText(receipt));
-    }
-    return;
-  }
-  // The explorer link opens the transaction; clicking the row around it does not fold the receipt away.
-  if (event.target.closest("a")) return;
-  const row = event.target.closest("tr[data-receipt]");
-  if (row) {
-    const id = row.dataset.receipt;
-    toggleReceipt(id);
-    // A redraw replaced every <tr>, so the live copy of the row's control is fetched from the table
-    // itself — focusing the detached row would leave the pointer open out of Escape's reach.
-    $("receipts").querySelector(`[data-focus="toggle-${id}"]`)?.focus({ preventScroll: true });
-  }
-});
-// Escape closes the open receipt and hands the keyboard back to that row's button.
-$("receipts").addEventListener("keydown", (event) => {
-  if (event.key !== "Escape" || !openReceipt) return;
-  const id = openReceipt;
-  toggleReceipt(id);
-  $("receipts").querySelector(`[data-focus="toggle-${id}"]`)?.focus();
-});
-
-// The table ships empty, so before the first /receipts lands it shows the sentence below instead of nothing.
-renderReceipts();
-
 // Mainnet deployment of the same API and facilitator, paid from the visitor's own wallet.
 const MAINNET_API = "https://local402-mainnet.vercel.app";
 const CLI = `STELLAR_SECRET=S… npx -y local402-client pay ${MAINNET_API}/indicadores --with XLM --max "100 CLP"`;
-const mainnetTxLink = (hash) => {
-  const label = tr(`Ver transacción ${short(hash)} en Stellar Expert (nueva pestaña)`, `View transaction ${short(hash)} on Stellar Expert (new tab)`);
-  return `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/${encodeURIComponent(hash)}" aria-label="${escape(label)}">${short(escape(hash))}</a>`;
-};
 
 // scripts/mainnet/pay.ts writes the first payments to a file; visitors' payments are receipts of the mainnet API.
 async function loadMainnet() {
-  const run = ++mainnetRun;
-  clearTimeout(mainnetRefresh);
-  mainnetState = "loading";
+  const [scripted, live] = await Promise.all([
+    fetch("/mainnet-payments.json").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    fetch(`${MAINNET_API}/receipts`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+  ]);
+  const known = new Set(scripted.map((p) => p.transaction));
+  const payments = [
+    ...scripted,
+    ...live.filter((r) => !known.has(r.transaction)).map((r) => ({
+      paidAt: r.paidAt,
+      local: r.local,
+      usdc: r.settled.amount,
+      payWith: r.spent ? symbolMainnet(r.spent.asset) : "USDC",
+      spent: r.spent ? r.spent.amount : r.settled.amount,
+      spentPremiumBps: r.fxPremiumBps,
+      transaction: r.transaction,
+    })),
+  ].sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
+  if (!payments.length) return;
+  // Newest first, so a new payment brings the table back to page 1.
+  if (payments.length !== mainnetList.length) mainnetPage = 1;
+  mainnetList = payments;
   renderMainnet();
-  try {
-    const [scripted, live] = await Promise.all([
-      fetch("/mainnet-payments.json").then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
-      fetch(`${MAINNET_API}/receipts`).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
-    ]);
-    if (run !== mainnetRun) return;
-    const known = new Set(scripted.map((p) => p.transaction));
-    const payments = [
-      ...scripted,
-      ...live.filter((r) => !known.has(r.transaction)).map((r) => ({
-        paidAt: r.paidAt,
-        local: r.local,
-        usdc: r.settled.amount,
-        payWith: r.spent ? symbolMainnet(r.spent.asset) : "USDC",
-        spent: r.spent ? r.spent.amount : r.settled.amount,
-        spentPremiumBps: r.fxPremiumBps,
-        transaction: r.transaction,
-      })),
-    ].sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
-    // Newest first, so a new payment brings the table back to page 1.
-    if (payments.length !== mainnetList.length) mainnetPage = 1;
-    mainnetList = payments;
-    mainnetState = "ready";
-    renderMainnet();
-    $("mainnet").hidden = false;
-    mainnetPayments = payments.length;
-    renderNetwork();
-  } catch {
-    if (run !== mainnetRun) return;
-    mainnetList = [];
-    mainnetPage = 1;
-    mainnetState = "error";
-    mainnetPayments = 0;
-    renderMainnet();
-    renderNetwork();
-  }
+  $("mainnet").hidden = false;
+  mainnetPayments = payments.length;
+  renderNetwork();
 }
 
 let mainnetList = [];
 let mainnetPage = 1;
-let mainnetState = "loading";
-let mainnetRun = 0;
-let mainnetRefresh;
 function renderMainnet() {
-  const body = $("mainnet-payments");
-  const pager = $("mainnet-pager");
-  body.setAttribute("aria-busy", String(mainnetState === "loading"));
-  if (mainnetState !== "ready") {
-    body.innerHTML = mainnetState === "loading"
-      ? `<tr><td colspan="6" class="empty">${tr("Cargando pagos en mainnet…", "Loading mainnet payments…")}</td></tr>`
-      : `<tr><td colspan="6" class="empty"><span>${tr("No pudimos cargar los pagos —", "We couldn't load the payments —")}</span><button type="button" class="ghost mainnet-retry" id="mainnet-retry">${tr("Reintentar", "Retry")}</button></td></tr>`;
-    pager.innerHTML = "";
-    pager.hidden = true;
-    if (mainnetState === "error") $("mainnet-retry").onclick = () => loadMainnet();
-    return;
-  }
-  if (!mainnetList.length) {
-    body.innerHTML = `<tr><td colspan="6" class="empty">${tr("Aún no hay pagos en mainnet", "No mainnet payments yet")}</td></tr>`;
-    pager.innerHTML = "";
-    pager.hidden = true;
-    return;
-  }
   const shown = paginate("mainnet-pager", mainnetList, mainnetPage, (page) => { mainnetPage = page; renderMainnet(); });
   mainnetPage = shown.page;
-  pager.hidden = mainnetList.length <= PER_PAGE;
-  body.innerHTML = shown.rows.map((p) => `<tr>
+  $("mainnet-payments").innerHTML = shown.rows.map((p) => `<tr>
       <td class="mono">${new Date(p.paidAt).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" })}</td>
       <td><b>${local(p.local.amount)} ${currencyLabel(p.local.currency)}</b></td>
       <td>${fmt(p.usdc)} USDC</td>
       <td><span class="pill ${escape(p.payWith.toLowerCase())}">${escape(p.payWith)}</span> ${fmt(p.spent)}</td>
-      <td class="mono">${p.spentPremiumBps !== undefined ? bps(p.spentPremiumBps) : p.fxPremiumBps !== undefined ? `${bps(p.fxPremiumBps)} ${tr("máx.", "max.")}` : "—"}</td>
-      <td>${mainnetTxLink(p.transaction)}</td>
+      <td class="mono">${p.spentPremiumBps !== undefined ? bps(p.spentPremiumBps) : p.fxPremiumBps !== undefined ? `${bps(p.fxPremiumBps)} máx.` : "—"}</td>
+      <td>${txLink(p.transaction, "public")}</td>
     </tr>`).join("");
-  labelCells(body);
+  labelCells($("mainnet-payments"));
 }
 
 // Swap premium over the oracle: what was spent, or for the first scripted payments the most the swap could spend.
@@ -1623,233 +913,19 @@ const MAINNET_SYMBOLS = { CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOW
 const symbolMainnet = (asset) => MAINNET_SYMBOLS[asset] ?? short(asset);
 
 $("wallet-console").innerHTML = [span("c", "# desde tu wallet: elige USDC, XLM o EURC"), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`)].join("\n");
-
-// This is the same non-interactive probe as Freighter's isConnected(); requestAccess only runs after confirmation.
-let freighterInstalled;
-let walletAddress = "";
-function detectFreighter() {
-  if (globalThis.freighter) return Promise.resolve(true);
-  return new Promise((resolve) => {
-    const messageId = Date.now() + Math.random();
-    const receive = (event) => {
-      if (event.source !== globalThis || event.data?.source !== "FREIGHTER_EXTERNAL_MSG_RESPONSE" || event.data.messagedId !== messageId) return;
-      finish(Boolean(event.data.isConnected));
-    };
-    const finish = (connected) => {
-      clearTimeout(timer);
-      globalThis.removeEventListener("message", receive);
-      resolve(connected);
-    };
-    const timer = setTimeout(() => finish(false), 2000);
-    globalThis.addEventListener("message", receive);
-    globalThis.postMessage({ source: "FREIGHTER_EXTERNAL_MSG_REQUEST", messageId, type: "REQUEST_CONNECTION_STATUS" }, location.origin);
-  });
-}
-function renderWalletStatus() {
-  const status = $("wallet-status");
-  if (walletAddress) {
-    status.innerHTML = `${tr("Conectada:", "Connected:")} <a target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/account/${escape(walletAddress)}">${short(escape(walletAddress))}</a>`;
-  } else if (freighterInstalled === undefined) {
-    status.textContent = tr("Buscando Freighter…", "Checking for Freighter…");
-  } else if (freighterInstalled) {
-    status.innerHTML = `<span class="wallet-detected">${tr("Freighter detectado — listo para pagar", "Freighter detected — ready to pay")}</span>`;
-  } else {
-    status.innerHTML = `${tr("Falta Freighter —", "Freighter missing —")} <a class="install-link" href="https://www.freighter.app" target="_blank" rel="noopener" aria-label="${tr("Instalar Freighter (nueva pestaña)", "Install Freighter (new tab)")}">${tr("Instalar", "Install")}</a>`;
-  }
-}
-async function showFreighterStatus() {
-  freighterInstalled = await detectFreighter();
-  renderWalletStatus();
-}
-renderWalletStatus();
-showFreighterStatus();
-
-const walletRegion = (pending) => (pending.converting ? $("cv-status") : $("wallet-review"));
-const setWalletBusy = (busy) => document.querySelectorAll(".wallet button[data-asset], .convert button[data-cv-asset]").forEach((b) => (b.disabled = busy));
-const resourceLabel = (resource) => {
-  const url = new URL(resource);
-  return `GET ${url.pathname}${url.search}`;
-};
-const staticWalletQuote = (converting) => converting
-  ? { localAmount: "100", currency: "NGN", tokenAmount: "800000", tokenDecimals: 7 }
-  : { localAmount: "50", currency: "CLP", tokenAmount: "500000", tokenDecimals: 7 };
-const walletLoading = (pending, message, cancelable = false) => {
-  const region = walletRegion(pending);
-  const cancel = cancelable ? `<button type="button" class="ghost wallet-cancel">${tr("Cancelar", "Cancel")}</button>` : "";
-  region.innerHTML = `<div class="wallet-card is-loading"><div class="wallet-loading-head"><h4>${message}</h4>${cancel}</div></div>`;
-  if (!cancelable) return;
-  const onEscape = (event) => {
-    if (event.key !== "Escape") return;
-    event.preventDefault();
-    cancelWalletPending(pending);
-  };
-  pending.cancelEscape = onEscape;
-  document.addEventListener("keydown", onEscape);
-  region.querySelector(".wallet-cancel").onclick = () => cancelWalletPending(pending);
-};
-function stopWalletLoadingEscape(pending) {
-  if (!pending.cancelEscape) return;
-  document.removeEventListener("keydown", pending.cancelEscape);
-  pending.cancelEscape = undefined;
-}
-function cancelWalletPending(pending) {
-  if (walletPending !== pending) return;
-  stopWalletLoadingEscape(pending);
-  walletPending = undefined;
-  setWalletBusy(false);
-  walletRegion(pending).innerHTML = "";
-  pending.trigger?.focus();
-}
-
-// The 402 quotes USDC exactly. For XLM/EURC, the existing read-only mainnet quote provides an estimate;
-// wallet.pay quotes again on confirmation, and Freighter shows the final authorization before signing.
-async function quoteWalletAsset(asset, q) {
-  if (asset === "USDC") return undefined;
-  const price = encodeURIComponent(`${q.localAmount} ${q.currency}`);
-  const response = await fetch(`/demo/quote?price=${price}`);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const data = await response.json();
-  return data.mainnet?.[asset]?.soroswap;
-}
-let walletPending;
-async function prepareWalletPayment(asset, resource = `${MAINNET_API}/indicadores`, trigger) {
-  const pending = { asset, resource, trigger, converting: new URL(resource).pathname === "/convertir" };
-  walletPending = pending;
-  setWalletBusy(true);
-  walletLoading(pending, tr("Consultando el 402 y la cotización…", "Fetching the 402 and quote…"), true);
-  try {
-    const required = await fetch402(resource);
-    const scheme = asset === "USDC" ? "exact" : "exact-fx";
-    const accepted = required.accepts.find((a) => a.scheme === scheme && a.network === "stellar:pubnet");
-    const quote = accepted?.extra?.local402;
-    if (!accepted || !quote) throw new Error("invalid_402");
-    pending.accepted = accepted;
-    pending.quote = quote;
-    pending.assetUnits = await quoteWalletAsset(asset, quote).catch(() => undefined);
-  } catch {
-    pending.fallback = true;
-    pending.quote = staticWalletQuote(pending.converting);
-  }
-  if (walletPending === pending) renderWalletReview(pending);
-}
-
-function renderWalletReview(pending) {
-  stopWalletLoadingEscape(pending);
-  const { asset, quote: q } = pending;
-  const amount = asset === "USDC"
-    ? `${pending.fallback ? "≈ " : ""}${fmt(pending.accepted?.amount ?? q.tokenAmount, q.tokenDecimals)} USDC`
-    : pending.assetUnits
-      ? `≈ ${fmt(pending.assetUnits)} ${asset}`
-      : tr("FxPay lo calcula antes de firmar", "FxPay calculates it before signing");
-  const guards = asset === "USDC" ? "200 CLP" : `200 CLP · ${tr("prima FX ≤ 5% sobre Reflector", "FX premium ≤ 5% over Reflector")}`;
-  const maximum = asset === "USDC"
-    ? `${pending.fallback ? "≈ " : ""}${fmt(pending.accepted?.amount ?? q.tokenAmount, q.tokenDecimals)} USDC · ${guards}`
-    : pending.assetUnits
-      ? `${tr("Hasta", "Up to")} ${fmt((BigInt(pending.assetUnits) * 10200n + 9999n) / 10000n)} ${asset} ${tr("con esta cotización", "at this quote")} · ${guards}`
-      : guards;
-  const note = pending.fallback
-    ? tr("No pudimos leer el 402 actual. Precio estático aproximado; Freighter mostrará la autorización actualizada antes de firmar.", "We couldn't read the current 402. Approximate static price; Freighter will show the updated authorization before you sign.")
-    : tr("Al confirmar se solicita un 402 nuevo; el monto del activo y su tope se recalculan antes de firmar.", "Confirming requests a fresh 402; the asset amount and its ceiling are recalculated before signing.");
-  const region = walletRegion(pending);
-  region.innerHTML = `<div class="wallet-card">
-    <h4>${tr("Revisa antes de pagar", "Review before paying")}</h4>
-    <dl>
-      <div class="review-row"><dt>${tr("Recurso", "Resource")}</dt><dd>${escape(resourceLabel(pending.resource))}</dd></div>
-      <div class="review-row"><dt>${tr("Precio local", "Local price")}</dt><dd>${local(q.localAmount)} ${currencyLabel(q.currency)}</dd></div>
-      <div class="review-row"><dt>${tr(`Monto en ${asset}`, `Amount in ${asset}`)}</dt><dd>${amount}</dd></div>
-      ${asset !== "USDC" ? `<div class="review-row"><dt>${tr("Vendedor recibe", "Seller receives")}</dt><dd>${pending.fallback ? "≈ " : ""}${fmt(pending.accepted?.amount ?? q.tokenAmount, q.tokenDecimals)} USDC</dd></div>` : ""}
-      <div class="review-row"><dt>${tr("Máximo autorizado", "Maximum authorized")}</dt><dd>${maximum}</dd></div>
-      <div class="review-row"><dt>${tr("Red", "Network")}</dt><dd>Stellar mainnet</dd></div>
-      <div class="review-row"><dt>${tr("Comisión de red", "Network fee")}</dt><dd>${tr("La paga el facilitador", "Paid by the facilitator")}</dd></div>
-    </dl>
-    <p class="wallet-note">${note}</p>
-    <div class="wallet-actions"><button type="button" class="ghost wallet-confirm">${tr("Pagar con Freighter", "Pay with Freighter")}</button><button type="button" class="ghost wallet-cancel">${tr("Cancelar", "Cancel")}</button></div>
-  </div>`;
-  region.querySelector(".wallet-confirm").onclick = () => payFromWallet(pending);
-  region.querySelector(".wallet-cancel").onclick = () => cancelWalletPending(pending);
-  region.querySelector(".wallet-confirm").focus();
-}
-
-function walletErrorCopy(error, asset) {
-  const message = String(error?.message ?? error);
-  const text = `${error?.code ?? ""} ${message}`.toLowerCase();
-  if (/no_freighter|freighter.*(?:missing|not found)/.test(text)) return {
-    title: tr("No encontramos Freighter", "We couldn't find Freighter"),
-    next: tr('Instala <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a>, recarga la página y reintenta.', 'Install <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a>, reload the page and retry.'),
-  };
-  if (/wrong_network|wrong network|network mismatch/.test(text)) return {
-    title: tr("Freighter está en otra red", "Freighter is on another network"),
-    next: tr("Cambia a Stellar Mainnet (Public) en Freighter y reintenta.", "Switch to Stellar Mainnet (Public) in Freighter and retry."),
-  };
-  if (/reject|declin|denied|cancelled|canceled/.test(text)) return {
-    title: tr("No autorizaste el pago", "You didn't authorize the payment"),
-    next: tr("Cuando estés listo, reintenta y autoriza la solicitud en Freighter.", "When you're ready, retry and authorize the request in Freighter."),
-  };
-  if (/trustline|trust line|no_trust/.test(text)) return {
-    title: tr("Falta una trustline para este activo", "This asset needs a trustline"),
-    next: asset === "XLM"
-      ? tr("Revisa el saldo y la reserva de tu cuenta, y luego reintenta.", "Check your account balance and reserve, then retry.")
-      : tr(`Añade la trustline de ${asset} en Freighter y reintenta.`, `Add the ${asset} trustline in Freighter and retry.`),
-  };
-  if (/insufficient_balance|insufficient (?:funds|balance)|not enough|balance.*(?:low|insufficient)/.test(text)) return {
-    title: tr("Saldo insuficiente", "Insufficient balance"),
-    next: tr(`Añade suficiente ${asset} para cubrir el máximo autorizado.${asset === "XLM" ? " Deja también la reserva mínima de la cuenta." : ""}`, `Add enough ${asset} to cover the authorized maximum.${asset === "XLM" ? " Keep the minimum account reserve too." : ""}`),
-  };
-  if (/deadline_expired|deadline.*expired|quote.*expired|expired.*quote|signature.*expired|expirado|expirada/.test(text)) return {
-    title: tr("La cotización venció", "The quote expired"),
-    next: tr("Reintenta para solicitar un 402 y una cotización nuevos.", "Retry to request a fresh 402 and quote."),
-  };
-  if (/simulation|simulate|simulaci/.test(text)) return {
-    title: tr("La simulación del pago falló", "The payment simulation failed"),
-    next: tr("Revisa el saldo, la trustline y la red. Si todo está bien, espera un momento y reintenta.", "Check the balance, trustline and network. If they're correct, wait a moment and retry."),
-  };
-  return {
-    title: tr("No pudimos completar el pago", "We couldn't complete the payment"),
-    next: tr("Revisa Freighter y tu conexión, y luego reintenta con una cotización nueva.", "Check Freighter and your connection, then retry with a fresh quote."),
-  };
-}
-function renderWalletError(pending, error) {
-  const copy = walletErrorCopy(error, pending.asset);
-  const region = walletRegion(pending);
-  region.innerHTML = `<div class="wallet-card is-error"><h4>${copy.title}</h4><p class="wallet-note">${copy.next}</p><div class="wallet-actions"><button type="button" class="ghost wallet-retry">${tr("Reintentar", "Retry")}</button></div></div>`;
-  const retry = region.querySelector(".wallet-retry");
-  retry.onclick = () => prepareWalletPayment(pending.asset, pending.resource, pending.trigger);
-  retry.focus();
-}
-
-function scrollWalletResult(region) {
-  const reduced = globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  region.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
-}
-function renderConvertSuccess(data, pending) {
-  const body = data.body;
-  const valid = body && body.monto != null && body.resultado != null && body.de && body.a && Number.isFinite(Number(body.monto)) && Number.isFinite(Number(body.resultado));
-  const result = valid
-    ? `${local(body.monto)} ${currencyLabel(body.de)} = ${local(body.resultado)} ${currencyLabel(body.a)}`
-    : tr("Conversión recibida; el detalle está en la consola de tu wallet.", "Conversion received; the details are in your wallet console.");
-  const region = walletRegion(pending);
-  region.innerHTML = `<div class="wallet-card is-success"><h4>${tr("Pago confirmado", "Payment confirmed")}</h4><div class="cv-result">${result}</div><div class="cv-tx">${tr("Transacción:", "Transaction:")} ${mainnetTxLink(data.transaction)}</div></div>`;
-  scrollWalletResult(region);
-}
-
-// Only the review's confirm button reaches this function and wallet.pay.
-async function payFromWallet(pending) {
-  if (walletPending !== pending) return;
-  walletPending = undefined;
-  const { asset, resource } = pending;
+async function payFromWallet(asset, resource = `${MAINNET_API}/indicadores`) {
   const term = $("wallet-console");
+  const buttons = document.querySelectorAll(".wallet button, .convert button");
   const lines = [];
   const show = (...more) => { lines.push(...more); term.innerHTML = lines.join("\n"); term.scrollTop = term.scrollHeight; };
-  setWalletBusy(true);
-  walletLoading(pending, tr("Conectando con Freighter…", "Connecting to Freighter…"));
+  buttons.forEach((b) => (b.disabled = true));
   try {
     show(span("c", "cargando el cliente (≈500 KB)…"));
     await import("/wallet.js");
     const wallet = globalThis.local402Wallet;
     // Asked on every payment, so switching accounts in Freighter needs no reload.
-    walletAddress = await wallet.connect();
-    renderWalletStatus();
-    walletLoading(pending, tr("Preparando el pago; revisa Freighter cuando se abra…", "Preparing the payment; check Freighter when it opens…"));
+    const walletAddress = await wallet.connect();
+    $("wallet-status").innerHTML = `Conectada: <a target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/account/${escape(walletAddress)}">${short(escape(walletAddress))}</a>`;
     show(span("h", `$ GET ${resource.replace(MAINNET_API, "")}`), span("y", "HTTP/1.1 402 Payment Required"),
       span("h", asset === "USDC" ? "→ Freighter firma una transferencia de USDC (exact)" : `→ Freighter firma FxPay.pay con ${asset} (exact-fx)`),
       span("c", "  el cliente revisa la tasa con Reflector y el tope de 200 CLP antes de enviar…"),
@@ -1858,24 +934,24 @@ async function payFromWallet(pending) {
     const data = await wallet.pay(resource, walletAddress, asset);
     const seconds = ((performance.now() - started) / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 });
     show(
-      span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${mainnetTxLink(data.transaction)}`),
+      span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${txLink(data.transaction, "public")}`),
       data.spent ? `  gastaste ${span("v", `${fmt(data.spent.amount)} ${asset}`)} · el vendedor recibió ${fmt(data.price.amount)} USDC` : `  el vendedor recibió ${fmt(data.price.amount)} USDC`,
       ...(data.spent && data.fx ? [`  prima vs Reflector: ${span("g", bps(Number(((BigInt(data.spent.amount) - BigInt(data.fx.oracleSend)) * 10000n) / BigInt(data.fx.oracleSend))))} (tope firmado ${bps(data.fx.premiumBps)})`] : []),
       escape(JSON.stringify(data.body, null, 2)),
     );
-    if (pending.converting) renderConvertSuccess(data, pending);
-    else walletRegion(pending).innerHTML = "";
-    clearTimeout(mainnetRefresh);
-    mainnetRefresh = setTimeout(loadMainnet, 1500);
+    setTimeout(loadMainnet, 1500);
   } catch (error) {
     const message = String(error?.message ?? error);
-    show(span("r", `Error: ${escape(message)}`), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`));
-    renderWalletError(pending, error);
+    const hint = {
+      no_freighter: 'No se encontró Freighter. Instálala desde <a href="https://www.freighter.app" target="_blank" rel="noopener">freighter.app</a> y recarga la página.',
+      wrong_network: "Freighter está en otra red. Cámbiala a Mainnet (Public) e inténtalo de nuevo.",
+    }[message];
+    show(span("r", hint ?? `Error: ${escape(message)}`), "", span("c", "# o como agente, con tu clave:"), span("h", `$ ${escape(CLI)}`));
   } finally {
-    setWalletBusy(false);
+    buttons.forEach((b) => (b.disabled = false));
   }
 }
-document.querySelectorAll(".wallet button[data-asset]").forEach((b) => (b.onclick = () => prepareWalletPayment(b.dataset.asset, `${MAINNET_API}/indicadores`, b)));
+document.querySelectorAll(".wallet button[data-asset]").forEach((b) => (b.onclick = () => payFromWallet(b.dataset.asset)));
 
 // Converter widget (section 08): builds a /convertir URL from the visitor's input and pays it from
 // Freighter, real money on mainnet. Only currencies the oracle publishes are offered, so a settled
@@ -1892,16 +968,10 @@ document.querySelectorAll(".convert button[data-cv-asset]").forEach((b) => (b.on
   const monto = ($("cv-monto").value || "1").trim();
   const de = $("cv-de").value, a = $("cv-a").value;
   const status = $("cv-status");
-  if (!(Number(monto) > 0)) {
-    status.innerHTML = `<div class="wallet-card is-error"><h4>${tr("Escribe un monto mayor que cero.", "Enter an amount above zero.")}</h4></div>`;
-    return;
-  }
-  if (de === a) {
-    status.innerHTML = `<div class="wallet-card is-error"><h4>${tr("Elige dos monedas distintas.", "Pick two different currencies.")}</h4></div>`;
-    return;
-  }
+  if (!(Number(monto) > 0)) { status.textContent = tr("Escribe un monto mayor que cero.", "Enter an amount above zero."); return; }
+  if (de === a) { status.textContent = tr("Elige dos monedas distintas.", "Pick two different currencies."); return; }
   status.textContent = "";
-  prepareWalletPayment(b.dataset.cvAsset, `${MAINNET_API}/convertir?monto=${encodeURIComponent(monto)}&de=${de}&a=${a}`, b);
+  payFromWallet(b.dataset.cvAsset, `${MAINNET_API}/convertir?monto=${encodeURIComponent(monto)}&de=${de}&a=${a}`);
 }));
 
 // English copy for the static page, keyed by selector (and index when a selector matches several elements).
@@ -1909,8 +979,9 @@ document.querySelectorAll(".convert button[data-cv-asset]").forEach((b) => (b.on
 // receipts and wallet console stay in Spanish.
 const EN = [
   [".links a", ["Try it", "Calculator", "Integrate", "Receipts", "Mainnet"]],
-  [".hero .eyebrow", "x402 on Stellar · local-currency prices"],
-  [".hero h1", '<span class="h1-problem">x402 only charges in dollars.</span> Local402 lets any API charge in its own currency and still get exact USDC.'],
+  [".hero .eyebrow", '<span class="dot"></span>x402 on Stellar · local-currency prices'],
+  [".hero h1", "Charge in <em>your currency</em>.<br>Receive exact USDC."],
+  [".hero .problem", "Today x402 only charges in dollars, in a single asset. But real businesses invoice in pesos, reais, rupees, naira, euros or yen."],
   [".hero .lead", "Your customers, people or AI agents, pay with USDC, XLM or EURC. One transaction, an on-chain oracle rate, and the seller always receives the exact amount."],
   [".cta .btn", ["Try it free on testnet →", "Pay on mainnet with your wallet", "Price something"]],
   [".ticket .row span:first-child", [null, "rate", "source", "pay with"]],
@@ -1929,14 +1000,14 @@ const EN = [
     "The facilitator charges a few <b>basis points</b>, only on swap payments",
     "Next: APIs and agents where the dollar is not the local currency: Latin America, Africa and Asia already quote on Reflector",
   ]],
-  ["#probar h2", "Pay one of these APIs with test money."],
+  ["#probar h2", "Six APIs, six currencies. <em>One</em> USDC on the other side."],
   ["#probar .window-bar span", "agent@local402"],
   ["#probar .sub", "“See the 402” shows what any x402 client receives, with no wallet or payment. The colored buttons make a real testnet payment with a demo wallet, free for anyone. Payments with real money, from the same code, are under <a href=\"#mainnet\">mainnet</a>."],
-  ["#calculadora h2", "How much USDC is your price?"],
+  ["#calculadora h2", "Set your price. <em>We</em> handle the exchange."],
   ["#calculadora .sub", "Any amount in USD, UF or Reflector's 24 currencies (MXN, BRL, EUR, INR, NGN, KES, JPY, CLP…), converted with the oracle, and what paying it with each asset would cost right now through FxPay."],
   ["#calculadora .card > .label", "Seller's price"],
-  ["main > section > .eyebrow, .split .eyebrow, #recibos .eyebrow", ["Testnet demo", "Calculator", "How it works", "For sellers", "For AI agents", "Comparison", "Live receipts", "Mainnet"]],
-  ["main > section:nth-of-type(3) h2", "From a local price to the seller's USDC."],
+  ["main > section > .eyebrow, .split .eyebrow, #recibos .eyebrow", ["01 — Try it", "02 — Calculator", "03 — How it works", "04 — Sellers", "05 — Agents", "06 — Comparison", "07 — Live receipts", "08 — Mainnet"]],
+  ["main > section:nth-of-type(3) h2", "Four steps and <em>no</em> manual exchange rates."],
   ["main > section:nth-of-type(3) .sub", "It all happens inside the standard x402 flow. If anything doesn't add up, the whole transaction reverts."],
   [".step h3", ["Local price", "Reflector oracle", "Pay with what you hold", "Receipt"]],
   [".step p", [
@@ -1945,13 +1016,12 @@ const EN = [
     "USDC with <code>exact</code>. XLM or EURC with <code>exact-fx</code>: FxPay swaps on Soroswap in the same transaction.",
     "The seller receives the exact USDC and the rest goes back to the payer. A receipt keeps the rate, source and transaction.",
   ]],
-  [".split h2", ["One line per route.", "Your agent pays, within the limits you set."]],
+  [".split h2", ["One line per route.", "MCP, with <em>limits</em>."]],
   [".split > div:first-child > p", [
     'Accept USDC (<code>exact</code>) and XLM or EURC (<code>exact-fx</code>) from the same quote. It also works for MCP tools with <code>localToolPayment(server, "20 CLP", …)</code>.',
     "The agent checks the seller's rate against its own oracle, and respects <code>MAX_PRICE</code> and a per-session <code>BUDGET</code>. In code: <code>npm install local402-client</code>.",
-    "As an MCP server (<code>npx -y local402-mcp</code>) it gives the agent four tools: <code>local402_discover</code>, <code>local402_quote</code>, <code>local402_pay</code> and <code>local402_wallet</code>.",
   ]],
-  ["main > section:nth-of-type(5) h2", "x402 today and with Local402."],
+  ["main > section:nth-of-type(5) h2", "x402 today, and <em>with</em> Local402."],
   ["main > section:nth-of-type(5) .sub", "What changes for whoever sells and whoever pays."],
   [".compare th", [null, "x402 on Stellar today", "With Local402"]],
   [".compare td", [
@@ -1962,44 +1032,22 @@ const EN = [
     "AI agents", "Trust the seller's price", '<span class="yes">✓</span>Check the rate, with a per-payment cap and a budget',
     "Accounting", "USDC amounts", '<span class="yes">✓</span>Receipt with local price, rate and source; CSV',
   ]],
-  ["#recibos caption", "Receipts for the x402 payments charged in local currency and settled on testnet: date, resource, price, oracle rate, the USDC the seller received, the asset the payer spent and the transaction."],
-  ["#recibos h2", "Every payment leaves a receipt with its rate."],
+  ["#recibos h2", "Every sale, <em>ready</em> for accounting."],
   ["#recibos .link", "Export CSV →"],
-  ["#recibos th", ["Date", "Resource", "Price", "Rate (USD)", "Seller receives", "Payer paid", "Transaction", '<span class="rc-vh">Details</span>']],
-  ["#mainnet h2", "Real payments on mainnet."],
+  ["#recibos th", ["Time", "Resource", "Price", "Rate (USD)", "Seller receives", "Payer paid", "Transaction"]],
+  ["#mainnet h2", "The same, with <em>real money</em>."],
   ["#mainnet .sub", "Payments made on Stellar mainnet with the same code: Circle's USDC and EURC, real Soroswap and Reflector. With the default guards: 2% over the oracle and 5% on the swap."],
   [".wallet .label", "Try it yourself"],
   ["#wallet-title", "Pay 50 real pesos from your wallet."],
   ["#wallet-text", 'With <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a> on Mainnet, pay <code>GET /indicadores</code> (50 CLP ≈ 0.05 USDC) with USDC, XLM or EURC. XLM alone is enough. You only sign the authorization: the facilitator pays the network fee, and the client refuses any charge above 200 CLP.'],
   ["#wallet-agents", "An agent? The same from the terminal, with your own key and a per-payment cap."],
   ["#convert-title", "Convert your amount and pay for <em>your</em> result."],
-  ["#convert-text", "Pick the amount and currencies. After you pay with Freighter, your conversion at that instant's Reflector oracle rate appears below."],
-  ["#convert-price", 'Price of this call: <code>GET /convertir</code> · <b>100 NGN ≈ 0.08 USDC</b>.'],
+  ["#convert-text", 'A <code>GET /convertir</code> payment (100 NGN ≈ 0.08 USDC) returns your conversion at the Reflector oracle rate at that instant. Pick the amount and currencies, and pay with Freighter. The answer prints in the console above.'],
   ["#mainnet th", ["Date", "Price", "Seller receives", "Payer paid", "Premium vs Reflector", "Transaction"]],
-  ["#mainnet-premium-note", "max. = signed ceiling, not the amount spent"],
-  ["#pay-retry", "Retry"],
   ["footer p", "x402 payments priced in local currency, settled in USDC on Stellar. For any currency. Made in Chile for Find Your Way."],
   ["footer .label", ["Project", "Built with"]],
   ["footer .cols a[href='/receipts.csv']", "Receipts CSV"],
-  [".hero .proof", "6 currencies · pay with USDC, XLM or EURC · live on mainnet"],
-  [".stats-head", "Demo activity (testnet)"],
-  [".skip", "Skip to content"],
-  ["#ticket-usdc", "quoting with Reflector…"],
 ];
-
-function updateCopyButton() {
-  const btn = $("copy-console");
-  if (btn) btn.textContent = tr("Copiar", "Copy");
-}
-
-async function copyConsole() {
-  try {
-    await navigator.clipboard.writeText($("console").textContent);
-    const btn = $("copy-console");
-    btn.textContent = tr("Copiado", "Copied");
-    setTimeout(updateCopyButton, 1500);
-  } catch {}
-}
 
 function setLang(lang) {
   for (const [selector, copy] of EN) {
@@ -2014,35 +1062,12 @@ function setLang(lang) {
   $("lang").textContent = lang === "en" ? "ES" : "EN";
   $("lang").setAttribute("aria-label", lang === "en" ? "Cambiar a español" : "Switch to English");
   try { localStorage.setItem("lang", lang); } catch {}
-  if (catalog) renderCatalog(); else if (ticketFailed) renderTicketError();
+  if (catalog) renderCatalog();
   if (peeked) peek(peeked);
-  renderReceipts();
-  renderMainnet(); renderWalletStatus();
-  updateCopyButton();
+  if (receipts.length) renderReceipts();
+  if (mainnetList.length) renderMainnet();
 }
 $("lang").addEventListener("click", () => setLang(document.documentElement.lang === "en" ? "es" : "en"));
-$("copy-console").onclick = copyConsole;
-// Framework tabs: click, or the arrow keys once a tab has focus
-const tabs = [...document.querySelectorAll(".tabs [role=tab]")];
-function selectTab(tab) {
-  for (const t of tabs) {
-    const on = t === tab;
-    t.setAttribute("aria-selected", on);
-    t.tabIndex = on ? 0 : -1;
-    $(t.getAttribute("aria-controls")).hidden = !on;
-  }
-}
-tabs.forEach((tab, i) => {
-  tab.onclick = () => selectTab(tab);
-  tab.onkeydown = (event) => {
-    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-    if (!step) return;
-    const next = tabs[(i + step + tabs.length) % tabs.length];
-    selectTab(next);
-    next.focus();
-  };
-});
-updateCopyButton();
 try { if (localStorage.getItem("lang") === "en") setLang("en"); } catch {}
 
 async function start() {
