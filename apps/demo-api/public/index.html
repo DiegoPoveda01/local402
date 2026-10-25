@@ -358,6 +358,36 @@
     #mainnet .wallet-card .review-row { grid-template-columns: 1fr; gap: 2px; }
     #mainnet .wallet-card .wallet-actions button { flex: 1; }
   }
+
+  /* ux-receipts */
+  .rc-vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* The scroll cap exists to feed the sticky header; phones hide that header, so they keep the natural flow. */
+  @media (min-width: 561px) {
+    #recibos .table-wrap { max-height: min(72vh, 620px); overflow-y: auto; }
+    #recibos thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-elev); box-shadow: inset 0 -1px 0 var(--border-strong); }
+  }
+  #recibos th.num, #recibos td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  #recibos .rc-btn { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 10px 14px; }
+  #recibos .rc-btn .caret::before { content: "▸"; }
+  #recibos .rc-btn .caret { display: inline-block; font-size: 9px; color: var(--fg-dim); transform: rotate(0); transition: transform .15s; }
+  #recibos [aria-expanded="true"] .caret { transform: rotate(90deg); }
+  @media (prefers-reduced-motion: reduce) { #recibos .rc-btn .caret { transition: none; } }
+  #recibos tr.open > td { background: var(--copper-muted); border-bottom-color: transparent; }
+  #recibos tr.detail > td { padding: 0 18px 18px; white-space: normal; }
+  #recibos .sheet { background: var(--bg-elev-2); border: 1px solid var(--border-strong); border-radius: 12px; padding: 16px 18px 18px; }
+  #recibos .sheet-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; }
+  #recibos .sheet-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px 28px; margin: 14px 0 0; }
+  #recibos .sheet-fields dt { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-dim); }
+  #recibos .sheet-fields dd { margin: 4px 0 0; font-size: 13.5px; min-width: 0; overflow-wrap: anywhere; }
+  #recibos .sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  #recibos td.empty { padding-block: 44px; }
+  #recibos td.empty p { margin: 0 0 8px; }
+  #recibos td.empty .hint { font-family: var(--sans); font-style: normal; font-size: 14px; color: var(--fg-muted); margin-bottom: 18px; }
+  #recibos td.empty .rc-btn { font-family: var(--sans); font-style: normal; }
+  @media (max-width: 560px) {
+    #recibos tr.detail > td { grid-column: 1 / -1; padding: 0 10px 12px; }
+    #recibos tr.detail > td[data-label]::before { content: none; }
+  }
 </style>
 </head>
 <body>
@@ -552,10 +582,12 @@ local402_wallet    <span class="c">saldo y presupuesto</span></pre>
       </div>
       <a href="/receipts.csv" class="link">Exportar CSV →</a>
     </div>
+    <p class="rc-vh" id="receipts-live" role="status" aria-live="polite"></p>
     <div class="table-wrap">
       <table class="cards">
-        <thead><tr><th>Hora</th><th>Recurso</th><th>Precio</th><th>Tasa (USD)</th><th>Vendedor recibe</th><th>Cliente pagó</th><th>Transacción</th></tr></thead>
-        <tbody id="receipts"><tr><td colspan="7" class="empty">Aún no hay pagos. Prueba uno arriba.</td></tr></tbody>
+        <caption class="rc-vh">Recibos de los pagos x402 cobrados en moneda local y liquidados en testnet: fecha, recurso, precio, tasa del oráculo, USDC que recibió el vendedor, activo con el que pagó el cliente y transacción.</caption>
+        <thead><tr><th>Fecha</th><th>Recurso</th><th class="num">Precio</th><th class="num">Tasa (USD)</th><th class="num">Vendedor recibe</th><th class="num">Cliente pagó</th><th>Transacción</th><th><span class="rc-vh">Detalles</span></th></tr></thead>
+        <tbody id="receipts"></tbody>
       </table>
     </div>
     <nav class="pager" id="receipts-pager" aria-label="Páginas de recibos"></nav>
@@ -1161,28 +1193,141 @@ function labelCells(tbody) {
   for (const row of tbody.rows) [...row.cells].forEach((td, i) => { td.dataset.label = labels[i]; });
 }
 
+// Money with a fixed number of decimals per asset, so right-aligned columns compare at a glance.
+// XLM and the contracts this demo accepts publish 7 decimals, like the API's SEND_ASSET_DECIMALS.
+const SEND_DECIMALS = 7;
+const receiptAmount = (units, decimals, max = decimals) => Number(units).toLocaleString(locale(), { minimumFractionDigits: decimals, maximumFractionDigits: max });
+const receiptUSDC = (r) => receiptAmount(Number(r.settled.amount) / 10 ** r.settled.decimals, r.settled.decimals);
+const receiptPaid = (r) => (r.spent ? receiptAmount(Number(r.spent.amount) / 10 ** SEND_DECIMALS, SEND_DECIMALS) : receiptUSDC(r));
+// Minor units per code, read from the same CLDR table Intl formats with: CLP has no decimals at all
+// and the UF has four, so no price grows cents its currency never uses (nor do the stats disagree).
+const codeDecimals = (code) => {
+  try {
+    return new Intl.NumberFormat(locale(), { style: "currency", currency: code }).resolvedOptions().maximumFractionDigits;
+  } catch {
+    return 2;
+  }
+};
+const priceText = (amount, code) => receiptAmount(amount, codeDecimals(code));
+const receiptDate = (iso) => new Date(iso).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" });
+// Clipboard twin of `escape`: the four things it shadows, read back by name instead of written out
+// (writing them in this file is what the HTML source can't survive).
+const plainText = (html) => String(html).replace(/&(amp|lt|gt|quot);/g, (_, name) => ({ amp: "&", lt: "<", gt: ">", quot: '"' })[name]);
+
+// Like `txLink` (shared with the mainnet table), but the anchor announces what it opens and where.
+const txLinkNamed = (hash, text = short(hash)) =>
+  `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/tx/${hash}" aria-label="${escape(tr(`Ver transacción ${short(hash)} en Stellar Expert (nueva pestaña)`, `View transaction ${short(hash)} on Stellar Expert (opens in a new tab)`))}">${text}</a>`;
+
+// Every field the receipt really has, as plain text ready for an invoice or a chat.
+function receiptText(r) {
+  const assetName = r.spent ? plainText(symbol(r.spent.asset)) : "USDC";
+  return [
+    `${tr("Comprobante de pago · Local402", "Payment receipt · Local402")}`,
+    `${tr("Recibo", "Receipt")}: ${r.id}`,
+    `${tr("Fecha y hora", "Date and time")}: ${new Date(r.paidAt).toLocaleString(locale(), { dateStyle: "long", timeStyle: "medium" })}`,
+    `${tr("Recurso", "Resource")}: ${r.resource || "—"}`,
+    `${tr("Precio", "Price")}: ${priceText(r.local.amount, r.local.currency)} ${plainText(currencyLabel(r.local.currency))}`,
+    `${tr("Tasa", "Rate")}: 1 ${plainText(currencyLabel(r.local.currency))} = ${rate(r.rate.usdPerUnit)} USD`,
+    `${tr("Fuente", "Source")}: ${r.rate.source ? plainText(sourceLabel(r.rate.source)) : "—"}${r.rate.oracleTimestamp ? ` · ${receiptDate(new Date(r.rate.oracleTimestamp * 1000).toISOString())}` : ""}`,
+    `${tr("El cliente pagó", "The payer paid")}: ${receiptPaid(r)} ${assetName}`,
+    `${tr("El vendedor recibió", "The seller received")}: ${receiptUSDC(r)} USDC`,
+    ...(r.fxPremiumBps !== undefined ? [`${tr("Prima sobre el oráculo", "Premium over the oracle")}: ${bps(r.fxPremiumBps)}`] : []),
+    `${tr("Esquema", "Scheme")}: ${r.scheme}`,
+    `${tr("Red", "Network")}: ${r.network}`,
+    ...(r.payer ? [`${tr("Pagador", "Payer")}: ${r.payer}`] : []),
+    `${tr("Vendedor", "Seller")}: ${r.payTo}`,
+    `${tr("Transacción", "Transaction")}: ${r.transaction}`,
+    `https://stellar.expert/explorer/testnet/tx/${r.transaction}`,
+  ].join("\n");
+}
+
+// Mirrors /receipts.csv (same columns and quoting), so the copied row pastes under that header.
+const receiptCsvCell = (value) => {
+  const text = String(value ?? "");
+  const safe = /^[=+\-@\t\r]/.test(text) && !/^-?\d+(\.\d+)?$/.test(text) ? `'${text}` : text;
+  return /[",\n\r]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
+};
+function receiptCsvRow(r) {
+  const received = Number(r.settled.amount) / 10 ** r.settled.decimals;
+  return [
+    r.id, r.paidAt, r.resource, r.local.amount, r.local.currency, r.rate.usdPerUnit, r.rate.source, received,
+    r.spent ? plainText(symbol(r.spent.asset)) : "USDC",
+    r.spent ? Number(r.spent.amount) / 10 ** SEND_DECIMALS : received,
+    r.fxPremiumBps ?? "", r.scheme, r.payer ?? "", r.transaction,
+  ].map(receiptCsvCell).join(",");
+}
+
+// The "comprobante": a row that opens into every detail field of one payment, with its copy buttons.
+function receiptPanel(r) {
+  const oracleAt = r.rate.oracleTimestamp ? ` · ${receiptDate(new Date(r.rate.oracleTimestamp * 1000).toISOString())}` : "";
+  return `<tr class="detail"><td colspan="8">
+    <div class="sheet" id="comprobante-${r.id}" role="group" aria-label="${escape(tr(`Comprobante del pago ${r.id}`, `Receipt for payment ${r.id}`))}">
+      <div class="sheet-head">
+        <div class="label">${tr("Comprobante", "Receipt")} <b>#${escape(r.id)}</b></div>
+        <div class="meta mono">${escape(r.scheme)} · ${escape(r.network)}</div>
+      </div>
+      <dl class="sheet-fields">
+        <div><dt>${tr("Fecha y hora", "Date and time")}</dt><dd class="mono">${new Date(r.paidAt).toLocaleString(locale(), { dateStyle: "long", timeStyle: "medium" })}</dd></div>
+        <div><dt>${tr("Recurso", "Resource")}</dt><dd class="mono">${escape(r.resource || "—")}</dd></div>
+        <div><dt>${tr("Precio", "Price")}</dt><dd><b>${priceText(r.local.amount, r.local.currency)} ${currencyLabel(r.local.currency)}</b></dd></div>
+        <div><dt>${tr("Tasa del oráculo", "Oracle rate")}</dt><dd class="mono">1 ${currencyLabel(r.local.currency)} = ${rate(r.rate.usdPerUnit)} USD${r.rate.source ? `<br>${sourceLabel(r.rate.source)}${oracleAt}` : ""}</dd></div>
+        <div><dt>${tr("El cliente pagó", "The payer paid")}</dt><dd>${r.spent ? `<span class="pill ${plainText(symbol(r.spent.asset)).toLowerCase()}">${symbol(r.spent.asset)}</span> ${receiptPaid(r)}` : `<span class="pill usdc">USDC</span> ${receiptUSDC(r)}`}</dd></div>
+        <div><dt>${tr("El vendedor recibió", "The seller received")}</dt><dd><b>${receiptUSDC(r)} USDC</b></dd></div>
+        ${r.fxPremiumBps !== undefined ? `<div><dt>${tr("Prima sobre el oráculo", "Premium over the oracle")}</dt><dd class="mono">${bps(r.fxPremiumBps)}</dd></div>` : ""}
+        <div><dt>${tr("Esquema", "Scheme")}</dt><dd class="mono">${escape(r.scheme)}</dd></div>
+        <div><dt>${tr("Red", "Network")}</dt><dd class="mono">${escape(r.network)}</dd></div>
+        <div><dt>${tr("Pagador", "Payer")}</dt><dd class="mono">${r.payer ? idLink(r.payer) : tr("no informado", "not reported")}</dd></div>
+        <div><dt>${tr("Vendedor", "Seller")}</dt><dd class="mono">${idLink(r.payTo)}</dd></div>
+        <div><dt>${tr("Transacción", "Transaction")}</dt><dd class="mono">${txLinkNamed(r.transaction, escape(r.transaction))}</dd></div>
+      </dl>
+      <div class="sheet-actions">
+        <button class="ghost rc-btn" type="button" data-action="copy-text" data-receipt="${r.id}" data-focus="copy-text-${r.id}">${tr("Copiar comprobante", "Copy receipt")}</button>
+        <button class="ghost rc-btn" type="button" data-action="copy-csv" data-receipt="${r.id}" data-focus="copy-csv-${r.id}">${tr("Copiar fila CSV", "Copy row as CSV")}</button>
+      </div>
+    </div>
+  </td></tr>`;
+}
+
 function renderReceipts(newId) {
   const body = $("receipts");
-  if (!receipts.length) return;
-  // Newest receipts are first, so a new payment brings the table back to page 1.
-  if (newId) receiptsPage = 1;
+  if (!receipts.length) {
+    // The empty table still teaches: it names what a receipt holds and points straight at the demo.
+    $("receipts-pager").innerHTML = "";
+    body.innerHTML = `<tr><td colspan="8" class="empty">
+      <p>${tr("Aún no hay pagos en testnet.", "No testnet payments yet.")}</p>
+      <p class="hint">${tr("Cada pago con la wallet de demo deja aquí su recibo: tasa, monto y transacción.", "Every payment with the demo wallet leaves its receipt here: rate, amount and transaction.")}</p>
+      <button class="ghost rc-btn" type="button" data-action="demo">${tr("Hacer un pago de prueba", "Make a test payment")}</button>
+    </td></tr>`;
+    return;
+  }
+  // Newest receipts are first, so a new payment brings the table back to page 1 — and gets announced.
+  if (newId) {
+    receiptsPage = 1;
+    announceReceipt(receipts.find((r) => r.id === newId));
+  }
   const shown = paginate("receipts-pager", receipts, receiptsPage, (page) => { receiptsPage = page; renderReceipts(); });
   receiptsPage = shown.page;
+  // Polls and streams redraw the table at any moment; whoever was reading or writing keeps their place.
+  const focus = body.querySelector(":focus");
   body.innerHTML = shown.rows.map((r) => {
     const paidWith = r.spent
-      ? `<span class="pill ${symbol(r.spent.asset).toLowerCase()}">${symbol(r.spent.asset)}</span> ${fmt(r.spent.amount)}`
-      : `<span class="pill usdc">USDC</span> ${fmt(r.settled.amount, r.settled.decimals)}`;
-    return `<tr class="${r.id === newId ? "new" : ""}">
-      <td class="mono">${new Date(r.paidAt).toLocaleTimeString(locale())}</td>
+      ? `<span class="pill ${symbol(r.spent.asset).toLowerCase()}">${symbol(r.spent.asset)}</span> ${receiptPaid(r)}`
+      : `<span class="pill usdc">USDC</span> ${receiptUSDC(r)}`;
+    const open = r.id === openReceipt;
+    const classes = `${r.id === newId ? "new " : ""}${open ? "open" : ""}`.trim();
+    return `<tr data-receipt="${r.id}"${classes ? ` class="${classes}"` : ""}>
+      <td class="mono"><time datetime="${escape(r.paidAt)}">${receiptDate(r.paidAt)}</time></td>
       <td class="mono">${escape(new URL(r.resource || "http://x/").pathname)}</td>
-      <td><b>${local(r.local.amount)} ${currencyLabel(r.local.currency)}</b></td>
-      <td class="mono">${rate(r.rate.usdPerUnit)}</td>
-      <td>${fmt(r.settled.amount, r.settled.decimals)} USDC</td>
-      <td>${paidWith}</td>
-      <td>${txLink(r.transaction)}</td>
-    </tr>`;
+      <td class="num"><b>${priceText(r.local.amount, r.local.currency)} ${currencyLabel(r.local.currency)}</b></td>
+      <td class="num mono">${rate(r.rate.usdPerUnit)}</td>
+      <td class="num">${receiptUSDC(r)} USDC</td>
+      <td class="num">${paidWith}</td>
+      <td>${txLinkNamed(r.transaction)}</td>
+      <td><button class="ghost rc-btn" type="button" data-action="toggle" data-receipt="${r.id}" data-focus="toggle-${r.id}" aria-expanded="${open}"${open ? ` aria-controls="comprobante-${r.id}"` : ""}><span class="caret" aria-hidden="true"></span>${tr("Ver comprobante", "View receipt")}</button></td>
+    </tr>${open ? receiptPanel(r) : ""}`;
   }).join("");
   labelCells(body);
+  if (focus?.dataset.focus) body.querySelector(`[data-focus="${focus.dataset.focus}"]`)?.focus();
 
   const byCurrency = {};
   let usdc = 0;
@@ -1192,13 +1337,13 @@ function renderReceipts(newId) {
   }
   $("stat-count").textContent = receipts.length;
   // Two currencies fit as amounts; more are counted, with the amounts underneath.
-  const sold = Object.entries(byCurrency).map(([c, v]) => `${v.toLocaleString(locale(), { maximumFractionDigits: 4 })} ${c === "CLF" ? "UF" : c}`);
+  const sold = Object.entries(byCurrency).map(([c, v]) => `${receiptAmount(v, codeDecimals(c))} ${c === "CLF" ? "UF" : c}`);
   const many = sold.length > 2;
   $("stat-local").textContent = many ? `${sold.length} ${tr("monedas", "currencies")}` : sold.join(" · ");
   $("stat-local-note").textContent = many ? sold.join(" · ") : tr("en moneda local", "in local currency");
-  $("stat-usdc").textContent = `${usdc.toLocaleString(locale(), { maximumFractionDigits: 4 })} USDC`;
+  $("stat-usdc").textContent = `${receiptAmount(usdc, SEND_DECIMALS)} USDC`;
   $("stat-xlm").textContent = receipts.filter((r) => r.spent).length;
-  $("judges-tx").innerHTML = txLink(receipts[0].transaction);
+  $("judges-tx").innerHTML = txLinkNamed(receipts[0].transaction);
 }
 
 // Receipts come from the shared list; the stream only makes this instance feel instant.
@@ -1206,9 +1351,84 @@ async function loadReceipts() {
   const latest = await (await fetch("/receipts")).json();
   const known = new Set(receipts.map((r) => r.transaction));
   const fresh = receipts.length ? latest.find((r) => !known.has(r.transaction)) : undefined;
+  // Receipts are append-only, so the same count and no fresh id means the same list: a redraw would
+  // only throw away the open receipt and the focused button for no reason.
+  if (!fresh && latest.length === receipts.length) return;
   receipts.splice(0, receipts.length, ...latest);
   renderReceipts(fresh?.id);
 }
+
+// Which receipt is open: a table can show one comprobante at a time.
+let openReceipt;
+function toggleReceipt(id) {
+  openReceipt = openReceipt === id ? undefined : id;
+  renderReceipts();
+}
+
+// Transient "Copiado" on the button that was pressed; "busy" stops a second copy landing mid-state.
+function copyReceipt(button, text) {
+  const label = button.textContent;
+  if (button.dataset.busy) return;
+  button.dataset.busy = "1";
+  const finish = (state, ok) => {
+    button.textContent = state;
+    // A redraw may have replaced the button already; only restore what is still on screen.
+    setTimeout(() => { if (button.isConnected) button.textContent = label; delete button.dataset.busy; }, 1600);
+    if (ok) $("receipts-live").textContent = tr("Comprobante copiado al portapapeles", "Receipt copied to the clipboard");
+  };
+  // On non-secure origins `clipboard` is absent and the call throws before any promise exists.
+  const write = navigator.clipboard?.writeText?.(text) ?? Promise.reject(new Error("clipboard unavailable"));
+  write.then(() => finish(tr("Copiado ✓", "Copied ✓"), true))
+    .catch(() => finish(tr("No se pudo copiar", "Could not copy"), false));
+}
+
+// The flash tells the eye; this region tells assistive tech the same news, politely.
+function announceReceipt(receipt) {
+  if (!receipt) return;
+  $("receipts-live").textContent = `${tr("Nuevo pago recibido", "New payment received")}: ${priceText(receipt.local.amount, receipt.local.currency)} ${plainText(currencyLabel(receipt.local.currency))} → ${receiptUSDC(receipt)} USDC`;
+}
+
+// The empty state's next step: scroll to the demo, clearing the sticky nav, and hand the keyboard
+// to the pay button — the first one that is enabled, in case demo payments are off.
+function goToTestPayment() {
+  const motion = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+  window.scrollTo({ top: $("probar").getBoundingClientRect().top + scrollY - 72, behavior: motion });
+  $("probar").querySelector("button.pay:not(:disabled)")?.focus({ preventScroll: true });
+}
+
+// One click handler serves every row the table ever shows, so redraws never mean re-wiring.
+$("receipts").addEventListener("click", (event) => {
+  const control = event.target.closest("[data-action]");
+  if (control) {
+    if (control.dataset.action === "toggle") toggleReceipt(control.dataset.receipt);
+    else if (control.dataset.action === "demo") goToTestPayment();
+    else {
+      const receipt = receipts.find((r) => r.id === control.dataset.receipt);
+      if (receipt) copyReceipt(control, control.dataset.action === "copy-csv" ? receiptCsvRow(receipt) : receiptText(receipt));
+    }
+    return;
+  }
+  // The explorer link opens the transaction; clicking the row around it does not fold the receipt away.
+  if (event.target.closest("a")) return;
+  const row = event.target.closest("tr[data-receipt]");
+  if (row) {
+    const id = row.dataset.receipt;
+    toggleReceipt(id);
+    // A redraw replaced every <tr>, so the live copy of the row's control is fetched from the table
+    // itself — focusing the detached row would leave the pointer open out of Escape's reach.
+    $("receipts").querySelector(`[data-focus="toggle-${id}"]`)?.focus({ preventScroll: true });
+  }
+});
+// Escape closes the open receipt and hands the keyboard back to that row's button.
+$("receipts").addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !openReceipt) return;
+  const id = openReceipt;
+  toggleReceipt(id);
+  $("receipts").querySelector(`[data-focus="toggle-${id}"]`)?.focus();
+});
+
+// The table ships empty, so before the first /receipts lands it shows the sentence below instead of nothing.
+renderReceipts();
 
 // Mainnet deployment of the same API and facilitator, paid from the visitor's own wallet.
 const MAINNET_API = "https://local402-mainnet.vercel.app";
@@ -1645,9 +1865,10 @@ const EN = [
     "AI agents", "Trust the seller's price", '<span class="yes">✓</span>Check the rate, with a per-payment cap and a budget',
     "Accounting", "USDC amounts", '<span class="yes">✓</span>Receipt with local price, rate and source; CSV',
   ]],
+  ["#recibos caption", "Receipts for the x402 payments charged in local currency and settled on testnet: date, resource, price, oracle rate, the USDC the seller received, the asset the payer spent and the transaction."],
   ["#recibos h2", "Every sale, <em>ready</em> for accounting."],
   ["#recibos .link", "Export CSV →"],
-  ["#recibos th", ["Time", "Resource", "Price", "Rate (USD)", "Seller receives", "Payer paid", "Transaction"]],
+  ["#recibos th", ["Date", "Resource", "Price", "Rate (USD)", "Seller receives", "Payer paid", "Transaction", '<span class="rc-vh">Details</span>']],
   ["#mainnet h2", "The same, with <em>real money</em>."],
   ["#mainnet .sub", "Payments made on Stellar mainnet with the same code: Circle's USDC and EURC, real Soroswap and Reflector. With the default guards: 2% over the oracle and 5% on the swap."],
   [".wallet .label", "Try it yourself"],
@@ -1698,7 +1919,7 @@ function setLang(lang) {
   try { localStorage.setItem("lang", lang); } catch {}
   if (catalog) renderCatalog(); else if (ticketFailed) renderTicketError();
   if (peeked) peek(peeked);
-  if (receipts.length) renderReceipts();
+  renderReceipts();
   renderMainnet(); renderWalletStatus();
   updateCopyButton();
 }
