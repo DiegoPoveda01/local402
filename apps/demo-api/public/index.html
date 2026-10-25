@@ -258,6 +258,49 @@
     .pager { gap: 4px; }
     .pager button.ghost { min-width: 32px; padding: 6px 8px; }
   }
+
+  /* ux-pay */
+  [hidden] { display: none !important; }
+  .skeleton { background: linear-gradient(90deg, var(--bg-elev) 25%, var(--bg-elev-2) 50%, var(--bg-elev) 75%); background-size: 200% 100%; animation: skeleton 1.2s infinite; }
+  @keyframes skeleton { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  .skeleton-line { height: 12px; background: var(--border); border-radius: 6px; opacity: .35; }
+  .skeleton-line.short { width: 45%; }
+  .skeleton-price { height: 48px; width: 70%; background: var(--border); border-radius: 8px; opacity: .4; margin: 6px 0; }
+  .skeleton-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+  .skeleton-buttons span { height: 32px; background: var(--border); border-radius: 999px; opacity: .3; }
+  .skeleton-status { grid-column: 1 / -1; text-align: center; color: var(--fg-dim); font-family: var(--mono); font-size: 13px; padding: 16px 0 6px; }
+  .error-card { grid-column: 1 / -1; gap: 14px; }
+  .error-card h3 { margin: 0; color: var(--red); font-weight: 500; font-size: 17px; }
+
+  .quote-card { margin-top: 14px; background: var(--bg-elev); border: 1px solid var(--border-strong); border-radius: 14px; padding: 18px 20px; display: grid; grid-template-columns: 1fr auto; gap: 10px 18px; align-items: center; transition: opacity .2s; }
+  .quote-card.expired { opacity: .5; }
+  .quote-main { min-width: 0; }
+  .quote-route { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; color: var(--fg-dim); }
+  .quote-route .label { margin: 0; }
+  .quote-price { font-family: var(--serif); font-size: 32px; line-height: 1.1; margin-top: 4px; }
+  .quote-pay { color: var(--fg-muted); font-size: 14px; margin-top: 4px; }
+  .quote-receive { color: var(--green); font-size: 14px; margin-top: 2px; }
+  .quote-meta { color: var(--fg-dim); font-size: 12px; font-family: var(--mono); margin-top: 8px; }
+  .quote-countdown { grid-column: 1 / -1; font-family: var(--mono); font-size: 12px; color: var(--copper); display: flex; align-items: center; gap: 6px; }
+  .quote-refresh { grid-column: 1 / -1; justify-self: start; }
+  .pay-progress { margin-top: 14px; }
+  .stepper { display: flex; gap: 8px; align-items: center; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 999px; padding: 6px; width: fit-content; max-width: 100%; flex-wrap: wrap; }
+  .stepper .step { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; font-size: 13px; color: var(--fg-dim); }
+  .stepper .step.done { color: var(--green); }
+  .stepper .step.active { background: var(--copper-muted); color: var(--copper); }
+  .stepper .step.error { color: var(--red); }
+  .step-dot { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid currentColor; font-size: 11px; font-family: var(--mono); }
+  .success-wrap { display: flex; align-items: center; gap: 16px; margin-top: 14px; padding: 14px 18px; background: rgba(139,227,168,.08); border: 1px solid rgba(139,227,168,.25); border-radius: 14px; }
+  .check { width: 40px; height: 40px; flex-shrink: 0; }
+  .check path { stroke: var(--green); stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 52; stroke-dashoffset: 52; animation: draw 600ms ease forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .mini-receipt { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; color: var(--fg); }
+  .mini-receipt .mr-arrow { color: var(--fg-dim); }
+  .pay-error { margin-top: 14px; padding: 14px 18px; background: rgba(255,138,122,.08); border: 1px solid rgba(255,138,122,.25); border-radius: 14px; color: var(--red); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .pay-error p { margin: 0; }
+  .copy-console { margin-left: auto; font-size: 12px; padding: 5px 12px; min-height: 44px; }
+  @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } .check path { animation: none; stroke-dashoffset: 0; } }
+  @media (max-width: 900px) { .quote-card { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -341,8 +384,20 @@
     <h2>Seis APIs, seis monedas. <em>Un solo</em> USDC al otro lado.</h2>
     <p class="sub">«Ver el 402» muestra lo que recibe cualquier cliente x402, sin wallet ni pago. Los botones de color hacen un pago real en testnet con una wallet de demo, gratis para cualquiera. Los pagos con dinero real, con el mismo código, están en <a href="#mainnet">mainnet</a>.</p>
     <div class="products" id="products"></div>
+    <div class="quote-card" id="quote-card" hidden></div>
+    <div class="pay-progress" id="pay-progress" hidden>
+      <div class="stepper" id="stepper" role="status" aria-live="polite"></div>
+      <div class="success-wrap" id="success-wrap" hidden>
+        <svg class="check" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 24 L20 34 L38 14"/></svg>
+        <div class="mini-receipt" id="mini-receipt"></div>
+      </div>
+      <div class="pay-error" id="pay-error" role="alert" hidden>
+        <p id="pay-error-msg"></p>
+        <button class="ghost" id="pay-retry" type="button">Reintentar</button>
+      </div>
+    </div>
     <div class="window">
-      <div class="window-bar"><i></i><i></i><i></i><span>agente@local402</span></div>
+      <div class="window-bar"><i></i><i></i><i></i><span>agente@local402</span><button class="ghost copy-console" id="copy-console" type="button">Copiar</button></div>
       <div class="term" id="console" aria-live="polite">Cargando…</div>
     </div>
   </section>
@@ -516,7 +571,7 @@ const sourceLabel = (source) => (source.includes(":uf*") ? `${tr("UF de", "UF fr
 const currencyLabel = (code) => (code === "CLF" ? "UF" : escape(code));
 const symbol = (asset) => escape(catalog?.assetSymbols?.[asset] ?? short(asset));
 const short = (s) => `${s.slice(0, 6)}…${s.slice(-6)}`;
-const txLink = (hash, net = "testnet") => `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/${net}/tx/${hash}">${short(hash)}</a>`;
+const txLink = (hash, net = "testnet", label) => `<a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/${net}/tx/${hash}"${label ? ` aria-label="${label.replace(/"/g, "&quot;")}"` : ""}>${short(hash)}</a>`;
 // Accounts (G…) and contracts (C…) open in the explorer too.
 const idLink = (id) => `<a target="_blank" rel="noopener" href="https://stellar.expert/explorer/testnet/${id.startsWith("C") ? "contract" : "account"}/${escape(id)}">${short(escape(id))}</a>`;
 const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -538,20 +593,190 @@ function renderNetwork() {
   $("network").innerHTML = `<span class="dot"></span>${net}${mainnet} · ${tr("vendedor", "seller")} ${idLink(catalog.payTo)}`;
 }
 
+function renderSkeletons() {
+  const container = $("products");
+  container.innerHTML = "";
+  for (let i = 0; i < 6; i++) {
+    const card = document.createElement("div");
+    card.className = "card skeleton";
+    card.innerHTML = `
+      <div class="skeleton-line short"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-price"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line short"></div>
+      <div class="skeleton-buttons"><span></span><span></span><span></span></div>`;
+    container.append(card);
+  }
+  const status = document.createElement("div");
+  status.className = "skeleton-status";
+  status.textContent = tr("Cargando cotizaciones en vivo…", "Loading live quotes…");
+  container.append(status);
+}
+
+function clearSkeletons() {
+  for (const el of $("products").querySelectorAll(".skeleton, .skeleton-status, .error-card")) el.remove();
+}
+
+function renderCatalogError() {
+  if ($("catalog-retry")) return;
+  clearSkeletons();
+  $("products").innerHTML = `
+    <div class="card error-card">
+      <h3>${tr("Error al cargar el catálogo", "Error loading catalog")}</h3>
+      <p class="meta">${tr("No pudimos contactar a la API de cotizaciones. Revisa tu conexión o inténtalo de nuevo.", "We couldn't reach the quote API. Check your connection and try again.")}</p>
+      <button class="ghost" id="catalog-retry" type="button">${tr("Reintentar", "Retry")}</button>
+    </div>`;
+  $("catalog-retry").onclick = loadCatalog;
+}
+
+function getQuoteFrom402(required) {
+  const exact = required.accepts.find((a) => a.scheme === "exact");
+  const fx = required.accepts.find((a) => a.scheme === "exact-fx");
+  return { exact, fx, q: (exact ?? fx).extra.local402 };
+}
+
+function formatAge(timestamp) {
+  const seconds = Math.max(0, Math.round(Date.now() / 1000 - timestamp));
+  if (seconds < 60) return tr(`hace ${seconds} s`, `${seconds} s ago`);
+  return tr(`hace ${Math.round(seconds / 60)} min`, `${Math.round(seconds / 60)} min ago`);
+}
+
+let liveQuote;
+let quoteCountdown;
+let paying = false;
+function stopQuoteCountdown() {
+  if (quoteCountdown) { clearInterval(quoteCountdown); quoteCountdown = null; }
+}
+
+function startQuoteCountdown(expiresAt) {
+  stopQuoteCountdown();
+  const el = $("quote-countdown");
+  if (!el) return;
+  const update = () => {
+    const remaining = Math.max(0, Math.round(expiresAt - Date.now() / 1000));
+    el.querySelector("b").textContent = `${remaining} s`;
+    if (remaining === 0) {
+      $("quote-card").classList.add("expired");
+      const refresh = $("quote-refresh");
+      if (refresh && !paying) refresh.hidden = false;
+      stopQuoteCountdown();
+    }
+  };
+  quoteCountdown = setInterval(update, 1000);
+  update();
+}
+
+function refreshQuote() {
+  if (!liveQuote || paying) return;
+  if (liveQuote.mode === "peek") peek(liveQuote.path);
+  else pay(liveQuote.path, liveQuote.asset);
+}
+
+function renderQuoteCard(path, required, asset) {
+  const { exact, fx, q } = getQuoteFrom402(required);
+  liveQuote = { path, required, asset, mode: asset ? "pay" : "peek" };
+  const card = $("quote-card");
+  card.hidden = false;
+  card.classList.remove("expired");
+
+  const payLine = (() => {
+    if (asset === "USDC" && exact) return `${tr("Pagas", "You pay")} ≈ ${fmt(exact.amount, q.tokenDecimals)} USDC`;
+    if (asset && fx) return `${tr("Pagas con", "You pay with")} ${escape(asset)}`;
+    if (exact) return `${tr("Pagas", "You pay")} ≈ ${fmt(exact.amount, q.tokenDecimals)} USDC`;
+    if (fx) return `${tr("Pagas con", "You pay with")} ${fx.extra.sendAssets.map(symbol).join(tr(" o ", " or "))}`;
+    return "";
+  })();
+  const receiveLine = exact
+    ? `${tr("El vendedor recibe exactamente", "Seller receives exactly")} ${fmt(exact.amount, q.tokenDecimals)} USDC`
+    : "";
+
+  card.innerHTML = `
+    <div class="quote-main">
+      <div class="quote-route"><span class="label">${tr("Ruta", "Route")}</span><span>GET ${escape(path)}</span></div>
+      <div class="quote-price">${local(q.localAmount)} ${currencyLabel(q.currency)}</div>
+      ${payLine ? `<div class="quote-pay">${payLine}</div>` : ""}
+      ${receiveLine ? `<div class="quote-receive">${receiveLine}</div>` : ""}
+      <div class="quote-meta">1 ${currencyLabel(q.currency)} = ${rate(q.usdPerUnit)} USD · ${sourceLabel(q.oracleSource)} · ${formatAge(q.oracleTimestamp)}</div>
+    </div>
+    ${q.expiresAt ? `<div class="quote-countdown" id="quote-countdown"><span>${tr("Precio garantizado:", "Guaranteed price:")}</span> <b></b></div>` : ""}
+    ${q.expiresAt ? `<button class="ghost quote-refresh" id="quote-refresh" type="button" hidden>${tr("Actualizar precio", "Refresh price")}</button>` : ""}`;
+
+  if (q.expiresAt) {
+    startQuoteCountdown(q.expiresAt);
+    $("quote-refresh").onclick = refreshQuote;
+  } else {
+    stopQuoteCountdown();
+  }
+}
+
+function hidePayProgress() {
+  $("pay-progress").hidden = true;
+  $("stepper").hidden = true;
+  $("stepper").innerHTML = "";
+  $("success-wrap").hidden = true;
+  $("pay-error").hidden = true;
+}
+
+function renderStepper(state) {
+  const steps = [
+    { key: "quote", label: tr("Cotizada", "Quoted") },
+    { key: "sign", label: tr("Firmando y enviando", "Signing and sending") },
+    { key: "confirm", label: tr("Confirmada", "Confirmed") },
+  ];
+  const cls = (key) => {
+    if (key === "quote") return state === "error-quote" ? "error" : state === "quote" ? "active" : "done";
+    if (key === "sign") {
+      if (state === "error-sign") return "error";
+      if (state === "sign") return "active";
+      if (state === "confirm") return "done";
+      return "";
+    }
+    if (key === "confirm") return state === "confirm" ? "done" : "";
+    return "";
+  };
+  $("stepper").hidden = false;
+  $("stepper").innerHTML = steps.map((s, i) => {
+    const c = cls(s.key);
+    const dot = c === "done" ? "✓" : c === "error" ? "!" : String(i + 1);
+    return `<div class="step ${c}"><span class="step-dot">${dot}</span><span>${s.label}</span></div>`;
+  }).join("");
+}
+
+function renderSuccess(path, required, data) {
+  const { q } = getQuoteFrom402(required);
+  stopQuoteCountdown();
+  const refresh = $("quote-refresh");
+  if (refresh) refresh.hidden = true;
+  $("success-wrap").hidden = false;
+  $("mini-receipt").innerHTML = `
+    <span class="mr-label">${tr("Precio local", "Local price")}</span>
+    <span class="mr-local">${local(q.localAmount)} ${currencyLabel(q.currency)}</span>
+    <span class="mr-arrow">→</span>
+    <span class="mr-label">${tr("USDC recibido", "USDC received")}</span>
+    <span class="mr-usdc">${fmt(data.price.amount)} USDC</span>
+    <span class="mr-arrow">→</span>
+    ${txLink(data.transaction, "testnet", tr(`Ver transacción ${short(data.transaction)} en Stellar Expert (nueva pestaña)`, `View transaction ${short(data.transaction)} on Stellar Expert (new tab)`))}`;
+}
+
+let catalogRetry;
 async function loadCatalog() {
+  clearTimeout(catalogRetry);
+  if (!catalog && !$("products").querySelector(".card")) renderSkeletons();
   try {
     const response = await fetch("/catalog");
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     catalog = await response.json();
   } catch {
-    // Keeps the last catalog on screen if there is one; the 30 s refresh retries, sooner on the first load.
     if (!catalog) {
       $("network").textContent = tr("API no disponible · reintentando", "API unavailable · retrying");
-      setTimeout(loadCatalog, 5_000);
+      renderCatalogError();
+      catalogRetry = setTimeout(loadCatalog, 5_000);
     }
     return;
   }
-  const first = !$("products").children.length;
+  clearSkeletons();
+  const first = !$("products").querySelector(".card");
   renderCatalog();
   const quoted = catalog.items.find((item) => !item.error);
   if (first && quoted) peek(quoted.path);
@@ -613,7 +838,8 @@ function renderProduct(item) {
       <button class="ghost peek"></button>
       <div class="label"></div>
       <div class="buttons"></div>`;
-    card.querySelector(".peek").onclick = () => { peek(item.path); $("console").scrollIntoView({ behavior: "smooth", block: "nearest" }); };
+    const peekBtn = card.querySelector(".peek");
+    peekBtn.onclick = () => { peek(item.path); $("console").scrollIntoView({ behavior: "smooth", block: "nearest" }); };
     for (const asset of catalog.payAssets) {
       const button = document.createElement("button");
       button.className = `pay ${asset.toLowerCase()}`;
@@ -625,6 +851,8 @@ function renderProduct(item) {
   }
   card.querySelector("h3").textContent = `GET ${item.path}`;
   card.querySelector(".peek").textContent = tr("Ver el 402 · gratis, sin wallet", "See the 402 · free, no wallet");
+  card.querySelector(".peek").setAttribute("aria-label", tr(`Ver el 402 de GET ${item.path}`, `See the 402 for GET ${item.path}`));
+  for (const button of card.querySelectorAll("button.pay")) button.setAttribute("aria-label", tr(`Pagar GET ${item.path} con ${button.textContent}`, `Pay GET ${item.path} with ${button.textContent}`));
   card.querySelector(".label").textContent = tr("Pagar con", "Pay with");
   card.querySelector(".desc").textContent = tr(item.description, DESCRIPTIONS_EN[item.path] ?? item.description);
   // A rate source can be down (the UF comes from off-chain sites); the other products keep working.
@@ -678,28 +906,42 @@ function describe402(path, required) {
 let peeked;
 async function peek(path) {
   peeked = path;
+  hidePayProgress();
   const term = $("console");
   try {
-    term.innerHTML = describe402(path, await fetch402(path)).join("\n");
+    const required = await fetch402(path);
+    renderQuoteCard(path, required);
+    term.innerHTML = describe402(path, required).join("\n");
   } catch (error) {
+    $("quote-card").hidden = true;
+    stopQuoteCountdown();
     term.innerHTML = span("r", `Error: ${escape(error.message)}`);
   }
 }
 
 async function pay(path, asset) {
+  if (paying) return;
+  paying = true;
   peeked = undefined;
+  hidePayProgress();
   const term = $("console");
   const buttons = document.querySelectorAll("#products button");
   buttons.forEach((b) => (b.disabled = true));
   term.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  $("pay-progress").hidden = false;
   const lines = [];
   const show = (...more) => { lines.push(...more); term.innerHTML = lines.join("\n"); term.scrollTop = term.scrollHeight; };
+  let required;
   try {
-    show(...describe402(path, await fetch402(path)), "");
+    required = await fetch402(path);
+    renderQuoteCard(path, required, asset);
+    renderStepper("quote");
+    show(...describe402(path, required), "");
     show(asset === "USDC"
       ? span("h", tr("→ el agente firma una transferencia de USDC (exact)", "→ the agent signs a USDC transfer (exact)"))
       : span("h", `${tr(`→ el agente firma FxPay.pay con ${asset}`, `→ the agent signs FxPay.pay with ${asset}`)} (exact-fx)${asset === "EURC" ? tr(", ruta EURC → XLM → USDC", ", route EURC → XLM → USDC") : ""}`));
     show(span("c", tr("  reintenta con PAYMENT-SIGNATURE; el facilitador verifica, simula y liquida…", "  retries with PAYMENT-SIGNATURE; the facilitator verifies, simulates and settles…")));
+    renderStepper("sign");
     const started = performance.now();
     // A settlement takes several seconds; a live counter shows the demo is working.
     const waitingLabel = tr("  esperando confirmación on-chain", "  waiting for on-chain confirmation");
@@ -711,6 +953,11 @@ async function pay(path, asset) {
     const response = await fetch(`/demo/pay?with=${asset}&path=${encodeURIComponent(path)}`, { method: "POST" }).finally(() => { clearInterval(waiting); lines.pop(); });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
+    renderStepper("confirm");
+    if (data.spent) {
+      const payEl = $("quote-card").querySelector(".quote-pay");
+      if (payEl) payEl.textContent = `${tr("Pagaste", "You paid")} ${fmt(data.spent.amount)} ${symbol(data.spent.asset)}`;
+    }
     const seconds = ((performance.now() - started) / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 });
     show(
       span("g", `HTTP/1.1 200 OK  ·  ${seconds} s  ·  tx ${txLink(data.transaction)}`),
@@ -720,10 +967,17 @@ async function pay(path, asset) {
       ...(data.fx ? [`  ${tr("guardia FX: gasto máx.", "FX guard: max spend")} ${fmt(data.fx.maxSend)} ${asset} · Reflector ${fmt(data.fx.oracleSend)} · ${tr("prima", "premium")} ${span(data.fx.premiumBps > 500 ? "y" : "g", premium(data.fx.maxSend, data.fx.oracleSend))}${data.fx.premiumBps > 500 ? span("y", tr(" (pool de testnet; en mainnet el cliente rechaza > 5%)", " (testnet pool; on mainnet the client refuses > 5%)")) : span("g", tr(" ✓ bajo el límite de 5%", " ✓ under the 5% limit"))}`] : []),
       escape(JSON.stringify(data.body, null, 2)),
     );
+    renderSuccess(path, required, data);
     loadReceipts().catch(() => {});
   } catch (error) {
+    const state = required ? "error-sign" : "error-quote";
+    renderStepper(state);
+    $("pay-error").hidden = false;
+    $("pay-error-msg").textContent = `${tr("Error en el pago", "Payment error")}: ${error.message}`;
+    $("pay-retry").onclick = () => pay(path, asset);
     show(span("r", `Error: ${escape(error.message)}`));
   } finally {
+    paying = false;
     // Restores each card's state, including products whose quote is unavailable.
     for (const item of catalog.items) renderProduct(item);
   }
@@ -1044,10 +1298,25 @@ const EN = [
   ["#convert-title", "Convert your amount and pay for <em>your</em> result."],
   ["#convert-text", 'A <code>GET /convertir</code> payment (100 NGN ≈ 0.08 USDC) returns your conversion at the Reflector oracle rate at that instant. Pick the amount and currencies, and pay with Freighter. The answer prints in the console above.'],
   ["#mainnet th", ["Date", "Price", "Seller receives", "Payer paid", "Premium vs Reflector", "Transaction"]],
+  ["#pay-retry", "Retry"],
   ["footer p", "x402 payments priced in local currency, settled in USDC on Stellar. For any currency. Made in Chile for Find Your Way."],
   ["footer .label", ["Project", "Built with"]],
   ["footer .cols a[href='/receipts.csv']", "Receipts CSV"],
 ];
+
+function updateCopyButton() {
+  const btn = $("copy-console");
+  if (btn) btn.textContent = tr("Copiar", "Copy");
+}
+
+async function copyConsole() {
+  try {
+    await navigator.clipboard.writeText($("console").textContent);
+    const btn = $("copy-console");
+    btn.textContent = tr("Copiado", "Copied");
+    setTimeout(updateCopyButton, 1500);
+  } catch {}
+}
 
 function setLang(lang) {
   for (const [selector, copy] of EN) {
@@ -1066,8 +1335,11 @@ function setLang(lang) {
   if (peeked) peek(peeked);
   if (receipts.length) renderReceipts();
   if (mainnetList.length) renderMainnet();
+  updateCopyButton();
 }
 $("lang").addEventListener("click", () => setLang(document.documentElement.lang === "en" ? "es" : "en"));
+$("copy-console").onclick = copyConsole;
+updateCopyButton();
 try { if (localStorage.getItem("lang") === "en") setLang("en"); } catch {}
 
 async function start() {
