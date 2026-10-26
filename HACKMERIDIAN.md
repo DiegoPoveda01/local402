@@ -65,8 +65,8 @@ During the event (25–26 Oct):
 
 Known limits: the Bazaar catalog only lists routes after their first settlement.
 
-## Next: SCF Build
+## Next: Instawards sprint
 
-Local402 is open source (MIT), Stellar-native and live on mainnet. The next step is an SCF Build application whose
-main deliverable is an external audit of FxPay, followed by onboarding sellers in Latin America, where Mexican and
-Colombian pesos, reais and soles already quote.
+Local402 is open source (MIT), Stellar-native and live on mainnet. The next step is finishing our Instawards sprint with
+Stellar Chile (through mid-November 2026) and applying for a follow-on Instaward, while onboarding sellers in Latin
+America, where Mexican and Colombian pesos, reais and soles already quote.
