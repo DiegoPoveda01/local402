@@ -9,29 +9,31 @@ import { calm, scramble, wait } from "./motion";
 
 type QuoteData = { quote: { currency: string; usdPerUnit: string; oracleSource: string }; pay: Record<string, string>; oracle?: Record<string, string>; mainnet?: Record<string, { soroswap?: string; sdex?: string }> };
 
-// Testnet pool vs oracle, and the read-only mainnet quote for the same swap.
+// The cheapest read-only mainnet quote for paying with this asset, if any route exists.
+const bestMainnet = (data: QuoteData, asset: string) => {
+  const main = data.mainnet?.[asset] ?? {};
+  return [main.soroswap, main.sdex].filter(Boolean).sort((a, b) => Number(a) - Number(b))[0];
+};
+
+// Mainnet routes vs oracle; the testnet pool comes last, since its prices are arbitrary.
 function FxLines({ asset, units, data, h }: { asset: string; units: string; data: QuoteData; h: Helpers }) {
-  const { fmt, premium } = h;
+  const { tr, fmt, premium } = h;
   const oracle = data.oracle?.[asset];
   if (asset === "USDC" || !oracle) return null;
   const main = data.mainnet?.[asset] ?? {};
-  const best = [main.soroswap, main.sdex].filter(Boolean).sort((a, b) => Number(a) - Number(b))[0];
+  const best = bestMainnet(data, asset);
   const cls = (u: string) => (Number(u) <= Number(oracle) * 1.05 ? "ok" : "warn");
   return (
     <ul className="fx">
-      <li>Reflector: <b>{fmt(oracle)}</b></li>
-      <li>testnet: <span className={cls(units)}>{premium(units, oracle)}</span></li>
-      {best ? <>
-        <li>mainnet: <b>{fmt(best)}</b> <span className={cls(best)}>{premium(best, oracle)}</span></li>
-        <li>{main.soroswap ? <span>Soroswap {premium(main.soroswap, oracle)}</span> : null}{main.soroswap && main.sdex ? " · " : ""}{main.sdex ? <span>SDEX {premium(main.sdex, oracle)}</span> : null}</li>
-      </> : <li>mainnet: sin ruta</li>}
+      <li>Reflector: <b>{fmt(oracle)}</b>{best ? <> · <span className={cls(best)}>{premium(best, oracle)}</span></> : null}</li>
+      {best ? <li>{main.soroswap ? <span>Soroswap {premium(main.soroswap, oracle)}</span> : null}{main.soroswap && main.sdex ? " · " : ""}{main.sdex ? <span>SDEX {premium(main.sdex, oracle)}</span> : null}</li> : <li>mainnet: {tr("sin ruta", "no route")}</li>}
+      <li>{tr("pool de testnet", "testnet pool")}: {fmt(units)} ({premium(units, oracle)})</li>
     </ul>
   );
 }
 
 const PRESETS = ["30 MXN", "10 BRL", "2 EUR", "100 INR", "800 NGN", "300 KES", "1500 CLP", "0.5 UF"];
 
-// The calculator speaks Spanish in both languages, like the receipts.
 export function Calculadora() {
   const h = useH();
   const { tr, rate, sourceLabel, fmt } = h;
@@ -60,11 +62,11 @@ export function Calculadora() {
   }, [n]);
 
   let rateLine: ReactNode = null;
-  if (state.status === "quoting") rateLine = "Cotizando…";
+  if (state.status === "quoting") rateLine = tr("Cotizando…", "Quoting…");
   if (state.status === "error") rateLine = <span style={{ color: "var(--err)" }}>[ERR] {state.message}</span>;
   if (state.status === "done") {
     const q = state.data.quote;
-    rateLine = <>1 {currencyLabel(q.currency)} = {rate(q.usdPerUnit)} USD · {sourceLabel(q.oracleSource)}. XLM y EURC según simulación de FxPay en Soroswap testnet (pools de prueba con precios arbitrarios), sin el 2% de slippage. Debajo, la misma compra en <b>mainnet ahora</b>, solo lectura, frente al valor de Reflector.</>;
+    rateLine = <>1 {currencyLabel(q.currency)} = {rate(q.usdPerUnit)} USD · {sourceLabel(q.oracleSource)}. {tr(<>XLM y EURC: la mejor ruta en <b>mainnet ahora</b> (Soroswap o SDEX, solo lectura) frente al valor de Reflector, sin el 2% de slippage. Los pools de prueba de testnet tienen precios arbitrarios.</>, <>XLM and EURC: the best route on <b>mainnet right now</b> (Soroswap or SDEX, read-only) against the Reflector value, before the 2% slippage. The testnet demo pools have arbitrary prices.</>)}</>;
   }
 
   return (
@@ -76,8 +78,8 @@ export function Calculadora() {
         <div className="card">
           <div className="label">{tr("Precio del vendedor", "Seller's price")}</div>
           <form id="calc-form" onSubmit={(event: FormEvent) => { event.preventDefault(); calculate(input); }}>
-            <input id="calc-input" name="price" autoComplete="off" spellCheck={false} value={input} onChange={(e) => setInput(e.target.value)} aria-label="Precio en moneda local" />
-            <button className="ghost">Cotizar</button>
+            <input id="calc-input" name="price" autoComplete="off" spellCheck={false} value={input} onChange={(e) => setInput(e.target.value)} aria-label={tr("Precio en moneda local", "Price in local currency")} />
+            <button className="ghost">{tr("Cotizar", "Quote")}</button>
           </form>
           <div className="presets" id="presets">
             {PRESETS.map((preset) => <button key={preset} className="ghost" onClick={() => calculate(preset)}>{preset.replace(".", ",")}</button>)}
@@ -86,12 +88,15 @@ export function Calculadora() {
         </div>
         {/* Keyed by quote, so a decode in progress never lands on the next quote's figures. */}
         <div className="amounts" id="calc-amounts" aria-live="polite" ref={amounts} key={n}>
-          {state.status === "done" && Object.entries(state.data.pay).map(([asset, units]) => (
+          {state.status === "done" && Object.entries(state.data.pay).map(([asset, units]) => {
+            const best = asset === "USDC" ? undefined : bestMainnet(state.data, asset);
+            return (
             <div key={asset} className={`amount ${asset.toLowerCase()}`}>
-              <span className="label">{asset}</span><div>{fmt(units)}</div><span className="meta">{asset === "USDC" ? "recibe el vendedor" : "gasta el cliente en testnet"}</span>
+              <span className="label">{asset}</span><div>{fmt(best ?? units)}</div><span className="meta">{asset === "USDC" ? tr("recibe el vendedor", "the seller receives") : best ? tr("gasta el cliente en mainnet", "the client spends on mainnet") : tr("gasta el cliente en testnet", "the client spends on testnet")}</span>
               <FxLines asset={asset} units={units} data={state.data} h={h} />
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

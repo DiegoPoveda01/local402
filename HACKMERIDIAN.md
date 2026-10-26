@@ -41,6 +41,16 @@ During the event (25–26 Oct):
 - **local402-mcp on npm**: the MCP server now runs with `npx -y local402-mcp` and defaults to the hosted facilitators.
 - **Discovery that survives serverless restarts**: the facilitator's Bazaar catalog now lives in Redis, so
   `local402_discover` returns the paid routes.
+- **A new landing at local402.vercel.app** (Next.js, English and Spanish): a free testnet demo with no wallet, a
+  calculator that prices each asset against the live mainnet routes, receipts in local currency, and setup for MCP.
+
+## Goals from the pre-event intake
+
+| Goal we set | Where it stands |
+|---|---|
+| **Improve product and UX**: a seller experience simple enough for an API owner who has never used crypto, with quotes and receipts in local currency | Done: the new landing above, with the paid route, its 402 and its receipt visible in one place |
+| **Get technical feedback** | Done: the mentors asked for a one-line problem statement, a design that doesn't look generated, and use from existing agent frameworks. The first is the line at the top of this page, the second the new landing, the third `local402-mcp` |
+| **Improve our business model**: a written study of ways to sustain the facilitator | Moved to after the event: the mentors' advice was that it can wait, so the weekend went to UX and agents |
 
 ## Production readiness
 

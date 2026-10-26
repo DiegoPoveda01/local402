@@ -909,13 +909,13 @@ async function runTicket() {
 }
 
 // The API publishes its descriptions in Spanish (they also go to Bazaar); these are for the English page.
-const DESCRIPTIONS_EN = {
-  "/indicadores": "Chilean market rates, charged in Chilean pesos",
-  "/europa": "Euro exchange rates, charged in euros",
-  "/uf": "The UF in pesos and dollars, charged in UF",
-  "/latam": "Latin American currencies per dollar, charged in Mexican pesos",
-  "/asia": "Asian currencies per dollar, charged in Indian rupees",
-  "/africa": "African currencies per dollar, charged in Nigerian naira",
+const DESCRIPTIONS_ES = {
+  "/indicadores": "Indicadores de mercado para Chile, cobrados en pesos chilenos",
+  "/europa": "Tipos de cambio del euro, cobrados en euros",
+  "/uf": "Valor de la UF en pesos y dólares, cobrado en UF",
+  "/latam": "Monedas de Latinoamérica por dólar, cobradas en pesos mexicanos",
+  "/asia": "Monedas de Asia por dólar, cobradas en rupias indias",
+  "/africa": "Monedas de África por dólar, cobradas en nairas nigerianas",
 };
 
 // The six routes take turns while the section is on screen: each one opens its card and its 402 in the console.
@@ -972,7 +972,7 @@ function renderProduct(item) {
   }
   card.querySelector("h3").textContent = `GET ${item.path}`;
   card.querySelector(".label").textContent = tr("Pagar con", "Pay with");
-  card.querySelector(".desc").textContent = tr(item.description, DESCRIPTIONS_EN[item.path] ?? item.description);
+  card.querySelector(".desc").textContent = tr(DESCRIPTIONS_ES[item.path] ?? item.description, item.description);
   document.querySelector(`.route[data-path="${item.path}"] b`).innerHTML = item.error ? escape(item.price.replace(".", ",")) : `${local(item.quote.localAmount)} ${currencyLabel(item.quote.currency)}`;
   // A rate source can be down (the UF comes from off-chain sites); the other products keep working.
   if (item.error) {

@@ -3,7 +3,7 @@ import type { Network, PaymentPayload, PaymentRequirements } from "@x402/core/ty
 import { Operation, scValToNative, StrKey, Transaction } from "@stellar/stellar-sdk";
 import { createEd25519Signer, getNetworkPassphrase, type ClientStellarSigner } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/client";
-import { ExactFxClientScheme, fxNetwork } from "@local402/fx";
+import { ExactFxClientScheme, formatUnits, fxNetwork } from "@local402/fx";
 import {
   Local402Error,
   parseLocalPrice,
@@ -264,7 +264,7 @@ export class Local402Client {
 
   private checkBudget(charged: bigint, units: bigint): void {
     if (this.budget && this.budget.spent + charged > units) {
-      throw new Local402Error("REFUSED_BUDGET", `Refusing to pay: it would exceed the ${this.budget.limit} budget (${this.budget.spent} of ${units} USDC units already spent)`);
+      throw new Local402Error("REFUSED_BUDGET", `Refusing to pay ${formatUnits(charged)} USDC: it would exceed the ${this.budget.limit} budget (${formatUnits(this.budget.spent)} of ${formatUnits(units)} USDC already spent)`);
     }
   }
 

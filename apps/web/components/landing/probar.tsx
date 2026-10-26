@@ -40,13 +40,13 @@ function describe402(path: string, required: Required, h: Helpers, symbol: (asse
 }
 
 // The API publishes its descriptions in Spanish (they also go to Bazaar); these are for the English page.
-const DESCRIPTIONS_EN: Record<string, string> = {
-  "/indicadores": "Chilean market rates, charged in Chilean pesos",
-  "/europa": "Euro exchange rates, charged in euros",
-  "/uf": "The UF in pesos and dollars, charged in UF",
-  "/latam": "Latin American currencies per dollar, charged in Mexican pesos",
-  "/asia": "Asian currencies per dollar, charged in Indian rupees",
-  "/africa": "African currencies per dollar, charged in Nigerian naira",
+const DESCRIPTIONS_ES: Record<string, string> = {
+  "/indicadores": "Indicadores de mercado para Chile, cobrados en pesos chilenos",
+  "/europa": "Tipos de cambio del euro, cobrados en euros",
+  "/uf": "Valor de la UF en pesos y dólares, cobrado en UF",
+  "/latam": "Monedas de Latinoamérica por dólar, cobradas en pesos mexicanos",
+  "/asia": "Monedas de Asia por dólar, cobradas en rupias indias",
+  "/africa": "Monedas de África por dólar, cobradas en nairas nigerianas",
 };
 
 // What the console shows: a 402 (redrawn in the page language) or a payment's output as it happened.
@@ -185,7 +185,7 @@ export function Probar() {
               return (
                 <div key={item.path} className="card" id={`product-${item.path.slice(1)}`} hidden={item.path !== active}>
                   <h3>GET {item.path}</h3>
-                  <div className="meta desc">{tr(item.description, DESCRIPTIONS_EN[item.path] ?? item.description)}</div>
+                  <div className="meta desc">{tr(DESCRIPTIONS_ES[item.path] ?? item.description, item.description)}</div>
                   {/* A rate source can be down (the UF comes from off-chain sites); the other products keep working. */}
                   {item.error ? <>
                     <div className="price">{item.price.replace(".", ",")}<small>{tr("cotización no disponible", "quote unavailable")}</small></div>
