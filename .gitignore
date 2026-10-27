@@ -9,5 +9,11 @@ apps/demo-api/data/
 video/
 docs/guion-demo.md
 instawards-october-application.md
-images/
 contracts/fx-pay/test_snapshots/test/invariants_hold_*
+
+# personal tax docs (never commit)
+fw8ben.pdf
+firma.png
+
+# personal event photos and videos (never commit)
+images/

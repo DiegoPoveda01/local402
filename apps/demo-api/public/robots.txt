@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://local402.vercel.app/sitemap.xml

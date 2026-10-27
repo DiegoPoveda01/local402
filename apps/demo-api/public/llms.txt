@@ -1,0 +1,31 @@
+# Local402
+
+> x402 on Stellar with prices in local currency. A seller prices an HTTP route in its own currency ("50 CLP"), Reflector (Stellar's on-chain oracle) converts it to USDC, and the buyer pays with USDC, XLM or EURC in one Stellar transaction. For XLM and EURC, the FxPay Soroban contract swaps on Soroswap and delivers the exact USDC to the seller.
+
+This site is the testnet demo: every paid route below answers 402 Payment Required with an x402 offer until it is paid.
+
+## Paid demo routes (stellar:testnet)
+
+- [/indicadores](https://local402.vercel.app/indicadores): Chilean market rates, 50 CLP
+- [/europa](https://local402.vercel.app/europa): Euro exchange rates, 0.05 EUR
+- [/uf](https://local402.vercel.app/uf): The UF in pesos and dollars, 0.01 UF
+- [/latam](https://local402.vercel.app/latam): Latin American currencies per dollar, 1 MXN
+- [/asia](https://local402.vercel.app/asia): Asian currencies per dollar, 5 INR
+- [/africa](https://local402.vercel.app/africa): African currencies per dollar, 70 NGN
+- [/convertir](https://local402.vercel.app/convertir): currency converter between the oracle currencies, charged in Nigerian naira
+
+## Free endpoints
+
+- [/catalog](https://local402.vercel.app/catalog): the paid routes with their local prices
+- [/demo/quote](https://local402.vercel.app/demo/quote): what a local price costs in USDC, XLM and EURC right now
+- [/receipts](https://local402.vercel.app/receipts): recent settled payments, with the price in local currency
+
+## Use it from an AI agent
+
+- [local402-mcp](https://www.npmjs.com/package/local402-mcp): MCP server that gives an agent a Stellar wallet to discover, quote and pay these routes within a budget in local currency (`npx -y local402-mcp`)
+
+## Source
+
+- [Repository](https://github.com/DiegoPoveda01/local402): npm packages local402-client, local402-server, local402-pricing, local402-fx; the FxPay contract; the facilitators
+- [HACKMERIDIAN.md](https://github.com/DiegoPoveda01/local402/blob/main/HACKMERIDIAN.md): what was built before HackMeridian and what shipped during it
+- FxPay on Stellar mainnet: CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD

@@ -23,6 +23,8 @@ export interface FacilitatorConfig {
   minFeeBalanceXlm: number;
   /** Proxies in front of the instance whose `X-Forwarded-For` it believes, for per-client limits. */
   trustProxy: number;
+  /** Upstash Redis over REST, where the Bazaar catalog survives restarts. Without it the catalog lives in memory. */
+  catalogRedis?: { url: string; token: string };
 }
 
 type Env = Record<string, string | undefined>;
@@ -117,6 +119,9 @@ export function facilitatorConfig(env: Env = process.env): FacilitatorConfig {
 
   const minFeeBalanceXlm = Number(env.MIN_FEE_BALANCE_XLM?.trim() || "2");
   if (!Number.isFinite(minFeeBalanceXlm) || minFeeBalanceXlm < 0) invalid(`MIN_FEE_BALANCE_XLM must be a number of XLM, got ${shown(env.MIN_FEE_BALANCE_XLM ?? "")}.`);
+  // Vercel's Upstash integration names them KV_REST_API_*; Upstash itself, UPSTASH_REDIS_REST_*.
+  const redisUrl = env.KV_REST_API_URL?.trim() || env.UPSTASH_REDIS_REST_URL?.trim();
+  const redisToken = env.KV_REST_API_TOKEN?.trim() || env.UPSTASH_REDIS_REST_TOKEN?.trim();
 
   return {
     network,
@@ -131,5 +136,6 @@ export function facilitatorConfig(env: Env = process.env): FacilitatorConfig {
     limits: { verify: whole(env, "VERIFY_RATE_LIMIT", 60, 1), settle: whole(env, "SETTLE_RATE_LIMIT", 20, 1) },
     minFeeBalanceXlm,
     trustProxy: whole(env, "TRUST_PROXY", 0, 0, 10),
+    catalogRedis: redisUrl && redisToken ? { url: redisUrl, token: redisToken } : undefined,
   };
 }

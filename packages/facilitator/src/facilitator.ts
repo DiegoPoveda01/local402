@@ -74,8 +74,21 @@ export function createFacilitator(config: FacilitatorConfig, options: { probe?: 
   const { network } = config;
   const rpcConfig = config.rpcUrl ? { url: config.rpcUrl } : undefined;
 
-  // Bazaar catalog: every resource that settles here and declares discovery info, keyed by URL.
+  // Bazaar catalog: every resource that settles here and declares discovery info, keyed by URL. Serverless instances
+  // start empty, so with Redis configured the catalog lives there; memory is the fallback.
   const catalog = new Map<string, DiscoveryResource>();
+  const catalogKey = `local402:bazaar:${network}`;
+  const redisConfig = config.catalogRedis;
+  /** One command over Upstash's REST API. */
+  const redis = async (...command: string[]): Promise<unknown> => {
+    const response = await fetch(redisConfig!.url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${redisConfig!.token}` },
+      body: JSON.stringify(command),
+    });
+    if (!response.ok) throw new Error(`Redis ${response.status}`);
+    return ((await response.json()) as { result: unknown }).result;
+  };
 
   // Several fee-paying accounts ("channels") let settlements run in parallel without sequence number clashes.
   const signers = config.secrets.map((secret) => createEd25519Signer(secret, network));
@@ -96,15 +109,30 @@ export function createFacilitator(config: FacilitatorConfig, options: { probe?: 
       const discovered = result.success && extractDiscoveryInfo(paymentPayload, requirements);
       if (!discovered) return;
       const { resourceUrl, x402Version, discoveryInfo, ...metadata } = discovered;
-      const accepts = (catalog.get(resourceUrl)?.accepts ?? []).filter((a) => a.scheme !== requirements.scheme);
-      catalog.set(resourceUrl, {
+      // Another instance may have stored the route's other scheme; keep it.
+      let previous = catalog.get(resourceUrl);
+      if (!previous && redisConfig) {
+        previous = await redis("HGET", catalogKey, resourceUrl).then(
+          (value) => (typeof value === "string" ? (JSON.parse(value) as DiscoveryResource) : undefined),
+          () => undefined,
+        );
+      }
+      const accepts = (previous?.accepts ?? []).filter((a) => a.scheme !== requirements.scheme);
+      const entry: DiscoveryResource = {
         ...metadata,
         resource: resourceUrl,
         type: discoveryInfo.input.type,
         x402Version,
         accepts: [...accepts, requirements],
         lastUpdated: new Date().toISOString(),
-      });
+      };
+      catalog.set(resourceUrl, entry);
+      // The payment has settled by now: a Redis failure only costs the catalog entry, never the result.
+      if (redisConfig) {
+        await redis("HSET", catalogKey, resourceUrl, JSON.stringify(entry)).catch(() =>
+          console.warn("bazaar: could not save the catalog entry to Redis"),
+        );
+      }
     });
 
   // Verification simulates on RPC and settlement spends fees, so both are bounded, each with its own cap.
@@ -137,8 +165,16 @@ export function createFacilitator(config: FacilitatorConfig, options: { probe?: 
     res.json(facilitator.getSupported());
   });
 
-  app.get("/discovery/resources", (req, res) => {
-    const items = [...catalog.values()].filter((item) => !req.query.type || item.type === req.query.type);
+  app.get("/discovery/resources", async (req, res) => {
+    let all = [...catalog.values()];
+    if (redisConfig) {
+      try {
+        all = ((await redis("HVALS", catalogKey)) as string[]).map((value) => JSON.parse(value) as DiscoveryResource);
+      } catch {
+        console.warn("bazaar: could not read the catalog from Redis, serving this instance's copy");
+      }
+    }
+    const items = all.filter((item) => !req.query.type || item.type === req.query.type);
     const limit = Number(req.query.limit ?? 100);
     const offset = Number(req.query.offset ?? 0);
     res.json({ x402Version: 2, items: items.slice(offset, offset + limit), pagination: { limit, offset, total: items.length } });
