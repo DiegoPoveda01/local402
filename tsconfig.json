@@ -9,5 +9,5 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["packages/*/src", "packages/*/test", "apps/*/src", "scripts"]
+  "include": ["packages/*/src", "packages/*/test", "apps/*/src", "scripts", "test"]
 }

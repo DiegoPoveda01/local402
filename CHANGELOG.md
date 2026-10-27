@@ -1,7 +1,8 @@
 # Changelog
 
 The four packages (`local402-pricing`, `local402-fx`, `local402-client` and `local402-server`) share one
-version from 1.0 on.
+version from 1.0 on. `local402-facilitator`, the facilitator kit new in 1.0, is released with them under
+the same version.
 
 ## 1.0.0
 
@@ -39,6 +40,12 @@ npm install local402-server@next local402-client@next
   and lists what the seller accepts, instead of failing inside x402.
 - `quoteSecret` on `localRoute` and `localToolPayment`, passed through to `localPrice`.
 - `examples/quickstart`: a route priced in pesos in 14 lines, compiled in CI.
+- `local402-facilitator`: the facilitator as a package anyone can run with `npx local402-facilitator` or
+  its Dockerfile, instead of from this repository. Every variable is validated at startup; verify and
+  settle have separate per-client limits; `/health` and `/ready` (503 when the RPC, a fee payer's
+  balance or FxPay fails); `keys` makes an instance its own fee-paying accounts and `check` tests a
+  deploy before it takes traffic. See [docs/facilitator.md](docs/facilitator.md) and
+  [the runbook](docs/facilitator-runbook.md).
 
 ### Security
 
@@ -53,6 +60,11 @@ npm install local402-server@next local402-client@next
   any answer other than 402, a 500 included, came back as a free resource, so a seller that was down looked free.
 - The demo apps treat an empty `MAX_PRICE`, `BUDGET` or `DEMO_MAX_PRICE` as unset and keep their default
   cap. Before, an empty value on the host meant no cap at all.
+- The facilitator treats an empty `PAY_TO_ALLOWLIST` the same way, and on `stellar:pubnet` refuses to
+  start without one. Before, `PAY_TO_ALLOWLIST=` on a mainnet host settled for any seller.
+- `local402-facilitator` trusts no proxy unless `TRUST_PROXY` says so. A default of one proxy let a client
+  that connects directly write its own `X-Forwarded-For` and get a new rate-limit bucket on every request.
+  The Local402 deployment on Vercel keeps one.
 
 ### Unchanged
 

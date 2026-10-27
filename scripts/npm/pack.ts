@@ -7,12 +7,12 @@
 // The @local402 npm scope belongs to someone else, so packages publish as local402-<name> and the compiled imports
 // of @local402/<name> are rewritten to match.
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const OUT = resolve(".npm");
 // Dependency order: each package compiles against the declarations of the ones before it.
-const PACKAGES = ["pricing", "fx", "client", "server"];
+const PACKAGES = ["pricing", "fx", "client", "server", "facilitator"];
 // The MCP server is packed last, paying through the compiled client, and is the only packed app under apps/.
 const PACKED = [...PACKAGES, "mcp"];
 const DESCRIPTIONS: Record<string, string> = {
@@ -20,11 +20,12 @@ const DESCRIPTIONS: Record<string, string> = {
   fx: "exact-fx: x402 payments on Stellar where the payer spends XLM or EURC and the seller receives exact USDC",
   client: "x402 client for Stellar that checks local-currency quotes against its own oracle and pays with USDC, XLM or EURC",
   server: "One-line local-currency x402 routes and paid MCP tools on Stellar",
+  facilitator: "Deployable x402 facilitator for Stellar: settles exact and exact-fx, with a seller allowlist, separate verify and settle limits, health and readiness",
   mcp: "MCP server that lets an AI agent discover, quote and pay x402 APIs priced in local currency on Stellar",
 };
 
 const published = (workspaceName: string) => workspaceName.replace(/^@local402\//, "local402-");
-// The four libraries live in packages/; the MCP server is an app, in apps/.
+// The libraries live in packages/; the MCP server is an app, in apps/.
 const workspace = (name: string) => (name === "mcp" ? `apps/${name}` : `packages/${name}`);
 
 rmSync(OUT, { recursive: true, force: true });
@@ -87,5 +88,6 @@ for (const name of PACKED) {
     )}\n`,
   );
   copyFileSync("LICENSE", join(dir, "LICENSE"));
+  if (existsSync(`${workspace(name)}/README.md`)) copyFileSync(`${workspace(name)}/README.md`, join(dir, "README.md"));
   console.log(`${published(source.name)}@${source.version} → ${dir}`);
 }

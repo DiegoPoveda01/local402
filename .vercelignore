@@ -1,0 +1,8 @@
+# Without this file the CLI uploads the whole working directory, and the demo recordings plus the
+# Rust build directory are gigabytes of it. Vercel builds from source, so none of this is needed there.
+node_modules
+video
+contracts/target
+.npm
+.demo-keys.local
+apps/demo-api/data

@@ -269,9 +269,9 @@ packages/
   fx/        the exact-fx scheme: client, resource server, facilitator, fee bidding
   client/    Local402Client — pays with USDC/XLM/EURC, with its own guards. Also a CLI
   server/    localRoute() and localToolPayment() — one line to price a route or an MCP tool
+  facilitator/  verifies and settles, pays fees, serves the x402 Bazaar catalog. Runs with npx
 apps/
   demo-api/      the seller: six paid routes, receipts, the dashboard
-  facilitator/   verifies and settles, pays fees, serves the x402 Bazaar catalog
   agent/         minimal paying client
   mcp/           MCP server an AI agent uses to discover, quote and pay
   mcp-seller/    an MCP server whose tool is itself paid per call
@@ -378,9 +378,14 @@ money, needs these — each `.env.example` lists the rest.
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | seller | Receipts, the demo payment caps and the last known UF value. Without them each serverless instance keeps its own, and they disappear when it does. |
 | `SELF_URL` | seller | Where the demo agent buys from. Falls back to the Vercel project's production domain, and to the request's `Host` only when that is localhost, because `Host` is whatever the caller wrote. |
 | `CORS_ORIGIN` | seller | Dashboard origins allowed to pay from the visitor's wallet, comma-separated. |
-| `PAY_TO_ALLOWLIST`, `MIN_AMOUNT` | facilitator | Every settlement spends the facilitator's own fees. On `stellar:pubnet` these default to `PAY_TO` and 100000 (0.01 USDC); set them explicitly to serve other sellers. |
+| `PAY_TO_ALLOWLIST`, `MIN_AMOUNT` | facilitator | Every settlement spends the facilitator's own fees. On `stellar:pubnet` it refuses to start without a seller allowlist (the demo deployment falls back to its own `PAY_TO`), and the minimum defaults to 100000 (0.01 USDC). |
 | `FACILITATOR_PRIVATE_KEYS` | facilitator | One key per concurrent settlement. `ChannelPool` separates them within an instance only, so give each instance its own keys. |
+| `VERIFY_RATE_LIMIT`, `SETTLE_RATE_LIMIT`, `TRUST_PROXY` | facilitator | Requests per client per minute (60 and 20), and how many proxies' `X-Forwarded-For` to believe when counting clients (0; 1 on the demo deployment, behind Vercel). |
 | `FX_CONTRACT` | both | Required on mainnet: the FxPay deployment the payer's authorization is pinned to. |
+
+To run a facilitator of your own, for your sellers or someone else's, `npx local402-facilitator` is the
+whole install: [docs/facilitator.md](docs/facilitator.md) has every variable and the mainnet configuration,
+and [the runbook](docs/facilitator-runbook.md) covers keys, funding, top-ups and rotation.
 
 ## Testing
 

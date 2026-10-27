@@ -8,6 +8,8 @@ apps/demo-api/data/
 .npm/
 video/
 docs/guion-demo.md
+instawards-october-application.md
+contracts/fx-pay/test_snapshots/test/invariants_hold_*
 
 # personal tax docs (never commit)
 fw8ben.pdf
