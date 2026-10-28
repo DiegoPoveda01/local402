@@ -6,11 +6,10 @@ the same version.
 
 ## 1.0.0
 
-For now 1.0.0 is published under the npm `next` tag, so `npm install local402-server` keeps
-installing 0.1.x until `latest` moves to 1.0:
+1.0.0 is the npm `latest` release, so a plain install gets it:
 
 ```sh
-npm install local402-server@next local402-client@next
+npm install local402-server local402-client
 ```
 
 ### Breaking
