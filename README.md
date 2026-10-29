@@ -20,7 +20,7 @@ no manual currency swap on either side.
 | | |
 | --- | --- |
 | Demo video (3 min) | **<https://youtu.be/SNeQ8wZo3hg>** |
-| Dashboard (testnet) | **<https://local402.vercel.app>** |
+| Dashboard (testnet) | **<https://local402.xyz>** |
 | Live API (Stellar mainnet) | **<https://local402-mainnet.vercel.app>** |
 | Scheme spec | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
 | npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) · [`local402-facilitator`](https://www.npmjs.com/package/local402-facilitator) · [`local402-mcp`](https://www.npmjs.com/package/local402-mcp) |
@@ -200,7 +200,7 @@ npx -y local402-client quote https://local402-mainnet.vercel.app/asia --with XLM
 npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with EURC
 ```
 
-To pay for real, use the Freighter button in section 08 of the [dashboard](https://local402.vercel.app), or
+To pay for real, use the Freighter button in section 08 of the [dashboard](https://local402.xyz), or
 `STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "100 NGN"`. The `--max` limit can be
 in any supported currency, whatever the seller's, and the client refuses anything above it.
 
