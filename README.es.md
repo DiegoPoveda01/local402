@@ -23,7 +23,7 @@ sin que ninguna de las dos partes tenga que cambiar moneda a mano.
 | Dashboard (testnet) | **<https://local402.vercel.app>** |
 | API en vivo (Stellar mainnet) | **<https://local402-mainnet.vercel.app>** |
 | Especificación del esquema | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
-| npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) |
+| npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) · [`local402-facilitator`](https://www.npmjs.com/package/local402-facilitator) · [`local402-mcp`](https://www.npmjs.com/package/local402-mcp) |
 | FxPay en mainnet | [`CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD`](https://stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD) |
 | Pagos reales a través de él | XLM → USDC [`0babefe1…`](https://stellar.expert/explorer/public/tx/0babefe189f2765b3198bbfdefb28c5bcad8b8bd9bc0710c78eb2776b306ac3d) y EURC → USDC [`bfe6a44d…`](https://stellar.expert/explorer/public/tx/bfe6a44d5db2a37a67552c38c75d85009f3208c95d1c22e4fd086c6e959f0a09), 2026-09-20 — cada uno entregó exactamente 0.0520721 USDC al vendedor y devolvió el input no usado |
 | Un vendedor externo cobrando con esto | [kuyfi](#alguien-más-ya-cobra-con-esto) cobra 500 CLP por escaneo — **[el flujo pagado completo en video (28 s)](https://x.com/dpoveda0/status/2107313680660812005)** · tx de testnet [`44ef0d00…`](https://stellar.expert/explorer/testnet/tx/44ef0d00b52dafd64acdb97b1c992ba62f996f7ee5a1d9c35f258d339c8abf42) |
@@ -493,10 +493,10 @@ Chile y ajeno al proyecto, la va a seguir desde cero y señalar lo que no se ent
 | Cuándo | Qué | Evidencia de que está hecho |
 | --- | --- | --- |
 | Sprint de octubre 2026 | Paquetes 1.0, un facilitador que cualquiera puede desplegar, la guía de integración, más tests, y kuyfi en 1.0 | Los criterios de aceptación de [docs/sprint-plan.md](docs/sprint-plan.md) |
-| Siguiente: un Instaward de continuación, si corresponde | El siguiente paso de adopción después del sprint, definido a partir de lo que muestre su informe de cierre | Sus propios criterios de aceptación, publicados igual que los de este sprint |
 | Cuando kuyfi esté listo | kuyfi en vivo en mainnet. El sprint ya agrega su destinatario a la allowlist, así que la decisión es de kuyfi ([kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2)) | Hashes de mainnet de un escaneo de kuyfi pagado |
-| **Meta final: SCF Build** | **Una auditoría externa de FxPay**, que ningún Instaward financia. El sprint deja el código listo para auditar: [security-review.md](docs/security-review.md) para el contrato y [threat-model.md](docs/threat-model.md) para todo el camino del pago | Un informe de auditoría publicado, con cada hallazgo corregido o respondido |
+| **Siguiente: SCF Build** | **Una auditoría externa de FxPay**, que el Instaward no financia. El sprint deja el código listo para auditar: [security-review.md](docs/security-review.md) para el contrato y [threat-model.md](docs/threat-model.md) para todo el camino del pago | Un informe de auditoría publicado, con cada hallazgo corregido o respondido |
 | Después de la auditoría | Abrir el facilitador de mainnet a cualquier vendedor: quitar la allowlist de destinatarios y revisar el monto mínimo | Un pago en mainnet liquidado para un vendedor que nadie agregó a mano |
+| Al cierre del SCF Build | 5 vendedores externos liquidando en mainnet, kuyfi primero | Contados desde los eventos `FxPaid` de FxPay en mainnet |
 | En curso | `exact-fx` propuesto upstream a x402 | La propuesta abierta; cuándo se fusiona depende de x402 |
 
 `exact-fx` es un esquema en borrador. Está escrito en el formato de specs de x402 para poder discutirse como

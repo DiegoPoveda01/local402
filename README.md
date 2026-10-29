@@ -23,7 +23,7 @@ no manual currency swap on either side.
 | Dashboard (testnet) | **<https://local402.vercel.app>** |
 | Live API (Stellar mainnet) | **<https://local402-mainnet.vercel.app>** |
 | Scheme spec | [`docs/scheme_exact_fx_stellar.md`](docs/scheme_exact_fx_stellar.md) |
-| npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) |
+| npm | [`local402-pricing`](https://www.npmjs.com/package/local402-pricing) · [`local402-fx`](https://www.npmjs.com/package/local402-fx) · [`local402-client`](https://www.npmjs.com/package/local402-client) · [`local402-server`](https://www.npmjs.com/package/local402-server) · [`local402-facilitator`](https://www.npmjs.com/package/local402-facilitator) · [`local402-mcp`](https://www.npmjs.com/package/local402-mcp) |
 | FxPay on mainnet | [`CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD`](https://stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD) |
 | Real payments through it | XLM → USDC [`0babefe1…`](https://stellar.expert/explorer/public/tx/0babefe189f2765b3198bbfdefb28c5bcad8b8bd9bc0710c78eb2776b306ac3d) and EURC → USDC [`bfe6a44d…`](https://stellar.expert/explorer/public/tx/bfe6a44d5db2a37a67552c38c75d85009f3208c95d1c22e4fd086c6e959f0a09), 2026-09-20 — each delivered exactly 0.0520721 USDC to the seller and refunded the unused input |
 | An outside seller charging with it | [kuyfi](#someone-else-is-already-charging-with-it) prices each scan at 500 CLP — **[the full paid flow on video (28 s)](https://x.com/dpoveda0/status/2107313680660812005)** · testnet tx [`44ef0d00…`](https://stellar.expert/explorer/testnet/tx/44ef0d00b52dafd64acdb97b1c992ba62f996f7ee5a1d9c35f258d339c8abf42) |
@@ -482,10 +482,10 @@ not part of the project, will follow it from scratch and report whatever is uncl
 | When | What | Evidence that it is done |
 | --- | --- | --- |
 | October 2026 sprint | 1.0 packages, a facilitator anyone can deploy, the integration guide, wider tests, and kuyfi on 1.0 | The acceptance criteria in [docs/sprint-plan.md](docs/sprint-plan.md) |
-| Next: a follow-on Instaward, if eligible | The next adoption step after the sprint, scoped from what its close-out report shows | Its own acceptance criteria, published like this sprint's |
 | When kuyfi is ready | kuyfi live on mainnet. The sprint already adds its payee to the allowlist, so this is kuyfi's call ([kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2)) | Mainnet tx hashes for a paid kuyfi scan |
-| **Final goal: SCF Build** | **An external audit of FxPay**, which neither Instaward funds. The sprint leaves the code audit-ready: [security-review.md](docs/security-review.md) for the contract, [threat-model.md](docs/threat-model.md) for the whole payment path | A published audit report, with every finding fixed or answered |
+| **Next: SCF Build** | **An external audit of FxPay**, which the Instaward does not fund. The sprint leaves the code audit-ready: [security-review.md](docs/security-review.md) for the contract, [threat-model.md](docs/threat-model.md) for the whole payment path | A published audit report, with every finding fixed or answered |
 | After the audit | Open the mainnet facilitator to any seller: drop the payee allowlist and revisit the minimum amount | A mainnet payment settled for a seller nobody added by hand |
+| By the end of the SCF Build | 5 external sellers settling on mainnet, kuyfi first | Counted from FxPay's `FxPaid` events on mainnet |
 | Ongoing | `exact-fx` proposed upstream to x402 | The open proposal; when it merges is up to x402 |
 
 `exact-fx` is a draft scheme. It is written in the x402 spec format so it can be discussed as a
