@@ -68,5 +68,5 @@ Known limits: the Bazaar catalog only lists routes after their first settlement.
 ## Next: Instawards sprint
 
 Local402 is open source (MIT), Stellar-native and live on mainnet. The next step is finishing our Instawards sprint with
-Stellar Chile (through mid-November 2026) and applying for a follow-on Instaward, while onboarding sellers in Latin
+Stellar Chile (through mid-November 2026) and securing funding for an external audit of FxPay, while onboarding sellers in Latin
 America, where Mexican and Colombian pesos, reais and soles already quote.
