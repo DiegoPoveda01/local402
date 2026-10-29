@@ -111,7 +111,7 @@ function Ticket() {
     return () => { stopped = true; };
   }, [ready]);
 
-  const cmd = item ? `curl -i ${location.host}${item.path}` : "curl -i local402.vercel.app/indicadores";
+  const cmd = item ? `curl -i ${location.host}${item.path}` : "curl -i local402.xyz/indicadores";
   const q = item?.quote;
   const line = (i: number) => (i >= visible ? "pending" : undefined);
   return (

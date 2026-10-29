@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 
-const OG = "https://local402.vercel.app/og.png";
+const OG = "https://local402.xyz/og.png";
 
 export const metadata: Metadata = {
   title: "Local402 · Cobra en tu moneda",
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   icons: { icon: { url: "/logo.svg", type: "image/svg+xml" } },
   openGraph: {
     type: "website",
-    url: "https://local402.vercel.app/",
+    url: "https://local402.xyz/",
     title: "Local402 · Cobra en tu moneda, recibe USDC exacto",
     description: "Pagos x402 en Stellar con precios en moneda local y swap atómico en Soroswap. Demo en vivo en testnet.",
     images: [{ url: OG, width: 1200, height: 630, alt: "Local402: cobra en tu moneda, recibe USDC exacto. 50 CLP = 0.0522984 USDC vía el oráculo Reflector." }],

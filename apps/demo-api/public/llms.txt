@@ -6,19 +6,19 @@ This site is the testnet demo: every paid route below answers 402 Payment Requir
 
 ## Paid demo routes (stellar:testnet)
 
-- [/indicadores](https://local402.vercel.app/indicadores): Chilean market rates, 50 CLP
-- [/europa](https://local402.vercel.app/europa): Euro exchange rates, 0.05 EUR
-- [/uf](https://local402.vercel.app/uf): The UF in pesos and dollars, 0.01 UF
-- [/latam](https://local402.vercel.app/latam): Latin American currencies per dollar, 1 MXN
-- [/asia](https://local402.vercel.app/asia): Asian currencies per dollar, 5 INR
-- [/africa](https://local402.vercel.app/africa): African currencies per dollar, 70 NGN
-- [/convertir](https://local402.vercel.app/convertir): currency converter between the oracle currencies, charged in Nigerian naira
+- [/indicadores](https://local402.xyz/indicadores): Chilean market rates, 50 CLP
+- [/europa](https://local402.xyz/europa): Euro exchange rates, 0.05 EUR
+- [/uf](https://local402.xyz/uf): The UF in pesos and dollars, 0.01 UF
+- [/latam](https://local402.xyz/latam): Latin American currencies per dollar, 1 MXN
+- [/asia](https://local402.xyz/asia): Asian currencies per dollar, 5 INR
+- [/africa](https://local402.xyz/africa): African currencies per dollar, 70 NGN
+- [/convertir](https://local402.xyz/convertir): currency converter between the oracle currencies, charged in Nigerian naira
 
 ## Free endpoints
 
-- [/catalog](https://local402.vercel.app/catalog): the paid routes with their local prices
-- [/demo/quote](https://local402.vercel.app/demo/quote): what a local price costs in USDC, XLM and EURC right now
-- [/receipts](https://local402.vercel.app/receipts): recent settled payments, with the price in local currency
+- [/catalog](https://local402.xyz/catalog): the paid routes with their local prices
+- [/demo/quote](https://local402.xyz/demo/quote): what a local price costs in USDC, XLM and EURC right now
+- [/receipts](https://local402.xyz/receipts): recent settled payments, with the price in local currency
 
 ## Use it from an AI agent
 
