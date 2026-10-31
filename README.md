@@ -223,6 +223,9 @@ npm run agent         #        a paying client
 npm run mcp           #        MCP server: an agent discovers, quotes and pays
 ```
 
+To charge in your own API from the npm packages, without this repository, follow the
+[integration guide](docs/integration-guide.md). Every function is in the [API reference](docs/api-reference.md).
+
 ## How a payment works
 
 ```mermaid

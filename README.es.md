@@ -227,6 +227,9 @@ npm run agent         #        un cliente que paga
 npm run mcp           #        servidor MCP: un agente descubre, cotiza y paga
 ```
 
+Para cobrar en tu propia API con los paquetes de npm, sin este repositorio, sigue la
+[guía de integración](docs/integration-guide.md) (en inglés). Cada función está en la [referencia de la API](docs/api-reference.md).
+
 ## Cómo funciona un pago
 
 ```mermaid
