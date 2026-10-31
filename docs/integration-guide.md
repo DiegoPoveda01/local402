@@ -50,13 +50,18 @@ mkdir seller
 cd seller
 npm init -y
 npm pkg set type=module
-npm install local402-server@1 local402-client@1 @x402/express@2.25.0 express@5 @stellar/stellar-sdk@16.3.0
+npm install --save-exact local402-server@1 local402-client@1 @x402/express@2.25.0 express@5 @stellar/stellar-sdk@16.3.0
 npm install -D tsx
 ```
 
-Install `@x402/express` at exactly `2.25.0`. `local402-server` 1.0 is built on `@x402/core` 2.25.0, and
+Install `@x402/express` at exactly `2.25.0`, and keep `--save-exact` so a later `npm install` or `npm audit fix` cannot move it. `local402-server` 1.0 is built on `@x402/core` 2.25.0, and
 a newer `@x402/express` brings a second copy of `@x402/core` that does not recognise the server
 `local402Server` returns.
+
+npm reports high-severity advisories for some dependencies: `axios` (through `@stellar/stellar-sdk`),
+`zod` (through the `@x402` 2.25.0 packages) and `@modelcontextprotocol/sdk` (through `@x402/mcp`). They
+come from the versions Local402 1.0 is pinned to, and clearing them needs a new release of the Local402
+packages. Do not let `npm audit fix` move `@x402/express` off 2.25.0: that breaks step 4.
 
 ## 3. Create two testnet accounts
 
@@ -97,7 +102,7 @@ appendFileSync(".env", [
   "FACILITATOR_URL=http://localhost:4022",
   "",
 ].join("\n"));
-console.log(`seller ${seller.publicKey()}\npayer  ${payer.publicKey()} (10000 XLM, 1 USDC)\nkeys written to .env`);
+console.log(`seller ${seller.publicKey()}\npayer  ${payer.publicKey()} (about 9,999 XLM, 1 USDC)\nkeys written to .env`);
 ```
 
 Run it once:
@@ -111,7 +116,7 @@ It prints two public keys and writes four variables to `.env`:
 | Variable | What it is |
 | --- | --- |
 | `PAY_TO` | The seller's public key. The USDC lands here. |
-| `STELLAR_SECRET` | The payer's secret key. It holds 10,000 test XLM and 1 test USDC bought on the testnet DEX. |
+| `STELLAR_SECRET` | The payer's secret key. It holds about 9,999 test XLM (10,000 from friendbot, minus what 1 test USDC cost on the testnet DEX) and that 1 USDC. |
 | `LOCAL402_QUOTE_SECRET` | A random value the seller signs its quotes with. The seller refuses to start without it. |
 | `FACILITATOR_URL` | The facilitator from step 1. |
 
@@ -127,7 +132,9 @@ import express from "express";
 import { paymentMiddleware } from "@x402/express";
 import { local402Server, localRoute } from "local402-server";
 
+const price = "50 CLP";
 const payTo = process.env.PAY_TO!;
+const explorer = "https://stellar.expert/explorer/testnet/tx/";
 const receipts: object[] = [];
 
 const server = local402Server(process.env.FACILITATOR_URL).onAfterSettle(async ({ requirements, result }) => {
@@ -139,7 +146,7 @@ const server = local402Server(process.env.FACILITATOR_URL).onAfterSettle(async (
     scheme: requirements.scheme,
     received: `${Number(requirements.amount) / 1e7} USDC`,
     payer: result.payer,
-    transaction: `https://stellar.expert/explorer/testnet/tx/${result.transaction}`,
+    transaction: `${explorer}${result.transaction}`,
   });
 });
 
@@ -147,17 +154,17 @@ const app = express();
 app.get("/receipts", (_req, res) => res.json(receipts));
 app.use(
   paymentMiddleware(
-    { "GET /weather": localRoute("50 CLP", { payTo, description: "Weather in Santiago" }) },
+    { "GET /weather": localRoute(price, { payTo, description: "Weather in Santiago" }) },
     server,
   ),
 );
 app.get("/weather", (_req, res) => res.json({ city: "Santiago", celsius: 18 }));
-app.listen(4021, () => console.log("50 CLP per call: http://localhost:4021/weather"));
+app.listen(4021, () => console.log(`${price} per call: http://localhost:4021/weather`));
 ```
 
 Three lines do the pricing:
 
-- `localRoute("50 CLP", { payTo })` turns a local price into an x402 route. At each request it reads the
+- `localRoute(price, { payTo })` turns a local price into an x402 route. At each request it reads the
   CLP rate from the Reflector oracle and converts it to USDC.
 - `local402Server(FACILITATOR_URL)` is a standard x402 resource server that accepts both `exact` (USDC)
   and `exact-fx` (XLM or EURC) and sends them to your facilitator.
@@ -293,7 +300,8 @@ npx tsx --env-file=.env pay.ts USDC
 npx tsx --env-file=.env pay.ts XLM
 ```
 
-Each prints the price, the transaction and the response body:
+Each prints the price, the transaction and the response body. Token amounts are in the token's smallest
+unit, 7 decimals for USDC and XLM alike, so `"632028"` below is 0.0632028 XLM:
 
 ```json
 {
@@ -307,25 +315,40 @@ Each prints the price, the transaction and the response body:
 }
 ```
 
-Open `explorerUrl`. On the XLM payment you can see the payer's XLM go into Soroswap and exactly
-0.0505278 USDC arrive at `PAY_TO`. `spent` is the XLM the swap took, never more than `fx.maxSend`.
+Open `explorerUrl`. On the XLM payment the page first shows one line: the payer invoking FxPay's `pay`
+with raw amounts. Expand it (the chevron on the right) to see the steps: FxPay takes up to `fx.maxSend`
+of XLM (the quote plus 2% slippage), swaps it on Soroswap, sends exactly 0.0505278 USDC to `PAY_TO`, and
+refunds the XLM the swap did not use. `spent` is what was left after the refund. In `spent.asset`,
+`CDLZ...CYSC` is the testnet XLM contract.
 
 `fx` compares the swap with the oracle. On testnet the pools are not priced like the real market, so
 `premiumBps` can be far from zero, even negative. On mainnet it is a few percent.
 
-The same is available from the command line. In bash, with `STELLAR_SECRET` exported:
-`npx local402-client pay http://localhost:4021/weather --with XLM --max "100 CLP"`.
+The command-line client pays the same way. It is an alternative to `pay.ts`, and each run is one more
+sale. It reads the key from the environment:
+
+```bash
+# bash or zsh
+export STELLAR_SECRET=$(grep '^STELLAR_SECRET=' .env | cut -d= -f2)
+# PowerShell
+$env:STELLAR_SECRET = (Select-String -Path .env -Pattern '^STELLAR_SECRET=(.*)').Matches[0].Groups[1].Value
+
+npx local402-client pay http://localhost:4021/weather --with XLM --max "100 CLP"
+```
 
 ## 7. The client guards
 
 `Local402Client` never trusts the seller's numbers. Before it signs, it re-quotes the price from its own
-oracle and checks the limits you gave it. Change `maxPrice` in `pay.ts` to `"10 CLP"` and run it again. It stops with:
+oracle and checks the limits you gave it. Change `maxPrice` in `pay.ts` to `"10 CLP"` and run `npx tsx --env-file=.env pay.ts USDC` again. It
+stops with an uncaught `Local402Error`, a stack trace that contains:
 
 ```text
 Local402Error: Refusing to pay 50 CLP: above the 10 CLP limit
+  ...
+  code: 'REFUSED_MAX_PRICE'
 ```
 
-Nothing was signed and nothing moved. Each guard has an option and an error code:
+Nothing was signed and nothing moved. Set `maxPrice` back to `"100 CLP"` before you go on. Each guard has an option and an error code:
 
 | Guard | Option | Default | Refusal code |
 | --- | --- | --- | --- |
@@ -341,8 +364,9 @@ Branch on `error.code`, not on the message:
 ```ts
 import { Local402Error } from "local402-client";
 
+// client as in pay.ts
 try {
-  await client.pay(url);
+  await client.pay("http://localhost:4021/weather");
 } catch (error) {
   if (error instanceof Local402Error && error.code === "REFUSED_MAX_PRICE") console.log("too expensive");
   else throw error;
@@ -351,7 +375,7 @@ try {
 
 ## 8. Receipts
 
-Open <http://localhost:4021/receipts>. The `onAfterSettle` hook from step 4 recorded both sales:
+Open <http://localhost:4021/receipts>. The `onAfterSettle` hook from step 4 recorded every sale, newest first:
 
 ```json
 [
@@ -363,6 +387,15 @@ Open <http://localhost:4021/receipts>. The `onAfterSettle` hook from step 4 reco
     "received": "0.0505278 USDC",
     "payer": "G...",
     "transaction": "https://stellar.expert/explorer/testnet/tx/4d282cad..."
+  },
+  {
+    "paidAt": "2026-10-31T02:46:30.112Z",
+    "price": "50 CLP",
+    "rate": "1 CLP = 0.00101055585484 USD (reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC)",
+    "scheme": "exact",
+    "received": "0.0505278 USDC",
+    "payer": "G...",
+    "transaction": "https://stellar.expert/explorer/testnet/tx/253844ce..."
   }
 ]
 ```
@@ -375,14 +408,19 @@ real deployment.
 
 ## 9. Another currency
 
-Replace `"50 CLP"` with any price in a currency Reflector publishes, or USD, or the UF, and restart the
-seller:
+Change `price` in `server.ts` to any price in a currency Reflector publishes, or USD, or the UF, and
+restart the seller:
 
 ```ts
-localRoute("70 NGN", { payTo })    // Nigerian naira
-localRoute("1 MXN", { payTo })     // Mexican peso
-localRoute("0.01 UF", { payTo })   // Chile's Unidad de Fomento
+const price = "70 NGN";    // Nigerian naira
+const price = "1 MXN";     // Mexican peso
+const price = "0.01 UF";   // Chile's Unidad de Fomento
 ```
+
+The UF is not a market currency, so no oracle publishes it. It is quoted as `CLF`, and its rate is the
+day's UF value in pesos, read from the SII (Chile's tax authority, with two public mirrors as fallback),
+times Reflector's CLP rate. That is why its `oracleSource` reads `sii.cl:uf*reflector:...`. The client
+re-checks it the same way, from its own reads of both sources.
 
 The full list is in the [README](../README.md#where-it-works-today). A currency that Reflector starts
 publishing works the same day, with no new code.
@@ -395,16 +433,20 @@ changes:
 1. **The seller's address.** `PAY_TO` must be a mainnet account with a trustline to Circle's USDC
    (`USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`). Any wallet that holds USDC on
    Stellar already has one. Only the public key goes in your config.
-2. **The network, in two places.**
+2. **The network, in three places in `server.ts`.**
 
    ```ts
-   localRoute("50 CLP", { payTo, network: "stellar:pubnet" })
+   localRoute(price, { payTo, network: "stellar:pubnet" })
    local402Server(process.env.FACILITATOR_URL, "stellar:pubnet")
+   const explorer = "https://stellar.expert/explorer/public/tx/";   // receipts link to mainnet
    ```
 
 3. **A mainnet facilitator.** Either:
-   - run your own, as in step 1 but with `NETWORK=stellar:pubnet`, `FX_CONTRACT`, `PAY_TO_ALLOWLIST`
-     set to your `PAY_TO`, and fee-paying accounts you fund with real XLM. The
+   - run your own, as in step 1 but with `NETWORK=stellar:pubnet`, `FX_CONTRACT`, and
+     `PAY_TO_ALLOWLIST` set to your `PAY_TO`. With `NETWORK=stellar:pubnet` set, `keys` still writes
+     the fee-paying keys to `.env` as `FACILITATOR_PRIVATE_KEYS`, but friendbot does not exist on
+     mainnet: it prints each address for you to send real XLM to, and `check` says `not ready` until
+     they are funded. The
      [mainnet section of facilitator.md](facilitator.md#mainnet) has the full configuration and the
      [runbook](facilitator-runbook.md) covers funding and rotation; or
    - ask for your `PAY_TO` to be added to Local402's mainnet facilitator by
