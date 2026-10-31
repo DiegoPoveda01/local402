@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { finishScrambles } from "./motion";
 
 export type Lang = "es" | "en";
 
@@ -40,8 +39,7 @@ export function LangProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = lang;
     try { localStorage.setItem("lang", lang); } catch {}
   }, [lang]);
-  // A title still decoding would keep its scrambled text after the switch.
-  const value = useMemo(() => ({ h: helpers(lang), setLang: (next: Lang) => { finishScrambles(); setLang(next); } }), [lang]);
+  const value = useMemo(() => ({ h: helpers(lang), setLang }), [lang]);
   return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
 }
 

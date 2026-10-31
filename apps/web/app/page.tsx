@@ -1,10 +1,9 @@
-import { Footer, Jurado, Mainnet, Recibos } from "@/components/landing/bottom";
+import { Cta, Footer } from "@/components/landing/bottom";
 import { LangProvider } from "@/components/landing/i18n";
 import { LiveProvider } from "@/components/landing/live";
-import { Calculadora, ComoFunciona, Comparacion, Integracion } from "@/components/landing/middle";
-import { Probar } from "@/components/landing/probar";
+import { Integracion } from "@/components/landing/middle";
 import { Reveal } from "@/components/landing/reveal";
-import { Hero, Logos, Nav, Stats } from "@/components/landing/top";
+import { About, Cases, Ecosystem, Hero, Nav } from "@/components/landing/top";
 
 export default function Page() {
   return (
@@ -12,18 +11,13 @@ export default function Page() {
       <LiveProvider>
         <Nav />
         <Hero />
-        <Logos />
-        <Stats />
-        <main className="wrap" id="contenido">
-          <Probar />
-          <Calculadora />
-          <ComoFunciona />
+        <main id="contenido">
+          <About />
+          <Cases />
           <Integracion />
-          <Comparacion />
-          <Recibos />
-          <Mainnet />
+          <Ecosystem />
+          <Cta />
         </main>
-        <Jurado />
         <Footer />
         <Reveal />
       </LiveProvider>

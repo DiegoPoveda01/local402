@@ -31,6 +31,8 @@ type Live = {
   symbol: (asset: string) => string;
   receipts: Receipt[]; fresh?: { id: string; n: number }; loadReceipts: () => Promise<void>;
   mainnet: MainnetPayment[]; newestLive?: Receipt; loadMainnet: () => Promise<void>;
+  // Whether the mainnet API answered its last /receipts request; undefined until it has been asked.
+  mainnetUp?: boolean;
 };
 const LiveContext = createContext<Live | null>(null);
 export const useLive = () => useContext(LiveContext)!;
@@ -42,6 +44,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [fresh, setFresh] = useState<{ id: string; n: number }>();
   const [mainnet, setMainnet] = useState<MainnetPayment[]>([]);
   const [newestLive, setNewestLive] = useState<Receipt>();
+  const [mainnetUp, setMainnetUp] = useState<boolean>();
   const has = useRef({ catalog: false, receipts: [] as Receipt[] });
 
   const loadCatalog = useCallback(async () => {
@@ -75,7 +78,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const loadMainnet = useCallback(async () => {
     const [scripted, live]: [MainnetPayment[], Receipt[]] = await Promise.all([
       fetch("/mainnet-payments.json").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch(`${MAINNET_API}/receipts`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`${MAINNET_API}/receipts`).then((r) => { setMainnetUp(r.ok); return r.ok ? r.json() : []; }).catch(() => { setMainnetUp(false); return []; }),
     ]);
     const known = new Set(scripted.map((p) => p.transaction));
     const payments = [
@@ -123,7 +126,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const symbol = useCallback((asset: string) => catalog?.assetSymbols?.[asset] ?? short(asset), [catalog]);
 
   return (
-    <LiveContext.Provider value={{ catalog, catalogDown, symbol, receipts, fresh, loadReceipts, mainnet, newestLive, loadMainnet }}>
+    <LiveContext.Provider value={{ catalog, catalogDown, symbol, receipts, fresh, loadReceipts, mainnet, newestLive, loadMainnet, mainnetUp }}>
       {children}
     </LiveContext.Provider>
   );

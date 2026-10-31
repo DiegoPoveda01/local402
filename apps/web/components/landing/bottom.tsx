@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { AmberDusk } from "@/components/amber-dusk";
-import { AsciiArt } from "@/components/code-rain";
-import { DataStream } from "@/components/data-stream";
-import BentoItem from "@/components/ui/terminal-bento-grid";
+import { ArrowRight } from "lucide-react";
 import { currencyLabel, short, useH } from "./i18n";
-import { IdLink, MAINNET_API, TxLink, useLive } from "./live";
+import { MAINNET_API, TxLink, useLive } from "./live";
 import { Lines, S } from "./probar";
+import { DOCS, GITHUB, Logo, ReceiptCard } from "./top";
 
 const PER_PAGE = 5;
 
@@ -52,17 +50,19 @@ export function Recibos() {
   const labels = head.map(([es, en]) => tr(es, en));
   return (
     <section id="recibos">
-      <div className="eyebrow"><span className="n">[06]</span>{tr("Recibos en vivo", "Live receipts")}</div>
-      <div className="row-head">
-        <h2>{tr(<>Cada venta, lista para <em>contabilidad</em>.</>, <>Every sale, ready for <em>accounting</em>.</>)}</h2>
-        <a href="/receipts.csv" className="link">{tr("Exportar CSV →", "Export CSV →")}</a>
+      <div className="wrap">
+      <div className="head row">
+        <div>
+          <div className="eyebrow mark">{tr("Recibos en vivo", "Live receipts")}</div>
+          <h2>{tr(<>Cada venta, lista para <em>contabilidad</em>.</>, <>Every sale, ready for <em>accounting</em>.</>)}</h2>
+        </div>
+        <a href="/receipts.csv" className="text-link">{tr("Exportar CSV", "Export CSV")}<ArrowRight aria-hidden="true" width={16} height={16} /></a>
       </div>
-      <DataStream title="GET /receipts/stream">
       <div className="table-wrap">
         <table className="cards">
           <thead><tr>{labels.map((label) => <th key={label}>{label}</th>)}</tr></thead>
           <tbody id="receipts">
-            {!receipts.length ? <tr><td colSpan={7} className="empty">Aún no hay pagos. Prueba uno arriba.</td></tr> : pageOf(receipts, current).map((r) => {
+            {!receipts.length ? <tr><td colSpan={7} className="empty">{tr("Aún no hay pagos. Prueba uno arriba.", "No payments yet. Try one above.")}</td></tr> : pageOf(receipts, current).map((r) => {
               // On phones each row is a card; every cell carries its column name from the header.
               const cells: ReactNode[] = [
                 <td className="mono">{time(r.paidAt)}</td>,
@@ -80,8 +80,8 @@ export function Recibos() {
           </tbody>
         </table>
       </div>
-      </DataStream>
       <Pager id="receipts-pager" label="Páginas de recibos" count={receipts.length} page={current} go={(n) => { setFlash(undefined); setPage(n); }} />
+      </div>
     </section>
   );
 }
@@ -188,11 +188,16 @@ export function Mainnet() {
 
   return (
     <section id="mainnet">
-      <AsciiArt className="rain h-[480px]" />
-      <div className="eyebrow"><span className="n">[07]</span>Mainnet</div>
-      <h2>{tr(<>Lo mismo, con <em>dinero real</em>.</>, <>The same, with <em>real money</em>.</>)}</h2>
-      <p className="sub">{tr("Mismo código en Stellar mainnet: USDC y EURC de Circle, Soroswap y Reflector reales.", "Same code on Stellar mainnet: Circle's USDC and EURC, real Soroswap and Reflector.")}</p>
-      <div className="split wallet">
+      <div className="wrap">
+      <div className="mainnet-top">
+        <div className="head">
+          <div className="eyebrow mark">Mainnet</div>
+          <h2>{tr(<>Lo mismo, con <em>dinero real</em>.</>, <>The same, with <em>real money</em>.</>)}</h2>
+          <p className="sub">{tr("Mismo código en Stellar mainnet: USDC y EURC de Circle, Soroswap y Reflector reales. A la derecha, el último pago real tal como lo escribe /receipts.csv.", "Same code on Stellar mainnet: Circle's USDC and EURC, real Soroswap and Reflector. On the right, the latest real payment as /receipts.csv writes it.")}</p>
+        </div>
+        <ReceiptCard />
+      </div>
+      <div className="wallet">
         <div>
           <div className="seg">
             <button type="button" data-mpane="pay" aria-pressed={mpane === "pay"} onClick={() => setMpane("pay")}>{tr("Pagar /indicadores", "Pay /indicadores")}</button>
@@ -250,85 +255,86 @@ export function Mainnet() {
       <Pager id="mainnet-pager" label="Páginas de pagos en mainnet" count={all ? mainnet.length : Math.min(mainnet.length, PER_PAGE)} page={current} go={setPage}>
         {!all && mainnet.length > PER_PAGE && <button className="ghost" onClick={() => setAll(true)}>{tr("Ver todos", "See all")} ({mainnet.length})</button>}
       </Pager>
-    </section>
-  );
-}
-
-export function Jurado() {
-  const { tr } = useH();
-  const { catalog, receipts } = useLive();
-  const a = (href: string, text: ReactNode, cls?: string) => <a className={cls} href={href} target="_blank" rel="noopener">{text}</a>;
-  const spec = "https://github.com/DiegoPoveda01/local402/blob/main/docs/scheme_exact_fx_stellar.md";
-  const fxpay = "https://stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD";
-  const issue = "https://github.com/x402-foundation/x402/issues/3491";
-  const npm = "https://www.npmjs.com/package/local402-server";
-  return (
-    <section className="wrap" id="jurado">
-      <div className="eyebrow">{tr("Para el jurado", "For the judges")}</div>
-      <div className="judges">
-        <BentoItem>
-          <div className="label">{tr("Qué es nuevo", "What's new")}</div>
-          <ul>
-            <li>{tr(<><b>exact-fx</b>: un esquema x402 nuevo, con {a(spec, "especificación")} y contrato Soroban propio (FxPay)</>, <><b>exact-fx</b>: a new x402 scheme, with a {a(spec, "spec")} and its own Soroban contract (FxPay)</>)}</li>
-            <li>{tr(<><b>24 monedas</b> del oráculo Reflector, y UF</>, <><b>24 currencies</b> from the Reflector oracle, and UF</>)}</li>
-            <li>{tr(<>El agente <b>verifica</b> la tasa del vendedor y la del swap antes de firmar</>, <>The agent <b>checks</b> the seller&apos;s rate and the swap&apos;s before signing</>)}</li>
-          </ul>
-        </BentoItem>
-        <BentoItem>
-          <div className="label">{tr("Verifícalo", "Verify it")}</div>
-          <ul>
-            <li><span className="k">{tr("Contrato FxPay:", "FxPay contract:")}</span> <span className="mono" id="judges-fxpay">{catalog?.fxContract ? <IdLink id={catalog.fxContract} /> : "—"}</span></li>
-            <li><span className="k">{tr("Último pago:", "Latest payment:")}</span> <span className="mono" id="judges-tx">{receipts.length ? <TxLink hash={receipts[0].transaction} /> : tr("haz uno arriba", "make one above")}</span></li>
-            <li>{tr(
-              <><a href="#mainnet">Pagos reales en mainnet</a>, también desde tu wallet, con FxPay {a(fxpay, "CA6Z4E…UGHD", "mono")}; bug de comisión reportado a {a(issue, "x402")}</>,
-              <><a href="#mainnet">Real mainnet payments</a>, also from your own wallet, through FxPay {a(fxpay, "CA6Z4E…UGHD", "mono")}; fee bug reported to {a(issue, "x402")}</>,
-            )}</li>
-            <li>{tr(<><b>41</b> tests TypeScript y <b>11</b> del contrato; paquetes en {a(npm, "npm")}</>, <><b>41</b> TypeScript tests and <b>11</b> contract tests; packages on {a(npm, "npm")}</>)}</li>
-          </ul>
-        </BentoItem>
-        <BentoItem>
-          <div className="label">{tr("Modelo de negocio (propuesta)", "Business model (proposal)")}</div>
-          <ul>
-            <li>{tr("Integrar es gratis: una línea por ruta, sin cambiar el USDC que recibe el vendedor", "Integrating is free: one line per route, and the seller still receives USDC")}</li>
-            <li>{tr(<>El facilitador cobra unos <b>puntos básicos</b> <span className="tbd">[POR CONFIRMAR]</span> solo en pagos con swap</>, <>The facilitator charges a few <b>basis points</b> <span className="tbd">[TO BE CONFIRMED]</span>, only on swap payments</>)}</li>
-          </ul>
-        </BentoItem>
       </div>
     </section>
   );
 }
 
-const BANNER: [string, string][] = [
-  ["██╗      ██████╗  ██████╗ █████╗ ██╗", "██╗  ██╗ ██████╗ ██████╗"],
-  ["██║     ██╔═══██╗██╔════╝██╔══██╗██║", "██║  ██║██╔═████╗╚════██╗"],
-  ["██║     ██║   ██║██║     ███████║██║", "███████║██║██╔██║ █████╔╝"],
-  ["██║     ██║   ██║██║     ██╔══██║██║", "╚════██║████╔╝██║██╔═══╝"],
-  ["███████╗╚██████╔╝╚██████╗██║  ██║███████╗", "██║╚██████╔╝███████╗"],
-  ["╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝", "╚═╝ ╚═════╝ ╚══════╝"],
-];
+export function Cta() {
+  const { tr } = useH();
+  return (
+    <section className="dark cta">
+      <img className="waves" src="/brand/waves.svg" alt="" width="1440" height="380" loading="lazy" aria-hidden="true" />
+      <div className="wrap">
+        <div className="eyebrow mark">{tr("Empieza hoy", "Start today")}</div>
+        <h2>{tr(<>Construye, cobra y escala con <em>Local402</em>.</>, <>Build, charge and scale with <em>Local402</em>.</>)}</h2>
+        <p className="sub">{tr("Gratis en testnet, sin wallet. Cuando estés listo, el mismo código cobra en mainnet.", "Free on testnet, no wallet needed. When you're ready, the same code charges on mainnet.")}</p>
+        <div className="cta-row">
+          <a className="btn primary" href="/docs#probar">{tr("Probar gratis en testnet", "Try it free on testnet")}<ArrowRight aria-hidden="true" /></a>
+          <a className="btn" href={DOCS}>{tr("Leer la documentación", "Read the docs")}</a>
+        </div>
+        <span className="vtext" aria-hidden="true">{tr("Pagos para una nueva era de agentes", "Payments for a new era of agents")}</span>
+      </div>
+    </section>
+  );
+}
 
 export function Footer() {
   const { tr } = useH();
-  const out = (href: string, text: string) => <a href={href} target="_blank" rel="noopener">{text}</a>;
+  const { catalog, mainnetUp } = useLive();
+  // Ticks so the age of the rate keeps counting between catalog refreshes.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 5_000);
+    return () => clearInterval(timer);
+  }, []);
+  const out = (href: string, text: string) => <a href={href} target="_blank" rel="noopener">{text} ↗</a>;
+  // The newest oracle timestamp among the quotes in the catalog.
+  const oracle = catalog?.items.reduce((latest, item) => (item.error ? latest : Math.max(latest, item.quote.oracleTimestamp)), 0);
+  const age = oracle ? Math.max(0, Math.round(now / 1000 - oracle)) : undefined;
+  const ago = age === undefined ? "—" : age < 120 ? tr(`tasa hace ${age} s`, `rate ${age} s ago`) : tr(`tasa hace ${Math.round(age / 60)} min`, `rate ${Math.round(age / 60)} min ago`);
+  const status = mainnetUp === undefined ? tr("Stellar mainnet · comprobando…", "Stellar mainnet · checking…") : mainnetUp ? tr("Stellar mainnet · operativo", "Stellar mainnet · operational") : tr("Stellar mainnet · sin respuesta", "Stellar mainnet · not responding");
   return (
     <footer>
-      <div className="wrap" aria-hidden="true"></div>
-      <div className="wrap">
-        <div className="dusk">
-          <AmberDusk className="h-[calc(100%+64px)]" />
-          <pre className="banner" aria-hidden="true" translate="no">{BANNER.map(([local, n], i) => <span key={i}>{i ? "\n" : ""}{local}<i>{n}</i></span>)}</pre>
+      <img className="foot-flower" src="/brand/pulpo-flor.svg" alt="" aria-hidden="true" />
+      <div className="wrap foot-main">
+        <div className="foot-brand">
+          <Logo />
+          <p className="tagline">{tr("Cobra en tu moneda.", "Charge in your currency.")}<em>{tr("Recibe USDC exacto.", "Receive exact USDC.")}</em></p>
+          <p className="meta">{tr("Pagos x402 con precios en moneda local, liquidados en USDC sobre Stellar. Para cualquier moneda. Hecho en Chile.", "x402 payments priced in local currency, settled in USDC on Stellar. For any currency. Made in Chile.")}</p>
         </div>
-        <div className="cols-row">
-          <div>
-            <a className="logo" href="#" translate="no"><img src="/logo.svg" alt="" /><span>Local<i>402</i></span></a>
-            <p>{tr("Pagos x402 con precios en moneda local, liquidados en USDC sobre Stellar. Para cualquier moneda. Hecho en Chile.", "x402 payments priced in local currency, settled in USDC on Stellar. For any currency. Made in Chile.")}</p>
-          </div>
-          <div className="cols">
-            <div><span className="label">{tr("Proyecto", "Project")}</span>{out("https://github.com/DiegoPoveda01/local402", "GitHub")}{out("https://www.npmjs.com/package/local402-server", "npm")}<a href="/receipts.csv">{tr("Recibos CSV", "Receipts CSV")}</a></div>
-            <div><span className="label">{tr("Construido con", "Built with")}</span>{out("https://www.x402.org", "x402")}{out("https://reflector.network", "Reflector")}{out("https://soroswap.finance", "Soroswap")}</div>
-          </div>
+        <div className="foot-col">
+          <span className="label">{tr("Producto", "Product")}</span>
+          <a href="/docs#probar">{tr("Probar", "Try it")}</a>
+          <a href="/docs#calculadora">{tr("Calculadora", "Calculator")}</a>
+          <a href="#integracion">{tr("Integración", "Integration")}</a>
+          <a href="/docs#recibos">{tr("Recibos", "Receipts")}</a>
+          <a href="/docs#mainnet">Mainnet</a>
+        </div>
+        <div className="foot-col">
+          <span className="label">{tr("Desarrolladores", "Developers")}</span>
+          {out(GITHUB, "GitHub")}
+          {out("https://www.npmjs.com/package/local402-server", "npm local402-server")}
+          <a href="/docs#mcp">MCP · local402_pay</a>
+          {out("/receipts.csv", tr("Exportar CSV", "Export CSV"))}
+          {out(`${GITHUB}/blob/main/docs/scheme_exact_fx_stellar.md`, "Spec exact_fx")}
+        </div>
+        <div className="foot-col">
+          <span className="label">{tr("Red", "Network")}</span>
+          {out("https://stellar.expert/explorer/public/contract/CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD", "Stellar")}
+          {out("https://reflector.network", "Reflector")}
+          {out("https://www.x402.org", "x402")}
+          {out("https://soroswap.finance", "Soroswap")}
         </div>
       </div>
+      <div className="foot-band" aria-hidden="true" />
+      <div className="wrap foot-bar">
+        <span className={`status${mainnetUp ? " up" : ""}`}>{status}</span>
+        <span>Reflector · {ago}</span>
+        <span>▲ {tr("24 monedas + UF", "24 currencies + UF")}</span>
+        <span className="end">© 2026 Local402 · {tr("Hecho en Chile", "Made in Chile")}</span>
+      </div>
+      <div className="foot-word" aria-hidden="true" translate="no">Local402</div>
     </footer>
   );
 }

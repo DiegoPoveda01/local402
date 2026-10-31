@@ -1,4 +1,5 @@
-// Motion helpers shared by the landing: reduced motion, font readiness and the decode ("scramble") effect.
+// Motion helpers shared by the landing: reduced motion, font readiness, the number tween and the on-screen trigger.
+import { useEffect, useRef, useState } from "react";
 
 export const calm = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -6,49 +7,34 @@ export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve,
 // The layout's inline script races the web fonts against 2 s; the page and its animations wait for it.
 export const fontsReady = (): Promise<unknown> => (globalThis as { fontsReady?: Promise<unknown> }).fontsReady ?? Promise.resolve();
 
-// Titles and figures decode in: every letter or digit cycles through random glyphs and settles, left to right.
-// Screen readers get the final text from the start; the serif words (em) stay put.
-const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#%&*+=<>/";
-const scrambling = new Map<Element, () => void>();
-export function scramble(el: Element | null | undefined, duration = 500) {
-  if (!el || calm()) return;
-  scrambling.get(el)?.();
-  const nodes: [Text, string][] = [];
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement?.closest("em") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
-  while (walker.nextNode()) nodes.push([walker.currentNode as Text, (walker.currentNode as Text).data]);
-  const total = nodes.reduce((sum, [, text]) => sum + text.length, 0);
-  if (!total) return;
-  const label = el.getAttribute("aria-label");
-  el.setAttribute("aria-label", el.textContent?.trim() ?? "");
-  let stopped = false;
-  // Puts the real text back, at the end or when something else (a language switch, a new quote) takes over.
-  const finish = () => {
-    stopped = true;
-    scrambling.delete(el);
-    for (const [node, text] of nodes) node.data = text;
-    if (label === null) el.removeAttribute("aria-label");
-    else el.setAttribute("aria-label", label);
-  };
-  scrambling.set(el, finish);
-  const started = performance.now();
-  const frame = (now: number) => {
-    if (stopped) return;
-    const t = (now - started) / duration;
-    if (t >= 1) return finish();
-    let offset = 0;
-    for (const [node, text] of nodes) {
-      node.data = [...text].map((c, i) => ((offset + i) / total < t || !/[\p{L}\p{N}]/u.test(c) ? c
-        : /\d/.test(c) ? String((Math.random() * 10) | 0) : GLYPHS[(Math.random() * GLYPHS.length) | 0])).join("");
-      offset += text.length;
+// Eases a number from its last value to the new one in 300 ms; with reduced motion it jumps straight there.
+export function useTween(target: number | undefined, duration = 300) {
+  const [value, setValue] = useState(target);
+  const from = useRef(target);
+  useEffect(() => {
+    if (target === undefined || from.current === undefined || calm()) {
+      from.current = target;
+      setValue(target);
+      return;
     }
-    requestAnimationFrame(frame);
-  };
-  requestAnimationFrame(frame);
+    const start = from.current;
+    const started = performance.now();
+    let raf = 0;
+    const frame = (now: number) => {
+      const t = Math.min(1, (now - started) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      const next = start + (target - start) * eased;
+      from.current = next;
+      setValue(t < 1 ? next : target);
+      if (t < 1) raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return value;
 }
-// React owns these text nodes: every decode is settled before it renders new text into them.
-export const finishScrambles = () => { for (const finish of [...scrambling.values()]) finish(); };
 
-// Runs once, the first time the element is on screen (after the fonts, so nothing decodes in a fallback font).
+// Runs once, the first time the element is on screen (after the fonts, so nothing moves in a fallback font).
 export function onceVisible(el: Element, run: () => void, rootMargin?: string) {
   let observer: IntersectionObserver | undefined;
   let cancelled = false;

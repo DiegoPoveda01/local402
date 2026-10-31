@@ -163,10 +163,11 @@ export function Probar() {
 
   return (
     <section id="probar">
-      <div className="eyebrow"><span className="n">[01]</span>{tr("Pruébalo", "Try it")}</div>
-      <div className="probar-head">
+      <div className="wrap">
+      <div className="head">
+        <div className="eyebrow mark">{tr("Pruébalo", "Try it")}</div>
         <h2>{tr(<>Seis APIs, seis monedas. <em>Un solo</em> USDC al otro lado.</>, <>Six APIs, six currencies. <em>One</em> USDC on the other side.</>)}</h2>
-        <p className="sub">{tr("Elige una ruta y mira su 402, gratis y sin wallet. Los botones de color pagan de verdad en testnet.", "Pick a route to see its 402, free and with no wallet. The colored buttons really pay on testnet.")}</p>
+        <p className="sub">{tr("Elige una ruta y mira su 402, gratis y sin wallet. Los botones de pago pagan de verdad en testnet.", "Pick a route to see its 402, free and with no wallet. The pay buttons really pay on testnet.")}</p>
       </div>
       <div className={`routes${offscreen ? " offscreen" : ""}${manual ? " manual" : ""}`} id="routes" ref={routes}>
         <div className="route-side">
@@ -213,6 +214,7 @@ export function Probar() {
           <div className="window-bar"><span>{tr("agente@local402", "agent@local402")}</span></div>
           <div className="term" id="console" aria-live={manual ? "polite" : "off"} ref={consoleRef}>{output}</div>
         </div>
+      </div>
       </div>
     </section>
   );

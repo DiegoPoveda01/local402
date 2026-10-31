@@ -67,6 +67,6 @@ await build({
 
 // DASHBOARD_URL: a deployment that only serves the API (e.g. mainnet) sends its root page to the dashboard.
 const home = process.env.DASHBOARD_URL ? { src: "^/$", status: 302, headers: { Location: process.env.DASHBOARD_URL } } : { src: "^/$", dest: "/index.html" };
-writeFileSync(`${OUT}/config.json`, JSON.stringify({ version: 3, routes: [home, { handle: "filesystem" }, { src: "/(.*)", dest: "/index" }] }));
+writeFileSync(`${OUT}/config.json`, JSON.stringify({ version: 3, routes: [home, { src: "^/docs/?$", dest: "/docs.html" }, { handle: "filesystem" }, { src: "/(.*)", dest: "/index" }] }));
 
 console.log(`Built ${OUT}`);

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ScriptCopyBtn } from "@/components/ui/script-copy-btn";
-import { AnimatedSpan } from "@/components/ui/terminal";
+import { ArrowRight } from "lucide-react";
 import { currencyLabel, useH, type Helpers } from "./i18n";
 import { useLive } from "./live";
-import { calm, scramble, wait } from "./motion";
+import { calm, wait } from "./motion";
+import { CopyButton, DOCS } from "./top";
 
 type QuoteData = { quote: { currency: string; usdPerUnit: string; oracleSource: string }; pay: Record<string, string>; oracle?: Record<string, string>; mainnet?: Record<string, { soroswap?: string; sdex?: string }> };
 
@@ -39,7 +39,6 @@ export function Calculadora() {
   const { tr, rate, sourceLabel, fmt } = h;
   const [input, setInput] = useState("100 INR");
   const [state, setState] = useState<{ status: "idle" | "quoting" } | { status: "error"; message: string } | { status: "done"; data: QuoteData; n: number }>({ status: "idle" });
-  const amounts = useRef<HTMLDivElement>(null);
   const run = useRef(0);
 
   async function calculate(price: string) {
@@ -55,11 +54,7 @@ export function Calculadora() {
     }
   }
   useEffect(() => { calculate(PRESETS[0]); }, []);
-  // Each new quote decodes its amounts in.
   const n = state.status === "done" ? state.n : 0;
-  useEffect(() => {
-    if (n) for (const cell of amounts.current!.querySelectorAll(".amount > div")) scramble(cell, 450);
-  }, [n]);
 
   let rateLine: ReactNode = null;
   if (state.status === "quoting") rateLine = tr("Cotizando…", "Quoting…");
@@ -71,9 +66,12 @@ export function Calculadora() {
 
   return (
     <section id="calculadora">
-      <div className="eyebrow"><span className="n">[02]</span>{tr("Calculadora", "Calculator")}</div>
-      <h2>{tr(<>Pon tu precio. Nosotros hacemos <em>el cambio</em>.</>, <>Set your price. We handle <em>the exchange</em>.</>)}</h2>
-      <p className="sub">{tr("Cualquier monto en USD, UF o 24 monedas, y lo que cuesta pagarlo con cada activo.", "Any amount in USD, UF or 24 currencies, and what it costs to pay it with each asset.")}</p>
+      <div className="wrap">
+      <div className="head">
+        <div className="eyebrow mark">{tr("Calculadora", "Calculator")}</div>
+        <h2>{tr(<>Pon tu precio. Nosotros hacemos <em>el cambio</em>.</>, <>Set your price. We handle <em>the exchange</em>.</>)}</h2>
+        <p className="sub">{tr("Cualquier monto en USD, UF o 24 monedas, y lo que cuesta pagarlo con cada activo.", "Any amount in USD, UF or 24 currencies, and what it costs to pay it with each asset.")}</p>
+      </div>
       <div className="calc">
         <div className="card">
           <div className="label">{tr("Precio del vendedor", "Seller's price")}</div>
@@ -86,18 +84,19 @@ export function Calculadora() {
           </div>
           <div className="rate" id="calc-rate">{rateLine}</div>
         </div>
-        {/* Keyed by quote, so a decode in progress never lands on the next quote's figures. */}
-        <div className="amounts" id="calc-amounts" aria-live="polite" ref={amounts} key={n}>
+        {/* Keyed by quote, so each new quote fades its figures in. */}
+        <div className="amounts" id="calc-amounts" aria-live="polite" key={n}>
           {state.status === "done" && Object.entries(state.data.pay).map(([asset, units]) => {
             const best = asset === "USDC" ? undefined : bestMainnet(state.data, asset);
             return (
             <div key={asset} className={`amount ${asset.toLowerCase()}`}>
-              <span className="label">{asset}</span><div>{fmt(best ?? units)}</div><span className="meta">{asset === "USDC" ? tr("recibe el vendedor", "the seller receives") : best ? tr("gasta el cliente en mainnet", "the client spends on mainnet") : tr("gasta el cliente en testnet", "the client spends on testnet")}</span>
+              <span className="label">{asset}</span><div className={n > 1 ? "tweening" : undefined}>{fmt(best ?? units)}</div><span className="meta">{asset === "USDC" ? tr("recibe el vendedor", "the seller receives") : best ? tr("gasta el cliente en mainnet", "the client spends on mainnet") : tr("gasta el cliente en testnet", "the client spends on testnet")}</span>
               <FxLines asset={asset} units={units} data={state.data} h={h} />
             </div>
             );
           })}
         </div>
+      </div>
       </div>
     </section>
   );
@@ -156,21 +155,21 @@ export function ComoFunciona() {
         const at = NODES.map((x) => lengthAt(path, x));
         const [price, usdc] = values.current;
         token.setAttribute("transform", `translate(${NODES[0]} 30)`);
-        show(price, "var(--accent)");
+        show(price, "var(--ink)");
         setWalking(true);
         setLit(0);
         token.classList.add("on");
         await wait(1_300);
         await walk(path, at[0], at[1]);
-        show(usdc, "var(--usdc)");
+        show(usdc, "var(--accent)");
         setLit(1);
         await wait(1_300);
         await walk(path, at[1], at[2]);
-        if (fx) show("XLM", "var(--xlm)");
+        if (fx) show("XLM", "var(--ink-2)");
         setLit(2);
         await wait(1_300);
         // exact-fx: XLM goes down into the swap and comes back up as USDC.
-        await walk(path, at[2], at[3], fx ? (_x, y) => { if (y > 70) show(usdc, "var(--usdc)"); } : undefined);
+        await walk(path, at[2], at[3], fx ? (_x, y) => { if (y > 70) show(usdc, "var(--accent)"); } : undefined);
         setLit(3);
         await wait(2_400);
         token.classList.remove("on");
@@ -189,10 +188,13 @@ export function ComoFunciona() {
     ["Recibo", "Receipt", "USDC exacto al vendedor; el sobrante vuelve al cliente.", "Exact USDC to the seller; the rest goes back to the payer."],
   ];
   return (
-    <section className={`paper${walking ? " walking" : ""}`}>
-      <div className="eyebrow"><span className="n">[03]</span>{tr("Cómo funciona", "How it works")}</div>
-      <h2>{tr(<>Cuatro pasos y <em>ningún</em> tipo de cambio a mano.</>, <>Four steps and <em>no</em> manual exchange rates.</>)}</h2>
-      <p className="sub">{tr("Todo ocurre dentro del flujo x402 estándar. Si algo no cuadra, la transacción entera se revierte.", "It all happens inside the standard x402 flow. If anything doesn't add up, the whole transaction reverts.")}</p>
+    <section id="como-funciona" className={`how${walking ? " walking" : ""}`}>
+      <div className="wrap">
+      <div className="head">
+        <div className="eyebrow mark">{tr("Cómo funciona", "How it works")}</div>
+        <h2>{tr(<>Cuatro pasos y <em>ningún</em> tipo de cambio a mano.</>, <>Four steps and <em>no</em> manual exchange rates.</>)}</h2>
+        <p className="sub">{tr("Todo ocurre dentro del flujo x402 estándar. Si algo no cuadra, la transacción entera se revierte.", "It all happens inside the standard x402 flow. If anything doesn't add up, the whole transaction reverts.")}</p>
+      </div>
       <svg className="flow-track" id="flow-track" viewBox="0 0 1000 112" aria-hidden="true" ref={svg}>
         <path className="line" id="flow-usdc" d="M25 30 H775" />
         <path className="line" id="flow-fx" d="M25 30 H525 C590 30 600 84 650 84 C700 84 710 30 775 30" />
@@ -204,100 +206,116 @@ export function ComoFunciona() {
       </svg>
       <div className="grid4">
         {steps.map(([es, en, pes, pen], i) => (
-          <div key={es} className={`step${lit === i ? " on" : ""}`}><div className="eyebrow">[0{i + 1}]</div><h3>{tr(es, en)}</h3><p>{tr(pes, pen)}</p></div>
+          <div key={es} className={`step${lit === i ? " on" : ""}`}><span className="n">0{i + 1}</span><h3>{tr(es, en)}</h3><p>{tr(pes, pen)}</p></div>
         ))}
+      </div>
       </div>
     </section>
   );
 }
 
 const SERVER_LINES: ReactNode[] = [
-  <span className="c">{"// npm install local402-server"}</span>,
-  <><span className="k">import</span> {"{ localRoute, local402Server }"} <span className="k">from</span> <span className="s">&quot;local402-server&quot;</span>;</>,
+  <><span className="k">import</span> <span className="p">{"{"}</span> localRoute, local402Server <span className="p">{"}"}</span> <span className="k">from</span> <span className="s">&quot;local402-server&quot;</span><span className="p">;</span></>,
   "",
-  <><span className="k">app</span>.use(paymentMiddleware({"{"}</>,
-  <>{"  "}<span className="s">&quot;GET /africa&quot;</span>: <mark>localRoute(<span className="s">&quot;70 NGN&quot;</span>, {"{ payTo }"})</mark>,</>,
-  <>{"  "}<span className="s">&quot;GET /uf&quot;</span>: localRoute(<span className="s">&quot;0.01 UF&quot;</span>, {"{ payTo }"}),</>,
-  <>{"}"}, local402Server()));</>,
+  <>app.use(paymentMiddleware(<span className="p">{"{"}</span></>,
+  <>{"  "}<span className="s">&quot;GET /africa&quot;</span><span className="p">:</span> localRoute(<span className="s">&quot;70 NGN&quot;</span>, <span className="p">{"{"}</span> payTo <span className="p">{"}"}</span>),</>,
+  <>{"  "}<span className="s">&quot;GET /uf&quot;</span><span className="p">:</span> localRoute(<span className="s">&quot;0.01 UF&quot;</span>, <span className="p">{"{"}</span> payTo <span className="p">{"}"}</span>),</>,
+  <><span className="p">{"}"}</span>, local402Server()))<span className="p">;</span></>,
 ];
-const MCP_LINES: ReactNode[] = [
-  <>local402_discover{"  "}<span className="c">busca servicios (x402 Bazaar)</span></>,
-  <>local402_quote{"     "}<span className="c">precio local y tasa</span></>,
-  <>local402_pay{"       "}<span className="c">paga con USDC, XLM o EURC</span></>,
-  <>local402_wallet{"    "}<span className="c">saldo y presupuesto</span></>,
-];
-// Each snippet line drops in once the window is on screen; without motion (or before the script) they are just there.
-const Code = ({ lines, hidden, split }: { lines: ReactNode[]; hidden: boolean; split: boolean }) => (
-  <pre className="code pane" data-pane={lines === SERVER_LINES ? "server" : "mcp"} hidden={hidden}>
-    {split
-      ? lines.map((line, i) => <AnimatedSpan key={i} startOnView delay={300 + i * 120} className="block text-[length:inherit] leading-[inherit] tracking-[inherit]">{line || " "}</AnimatedSpan>)
-      : lines.map((line, i) => <span key={i}>{i ? "\n" : ""}{line}</span>)}
-  </pre>
-);
+const SERVER_CMD = "npm install local402-server";
+const MCP_CMD = `claude mcp add local402 -e STELLAR_PRIVATE_KEY=S… -e "MAX_PRICE=500 CLP" -- npx -y local402-mcp`;
 
 export function Integracion() {
-  const { tr } = useH();
+  const { tr, local, fmt } = useH();
   const { catalog } = useLive();
   const [pane, setPane] = useState<"server" | "mcp">("server");
-  const [split, setSplit] = useState(false);
-  useEffect(() => { if (!calm()) setSplit(true); }, []);
+  const africa = catalog?.items.find((item) => item.path === "/africa" && !item.error);
+  const tool = (name: string, es: string, en: string) => <div className="l">{name.padEnd(19)}<span className="c">{tr(es, en)}</span></div>;
+  const cmd = pane === "server" ? SERVER_CMD : MCP_CMD;
   // Serverless facilitators start with an empty catalog; only show the count once there is something to find.
   const found = catalog?.discovered === 1 ? tr("recurso en el catálogo Bazaar", "resource in the Bazaar catalog") : tr("recursos en el catálogo Bazaar", "resources in the Bazaar catalog");
   return (
     <section id="integracion">
-      <div className="eyebrow"><span className="n">[04]</span>{tr("Integración", "Integration")}</div>
-      <div className="split">
+      <div className="wrap split">
         <div>
-          <div className="pane" data-pane="server" hidden={pane !== "server"}>
-            <h2>{tr(<>Una línea <em>por ruta</em>.</>, <>One line <em>per route</em>.</>)}</h2>
-            <p>{tr("Pones el precio en tu moneda y aceptas USDC, XLM y EURC con la misma cotización.", "Set the price in your currency and accept USDC, XLM and EURC from the same quote.")}</p>
-            <ScriptCopyBtn className="copy-cmd" command="npm install local402-server" buttonId="copy-install" copyLabel={tr("Copiar comando", "Copy command")} copiedLabel={tr("[OK] copiado", "[OK] copied")} />
+          <div className="eyebrow mark">{tr("Integración", "Integration")}</div>
+          <h2>{tr(<>De unas líneas de código a <em>pagos reales</em>.</>, <>From a few lines of code to <em>real payments</em>.</>)}</h2>
+          <p className="sub">{pane === "server"
+            ? tr("Una línea por ruta: pones el precio en tu moneda y aceptas USDC, XLM y EURC con la misma cotización.", "One line per route: set the price in your currency and accept USDC, XLM and EURC from the same quote.")
+            : tr("Tu agente paga solo: verifica la tasa y respeta un tope por pago y un presupuesto.", "Your agent pays on its own: it checks the rate and keeps to a per-payment cap and a budget.")}</p>
+          <a className="btn primary" href={DOCS}>{tr("Leer la documentación", "Read the docs")}<ArrowRight aria-hidden="true" /></a>
+          <div className="install" translate="no">
+            <code>{pane === "server" ? SERVER_CMD : "npx -y local402-mcp"}</code>
+            <CopyButton text={cmd} />
           </div>
-          <div className="pane" data-pane="mcp" hidden={pane !== "mcp"}>
-            <h2>{tr(<>MCP, pero <em>con límites</em>.</>, <>MCP, <em>with limits</em>.</>)}</h2>
-            <p>{tr("Tu agente paga solo: verifica la tasa y respeta un tope por pago y un presupuesto.", "Your agent pays on its own: it checks the rate and keeps to a per-payment cap and a budget.")}</p>
-            <div className="discovery" id="discovery-count">{!catalog ? "…" : catalog.discovered ? `[OK] ${catalog.discovered} ${found}` : ""}</div>
-          </div>
+          {pane === "mcp" && <div className="discovery" id="discovery-count">{!catalog ? "…" : catalog.discovered ? `${catalog.discovered} ${found}` : ""}</div>}
         </div>
-        <div className="window">
-          <div className="window-bar">
-            <button type="button" data-pane="server" aria-pressed={pane === "server"} onClick={() => setPane("server")}>server.ts</button>
-            <button type="button" data-pane="mcp" aria-pressed={pane === "mcp"} onClick={() => setPane("mcp")}>.mcp.json</button>
+        <div className="code-card">
+          <div className="code-tabs" role="tablist" aria-label={tr("Ejemplos", "Examples")}>
+            <button type="button" role="tab" id="int-tab-server" aria-controls="int-code" aria-selected={pane === "server"} onClick={() => setPane("server")}>server.ts</button>
+            <button type="button" role="tab" id="int-tab-mcp" aria-controls="int-code" aria-selected={pane === "mcp"} onClick={() => setPane("mcp")}>MCP</button>
+            <span className="path" translate="no">{pane === "server" ? "local402-server" : "local402-mcp"}</span>
+            <CopyButton text={cmd} />
           </div>
-          <Code lines={SERVER_LINES} hidden={pane !== "server"} split={split} />
-          <Code lines={MCP_LINES} hidden={pane !== "mcp"} split={split} />
+          <div className="code-body" id="int-code" role="tabpanel" aria-labelledby={`int-tab-${pane}`} translate="no">
+            {pane === "server" ? (
+              <div className="pane" key="server">{SERVER_LINES.map((line, i) => <div className="l" key={i}>{line || " "}</div>)}</div>
+            ) : (
+              <div className="pane" key="mcp">
+                <div className="l">$ claude mcp add local402 \</div>
+                <div className="l">{"    "}-e <span className="k">STELLAR_PRIVATE_KEY</span><span className="p">=</span>S… \</div>
+                <div className="l">{"    "}-e <span className="s">&quot;MAX_PRICE=500 CLP&quot;</span> -- npx -y local402-mcp</div>
+                <div className="l"> </div>
+                {tool("local402_discover", "busca servicios (x402 Bazaar)", "finds services (x402 Bazaar)")}
+                {tool("local402_quote", "precio local y tasa", "local price and rate")}
+                {tool("local402_pay", "paga con USDC, XLM o EURC", "pays with USDC, XLM or EURC")}
+                {tool("local402_wallet", "saldo y presupuesto", "balance and budget")}
+              </div>
+            )}
+          </div>
+          <div className="code-foot">
+            <span className="chip c402">402</span>
+            <ArrowRight aria-hidden="true" width={14} height={14} />
+            <span className="chip c200">200 OK</span>
+            <span className="total" translate="no">GET /africa · {africa ? `${local(africa.quote.localAmount)} ${currencyLabel(africa.quote.currency)} = USDC ${fmt(africa.usdcAmount, africa.quote.tokenDecimals)}` : "70 NGN"}</span>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-const yes = <span className="yes">✓</span>;
 const COMPARE: [string, string, ReactNode, ReactNode, ReactNode, ReactNode][] = [
-  ["Precio", "Price", <>En dólares; <code>&quot;70 NGN&quot;</code> falla</>, <>In dollars; <code>&quot;70 NGN&quot;</code> fails</>, <>{yes}MXN, EUR, INR, NGN, CLP… (24 monedas) y UF, vía oráculo on-chain</>, <>{yes}MXN, EUR, INR, NGN, CLP… (24 currencies) and UF, via an on-chain oracle</>],
-  ["El cliente paga con", "The payer pays with", "Solo el activo exacto (USDC)", "Only the exact asset (USDC)", <>{yes}USDC, XLM o EURC, con swap atómico</>, <>{yes}USDC, XLM or EURC, with an atomic swap</>],
-  ["El vendedor recibe", "The seller receives", "USDC", "USDC", <>{yes}USDC exacto, sin exposición a XLM</>, <>{yes}Exact USDC, no XLM exposure</>],
-  ["Si el swap no alcanza", "If the swap falls short", "—", "—", <>{yes}Se revierte todo; el sobrante vuelve</>, <>{yes}Everything reverts; unused funds go back</>],
-  ["Agentes de IA", "AI agents", "Confían en el precio del vendedor", "Trust the seller's price", <>{yes}Verifican la tasa, con tope por pago y presupuesto</>, <>{yes}Check the rate, with a per-payment cap and a budget</>],
-  ["Contabilidad", "Accounting", "Montos en USDC", "USDC amounts", <>{yes}Recibo con precio local, tasa y fuente; CSV</>, <>{yes}Receipt with local price, rate and source; CSV</>],
+  ["Precio", "Price", <>En dólares; <code>&quot;70 NGN&quot;</code> falla</>, <>In dollars; <code>&quot;70 NGN&quot;</code> fails</>, "MXN, EUR, INR, NGN, CLP… (24 monedas) y UF, vía oráculo on-chain", "MXN, EUR, INR, NGN, CLP… (24 currencies) and UF, via an on-chain oracle"],
+  ["El cliente paga con", "The payer pays with", "Solo el activo exacto (USDC)", "Only the exact asset (USDC)", "USDC, XLM o EURC, con swap atómico", "USDC, XLM or EURC, with an atomic swap"],
+  ["El vendedor recibe", "The seller receives", "USDC", "USDC", "USDC exacto, sin exposición a XLM", "Exact USDC, no XLM exposure"],
+  ["Si el swap no alcanza", "If the swap falls short", "—", "—", "Se revierte todo; el sobrante vuelve", "Everything reverts; unused funds go back"],
+  ["Agentes de IA", "AI agents", "Confían en el precio del vendedor", "Trust the seller's price", "Verifican la tasa, con tope por pago y presupuesto", "Check the rate, with a per-payment cap and a budget"],
+  ["Contabilidad", "Accounting", "Montos en USDC", "USDC amounts", "Recibo con precio local, tasa y fuente; CSV", "Receipt with local price, rate and source; CSV"],
 ];
 
 export function Comparacion() {
   const { tr } = useH();
+  const today = tr("x402 en Stellar hoy", "x402 on Stellar today");
+  const withUs = tr("Con Local402", "With Local402");
   return (
-    <section>
-      <div className="eyebrow"><span className="n">[05]</span>{tr("Comparación", "Comparison")}</div>
-      <h2>{tr(<>x402 hoy, y <em>con Local402</em>.</>, <>x402 today, and <em>with Local402</em>.</>)}</h2>
-      <p className="sub">{tr("Hoy x402 solo cobra en dólares y en un único activo. Pero el comercio real factura en pesos, reales, rupias, nairas, euros o yenes.", "Today x402 only charges in dollars, in a single asset. But real businesses invoice in pesos, reais, rupees, naira, euros or yen.")}</p>
-      <div className="table-wrap">
-        <table className="compare">
-          <thead><tr><th></th><th>{tr("x402 en Stellar hoy", "x402 on Stellar today")}</th><th>{tr("Con Local402", "With Local402")}</th></tr></thead>
-          <tbody>
-            {COMPARE.map(([es, en, nes, nen, yes_, yen]) => (
-              <tr key={es}><td>{tr(es, en)}</td><td className="no">{tr(nes, nen)}</td><td>{tr(yes_, yen)}</td></tr>
-            ))}
-          </tbody>
-        </table>
+    <section id="comparacion">
+      <div className="wrap">
+        <div className="head">
+          <div className="eyebrow mark">{tr("Comparación", "Comparison")}</div>
+          <h2>{tr(<>x402 hoy, y <em>con Local402</em>.</>, <>x402 today, and <em>with Local402</em>.</>)}</h2>
+          <p className="sub">{tr("Hoy x402 solo cobra en dólares y en un único activo. Pero el comercio real factura en pesos, reales, rupias, nairas, euros o yenes.", "Today x402 only charges in dollars, in a single asset. But real businesses invoice in pesos, reais, rupees, naira, euros or yen.")}</p>
+        </div>
+        <div className="table-wrap">
+          <table className="compare">
+            <thead><tr><th></th><th>{today}</th><th>{withUs}</th></tr></thead>
+            <tbody>
+              {COMPARE.map(([es, en, nes, nen, yes, yen]) => (
+                <tr key={es}><td>{tr(es, en)}</td><td className="no" data-label={today}>{tr(nes, nen)}</td><td className="yes-col" data-label={withUs}>{tr(yes, yen)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );

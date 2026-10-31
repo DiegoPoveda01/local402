@@ -7,7 +7,7 @@ const OG = "https://local402.xyz/og.png";
 export const metadata: Metadata = {
   title: "Local402 · Cobra en tu moneda",
   description: "x402 en Stellar con precios en moneda local (24 monedas: MXN, BRL, EUR, INR, NGN, JPY, CLP y la UF…) vía el oráculo Reflector. El cliente paga con USDC, XLM o EURC y el vendedor recibe USDC exacto.",
-  icons: { icon: { url: "/logo.svg", type: "image/svg+xml" } },
+  icons: { icon: { url: "/favicon.svg", type: "image/svg+xml" } },
   openGraph: {
     type: "website",
     url: "https://local402.xyz/",
@@ -17,12 +17,12 @@ export const metadata: Metadata = {
   },
   twitter: { card: "summary_large_image", images: [OG] },
 };
-export const viewport: Viewport = { themeColor: "#0a0908" };
+export const viewport: Viewport = { themeColor: "#f4f4f2" };
 
 // The page (and its animations) waits for the web fonts, at most 2 s, so a first visit never paints in a fallback font.
 const FONTS_WAIT = `document.documentElement.classList.add("fonts-wait");
 window.fontsReady = Promise.race([
-  Promise.all(["400 1em Geist", "500 1em Geist", "italic 1em 'Instrument Serif'", "400 1em 'Geist Mono'", "500 1em 'Geist Mono'"].map((font) => document.fonts.load(font))).catch(() => {}),
+  Promise.all(["400 1em Inter", "500 1em Inter", "400 1em 'Instrument Serif'", "italic 1em 'Instrument Serif'", "400 1em 'Geist Mono'"].map((font) => document.fonts.load(font))).catch(() => {}),
   new Promise((resolve) => setTimeout(resolve, 2000)),
 ]).then(() => document.documentElement.classList.remove("fonts-wait"));`;
 
@@ -32,7 +32,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="preload" href="/fonts/geist-mono-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
-        <link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href="/fonts/instrument-serif-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
         <link rel="preload" href="/fonts/instrument-serif-latin-italic.woff2" as="font" type="font/woff2" crossOrigin="" />
         <script dangerouslySetInnerHTML={{ __html: FONTS_WAIT }} />
       </head>
