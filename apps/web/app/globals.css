@@ -355,9 +355,7 @@
   .marquee { position: relative; grid-column: 2 / -1; margin-top: 40px; display: flex; align-items: center; gap: 24px; }
   .marquee .track-wrap { flex: 1; min-width: 0; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
   .marquee ul { display: flex; width: max-content; margin: 0; padding: 0; list-style: none; animation: ticker 60s linear infinite; }
-  .marquee.paused ul { animation-play-state: paused; }
   .marquee li { display: flex; align-items: center; gap: 12px; padding-right: 72px; font-size: 20px; color: var(--ink); white-space: nowrap; }
-  .marquee .ghost { display: inline-flex; align-items: center; gap: 6px; flex: none; }
   .marquee li i { width: 28px; height: 28px; display: block; background: currentColor; mask: var(--src) center / contain no-repeat; }
 
   /* Comparison */
@@ -424,6 +422,9 @@
   .foot-brand .tagline { display: grid; margin: 0; font: 400 30px/1.2 var(--sans); letter-spacing: -.015em; }
   .foot-brand .tagline em { font: italic 400 34px/1.1 var(--serif); letter-spacing: -.01em; }
   .foot-brand .meta { max-width: 360px; margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+  .foot-social { display: flex; gap: 8px; }
+  .foot-social a { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid rgb(255 255 255 / .16); border-radius: 999px; color: var(--surface); transition: color .2s cubic-bezier(.23,1,.32,1), border-color .2s cubic-bezier(.23,1,.32,1); }
+  .foot-social a:hover { color: var(--accent-light); border-color: var(--accent-light); }
   .foot-col { display: grid; gap: 12px; align-content: start; min-width: 170px; font-size: 14px; line-height: 1.5; }
   .foot-col .label { font: 500 11px/1.4 var(--sans); letter-spacing: .08em; color: var(--ink-2); }
   .foot-col a { color: var(--surface); text-decoration: none; white-space: nowrap; }
@@ -723,12 +724,11 @@
     .foot-word { padding-top: 40px; height: calc(.862em + 40px); color: var(--surface); }
   }
 
-  /* Reduced motion: no movement anywhere; the ticker stays still until the visitor resumes it. */
+  /* Reduced motion: no movement anywhere; the ticker stays still. */
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     *, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; }
-    .marquee:not(.playing) ul { animation-play-state: paused; }
-    .marquee.playing ul { animation-duration: 60s !important; }
+    .marquee ul { animation: none; }
     [data-reveal] { transform: none; }
     .receipt > div { animation-name: fade; }
   }

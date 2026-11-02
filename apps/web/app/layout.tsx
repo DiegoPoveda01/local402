@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 
-const OG = "https://local402.xyz/og.png";
+// ?v=2 so X, LinkedIn and others drop the old cached Spanish card.
+const OG = "https://local402.xyz/og.png?v=2";
 
 export const metadata: Metadata = {
   title: "Local402 · Cobra en tu moneda",
@@ -11,11 +12,12 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: "https://local402.xyz/",
-    title: "Local402 · Cobra en tu moneda, recibe USDC exacto",
-    description: "Pagos x402 en Stellar con precios en moneda local y swap atómico en Soroswap. Demo en vivo en testnet.",
-    images: [{ url: OG, width: 1200, height: 630, alt: "Local402: cobra en tu moneda, recibe USDC exacto. 50 CLP = 0.0522984 USDC vía el oráculo Reflector." }],
+    title: "Local402 · Charge in your currency, receive exact USDC",
+    description: "x402 payments on Stellar priced in 24 local currencies + UF via the Reflector oracle. People or AI agents pay with USDC, XLM or EURC; an atomic Soroswap swap settles exact USDC. Live demo on testnet.",
+    images: [{ url: OG, width: 1200, height: 630, alt: "Local402: Charge in your currency. Receive exact USDC. People or AI agents pay with USDC, XLM or EURC. A 402 receipt: price 50 CLP, paid USDC 0.0512658, status Paid." }],
+    locale: "en_US",
   },
-  twitter: { card: "summary_large_image", images: [OG] },
+  twitter: { card: "summary_large_image", site: "@local402dev", title: "Local402 · Charge in your currency, receive exact USDC", description: "x402 on Stellar priced in 24 local currencies + UF. Pay with USDC, XLM or EURC; the seller gets exact USDC.", images: [OG] },
 };
 export const viewport: Viewport = { themeColor: "#f4f4f2" };
 

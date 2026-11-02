@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { ArrowLeftRight, ArrowRight, ArrowUpRight, Bot, ChartLine, Check, Copy, Cpu, Film, Globe, Menu, Pause, Play, Receipt, Search, X } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, ArrowUpRight, Bot, ChartLine, Check, Copy, Cpu, Film, Globe, Menu, Receipt, Search, X } from "lucide-react";
 import { useH, useLang, type Lang } from "./i18n";
 import { symbolMainnet, TxLink, useLive, type Item } from "./live";
 import { calm, fontsReady, wait } from "./motion";
@@ -341,14 +341,11 @@ const ECO: [string, string][] = [["stellar", "Stellar"], ["circle", "Circle"], [
 // These two files are wordmarks, not symbols; the name alone stands in for them.
 const WORDMARKS = ["soroswap", "x402"];
 
-// The partners scroll by on a loop (the list twice, moved by half its width); the button stops or resumes them.
-// With reduced motion they start still.
+// The partners scroll by on a loop (the list twice, moved by half its width). It never stops;
+// only reduced motion keeps it still.
 export function Ecosystem() {
   const { tr, locale } = useH();
   const { receipts, mainnet } = useLive();
-  const [still, setStill] = useState(false);
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => { if (calm()) { setReduced(true); setStill(true); } }, []);
   const usdc = receipts.reduce((sum, r) => sum + Number(r.settled.amount) / 10 ** r.settled.decimals, 0);
   const count = (n: number) => n.toLocaleString(locale);
   const stat = (n: string, value: ReactNode, meta: ReactNode) => (
@@ -371,11 +368,8 @@ export function Ecosystem() {
           {stat("02", mainnet.length ? count(mainnet.length) : "—", tr("pagos reales en mainnet", "real payments on mainnet"))}
           {stat("03", "24 + UF", tr("monedas, con la tasa del oráculo Reflector", "currencies, at the Reflector oracle rate"))}
         </div>
-        <div className={`marquee${still ? (reduced ? "" : " paused") : reduced ? " playing" : ""}`}>
+        <div className="marquee">
           <div className="track-wrap"><ul>{list(false)}{list(true)}</ul></div>
-          <button type="button" className="ghost" aria-pressed={still} onClick={() => setStill(!still)}>
-            {still ? <><Play aria-hidden="true" width={14} height={14} />{tr("Reanudar", "Resume")}</> : <><Pause aria-hidden="true" width={14} height={14} />{tr("Pausar", "Pause")}</>}
-          </button>
         </div>
       </div>
     </section>
