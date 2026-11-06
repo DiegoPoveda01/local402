@@ -497,9 +497,9 @@ Chile y ajeno al proyecto, la va a seguir desde cero y señalar lo que no se ent
 | --- | --- | --- |
 | Sprint de octubre 2026 | Paquetes 1.0, un facilitador que cualquiera puede desplegar, la guía de integración, más tests, y kuyfi en 1.0 | Los criterios de aceptación de [docs/sprint-plan.md](docs/sprint-plan.md) |
 | Cuando kuyfi esté listo | kuyfi en vivo en mainnet. El sprint ya agrega su destinatario a la allowlist, así que la decisión es de kuyfi ([kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2)) | Hashes de mainnet de un escaneo de kuyfi pagado |
-| **Siguiente: SCF Build** | **Una auditoría externa de FxPay**, que el Instaward no financia. El sprint deja el código listo para auditar: [security-review.md](docs/security-review.md) para el contrato y [threat-model.md](docs/threat-model.md) para todo el camino del pago | Un informe de auditoría publicado, con cada hallazgo corregido o respondido |
+| **Siguiente** | **Una auditoría externa de FxPay**, que el Instaward no financia. El sprint deja el código listo para auditar: [security-review.md](docs/security-review.md) para el contrato y [threat-model.md](docs/threat-model.md) para todo el camino del pago | Un informe de auditoría publicado, con cada hallazgo corregido o respondido |
 | Después de la auditoría | Abrir el facilitador de mainnet a cualquier vendedor: quitar la allowlist de destinatarios y revisar el monto mínimo | Un pago en mainnet liquidado para un vendedor que nadie agregó a mano |
-| Al cierre del SCF Build | 5 vendedores externos liquidando en mainnet, kuyfi primero | Contados desde los eventos `FxPaid` de FxPay en mainnet |
+| Con el facilitador abierto | 5 vendedores externos liquidando en mainnet, kuyfi primero | Contados desde los eventos `FxPaid` de FxPay en mainnet |
 | En curso | `exact-fx` propuesto upstream a x402 | La propuesta abierta; cuándo se fusiona depende de x402 |
 
 `exact-fx` es un esquema en borrador. Está escrito en el formato de specs de x402 para poder discutirse como
