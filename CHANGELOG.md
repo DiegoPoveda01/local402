@@ -4,6 +4,15 @@ The four packages (`local402-pricing`, `local402-fx`, `local402-client` and `loc
 version from 1.0 on. `local402-facilitator`, the facilitator kit new in 1.0, is released with them under
 the same version.
 
+## 1.0.1
+
+### Fixed
+
+- **Testnet works again after its protocol 30 upgrade.** 1.0.0 pinned `@stellar/stellar-sdk` 16.3.0, which
+  cannot read protocol 30 ledgers and fails with `XDR Read Error: unknown StellarValueType member for value 3`
+  when it settles or verifies a payment. All five packages now pin 16.4.1. Mainnet is still on protocol 29,
+  but it needs this release once it upgrades.
+
 ## 1.0.0
 
 1.0.0 is the npm `latest` release, so a plain install gets it:
