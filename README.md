@@ -5,7 +5,7 @@
 [![npm](https://img.shields.io/npm/v/local402-server?label=local402-server&color=e38b5a)](https://www.npmjs.com/package/local402-server)
 [![Stellar mainnet](https://img.shields.io/badge/Stellar-mainnet%20live-e38b5a)](https://local402-mainnet.vercel.app)
 [![CI](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml/badge.svg)](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-41%20TS%20%2B%2011%20Soroban-3fb950)](#testing)
+[![tests](https://img.shields.io/badge/tests-140%20TS%20%2B%2017%20Soroban-3fb950)](#testing)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ### English · [Español](README.es.md)
@@ -28,7 +28,7 @@ no manual currency swap on either side.
 | Real payments through it | XLM → USDC [`0babefe1…`](https://stellar.expert/explorer/public/tx/0babefe189f2765b3198bbfdefb28c5bcad8b8bd9bc0710c78eb2776b306ac3d) and EURC → USDC [`bfe6a44d…`](https://stellar.expert/explorer/public/tx/bfe6a44d5db2a37a67552c38c75d85009f3208c95d1c22e4fd086c6e959f0a09), 2026-09-20 — each delivered exactly 0.0520721 USDC to the seller and refunded the unused input |
 | An outside seller charging with it | [kuyfi](#someone-else-is-already-charging-with-it) prices each scan at 500 CLP — **[the full paid flow on video (28 s)](https://x.com/dpoveda0/status/2107313680660812005)** · testnet tx [`44ef0d00…`](https://stellar.expert/explorer/testnet/tx/44ef0d00b52dafd64acdb97b1c992ba62f996f7ee5a1d9c35f258d339c8abf42) |
 | Security | [threat model](docs/threat-model.md) · [internal review](docs/security-review.md) — not audited, so mainnet settles only for the demo seller and from 0.01 USDC |
-| Next 30 days | [sprint plan](docs/sprint-plan.md): 1.0 packages, a deployable facilitator, an integration guide, kuyfi on 1.0 — each with its acceptance criterion |
+| October sprint (done) | [sprint plan](docs/sprint-plan.md): 1.0 packages, a deployable facilitator, the [integration guide](docs/integration-guide.md) (followed from scratch by someone outside the project, [#3](https://github.com/DiegoPoveda01/local402/issues/3)), kuyfi on 1.0 ([kuyfi#5](https://github.com/alex0tico/kuyfi/pull/5)) |
 | Reproducible build | [release](https://github.com/DiegoPoveda01/local402/releases/tag/v0.1.1_contracts_fx-pay_cli27.0.0) — wasm `69a12d89…`, byte for byte what is deployed; [Verified Build (SEP-55) on Stellar Lab](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=mainnet&label=Mainnet&horizonUrl=https:////horizon.stellar.org&rpcUrl=https:////mainnet.sorobanrpc.com&passphrase=Public%20Global%20Stellar%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD;;) |
 | Bug found and fixed upstream | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rejects the fee the SDK bids; our fix, [x402#3503](https://github.com/x402-foundation/x402/pull/3503), is merged |
 
@@ -181,9 +181,9 @@ on our side first: the mainnet facilitator settles only for the demo seller toda
 So the two projects now rely on each other both ways: Local402's own contract was scanned with kuyfi (see
 [What it does not do](#what-it-does-not-do)), and kuyfi sells those scans with Local402.
 
-Moving kuyfi onto the 1.0 packages, with paid testnet scans as the evidence, is the acceptance test of the
-October sprint ([D5 in the sprint plan](docs/sprint-plan.md#deliverables-and-acceptance-criteria)). The plan
-also covers what happens if kuyfi cannot move in time.
+Moving kuyfi onto the 1.0 packages, with paid testnet scans as the evidence, was the acceptance test of the
+October sprint ([D5 in the sprint plan](docs/sprint-plan.md#deliverables-and-acceptance-criteria)). It is
+done: [kuyfi#5](https://github.com/alex0tico/kuyfi/pull/5) is merged.
 
 ## Try it in 60 seconds
 
@@ -393,9 +393,9 @@ and [the runbook](docs/facilitator-runbook.md) covers keys, funding, top-ups and
 ## Testing
 
 ```bash
-npm test        # 41 unit tests across pricing, fx and client
+npm test        # 140 tests across the packages (4 more need testnet, see below)
 npm run typecheck
-cd contracts && cargo test    # 11 contract tests against a mock Soroswap router
+cd contracts && cargo test    # 17 contract tests against a mock Soroswap router
 ```
 
 The contract tests cover the cases that matter: exact delivery with a refund of the unused input,
@@ -412,6 +412,9 @@ it touches the network: a payload for another version, scheme or network, a tran
 call that is not FxPay's `pay`, a source or payer that is the facilitator itself, a send asset it does not
 accept, an asset, amount or recipient that is not what the seller asked for, and a deadline that has
 expired or reaches too far.
+
+The tests cover 82.93% of the statements in what ships to npm; the counts and coverage before and after the
+October sprint are in [the sprint plan](docs/sprint-plan.md#d4-tests-before-and-after).
 
 Four further tests build a real `exact-fx` payload against testnet and run it through the facilitator's
 verification, including the rejections. They only run when `FX_PAYER_SECRET` is set, so a clean
@@ -452,7 +455,7 @@ Stellar Lab reads the SEP-55 attestation directly, and its contract explorer sho
   The SDEX quote on the dashboard is there for comparison and is never used to pay.
 - **It does not hold funds.** Input sits in FxPay only inside the transaction that swaps it. The contract
   keeps no balance between payments and has no admin or upgrade function.
-- **It is not audited.** The contract has 11 tests and has settled real payments, but no external audit —
+- **It is not audited.** The contract has 17 tests and has settled real payments, but no external audit —
   an internal review is in [docs/security-review.md](docs/security-review.md), and who could attack a payment,
   and what stops them, is in [docs/threat-model.md](docs/threat-model.md). The wasm that runs on mainnet
   was also deployed to testnet as [CD6PUDBJ…](https://stellar.expert/explorer/testnet/contract/CD6PUDBJNDYWLTQPHYU26OCEH4GWR7WN3UIXAEKUP3DQIS3DKJQIF7DL) and scanned with
@@ -477,14 +480,14 @@ Running on **Stellar mainnet** with real payments: XLM and EURC through the FxPa
 above, and USDC directly through x402 `exact`. Every sale leaves a receipt recording the local price, the rate and its source, the swap
 premium in basis points, and the transaction hash. `GET /receipts.csv` hands it to accounting.
 
-Next, in October 2026: an integration guide for sellers. Pau Koh, from the Stellar Chile community and
-not part of the project, will follow it from scratch and report whatever is unclear before it is final.
+The [integration guide](docs/integration-guide.md) for sellers shipped in October. Someone outside the
+project followed it from scratch on 2026-10-31, and every step worked as written ([#3](https://github.com/DiegoPoveda01/local402/issues/3)).
 
 ### Roadmap
 
 | When | What | Evidence that it is done |
 | --- | --- | --- |
-| October 2026 sprint | 1.0 packages, a facilitator anyone can deploy, the integration guide, wider tests, and kuyfi on 1.0 | The acceptance criteria in [docs/sprint-plan.md](docs/sprint-plan.md) |
+| October 2026 sprint (done) | 1.0 packages, a facilitator anyone can deploy, the integration guide, wider tests, and kuyfi on 1.0 | The acceptance criteria in [docs/sprint-plan.md](docs/sprint-plan.md) |
 | When kuyfi is ready | kuyfi live on mainnet. The sprint already adds its payee to the allowlist, so this is kuyfi's call ([kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2)) | Mainnet tx hashes for a paid kuyfi scan |
 | **Next** | **An external audit of FxPay**, which the Instaward does not fund. The sprint leaves the code audit-ready: [security-review.md](docs/security-review.md) for the contract, [threat-model.md](docs/threat-model.md) for the whole payment path | A published audit report, with every finding fixed or answered |
 | After the audit | Open the mainnet facilitator to any seller: drop the payee allowlist and revisit the minimum amount | A mainnet payment settled for a seller nobody added by hand |

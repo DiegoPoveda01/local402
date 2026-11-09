@@ -5,7 +5,7 @@
 [![npm](https://img.shields.io/npm/v/local402-server?label=local402-server&color=e38b5a)](https://www.npmjs.com/package/local402-server)
 [![Stellar mainnet](https://img.shields.io/badge/Stellar-mainnet%20live-e38b5a)](https://local402-mainnet.vercel.app)
 [![CI](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml/badge.svg)](https://github.com/DiegoPoveda01/local402/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-41%20TS%20%2B%2011%20Soroban-3fb950)](#tests)
+[![tests](https://img.shields.io/badge/tests-140%20TS%20%2B%2017%20Soroban-3fb950)](#tests)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ### [English](README.md) · Español
@@ -28,7 +28,7 @@ sin que ninguna de las dos partes tenga que cambiar moneda a mano.
 | Pagos reales a través de él | XLM → USDC [`0babefe1…`](https://stellar.expert/explorer/public/tx/0babefe189f2765b3198bbfdefb28c5bcad8b8bd9bc0710c78eb2776b306ac3d) y EURC → USDC [`bfe6a44d…`](https://stellar.expert/explorer/public/tx/bfe6a44d5db2a37a67552c38c75d85009f3208c95d1c22e4fd086c6e959f0a09), 2026-09-20 — cada uno entregó exactamente 0.0520721 USDC al vendedor y devolvió el input no usado |
 | Un vendedor externo cobrando con esto | [kuyfi](#alguien-más-ya-cobra-con-esto) cobra 500 CLP por escaneo — **[el flujo pagado completo en video (28 s)](https://x.com/dpoveda0/status/2107313680660812005)** · tx de testnet [`44ef0d00…`](https://stellar.expert/explorer/testnet/tx/44ef0d00b52dafd64acdb97b1c992ba62f996f7ee5a1d9c35f258d339c8abf42) |
 | Seguridad | [modelo de amenazas](docs/threat-model.md) · [revisión interna](docs/security-review.md) — sin auditoría, por eso mainnet solo liquida para el vendedor de demo y desde 0.01 USDC |
-| Próximos 30 días | [plan del sprint](docs/sprint-plan.md): paquetes 1.0, un facilitador que cualquiera puede desplegar, una guía de integración, kuyfi en 1.0 — cada uno con su criterio de aceptación |
+| Sprint de octubre (terminado) | [plan del sprint](docs/sprint-plan.md): paquetes 1.0, un facilitador que cualquiera puede desplegar, la [guía de integración](docs/integration-guide.md) (seguida desde cero por alguien ajeno al proyecto, [#3](https://github.com/DiegoPoveda01/local402/issues/3)), kuyfi en 1.0 ([kuyfi#5](https://github.com/alex0tico/kuyfi/pull/5)) |
 | Build reproducible | [release](https://github.com/DiegoPoveda01/local402/releases/tag/v0.1.1_contracts_fx-pay_cli27.0.0) — wasm `69a12d89…`, byte por byte lo desplegado; [Verified Build (SEP-55) en Stellar Lab](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=mainnet&label=Mainnet&horizonUrl=https:////horizon.stellar.org&rpcUrl=https:////mainnet.sorobanrpc.com&passphrase=Public%20Global%20Stellar%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA6Z4E55YN6LZEXBQPFCWUIMUJGAV42RLHYWWZ6SNIP4E73R2I2PUGHD;;) |
 | Bug que encontramos y corregimos upstream | [x402#3491](https://github.com/x402-foundation/x402/issues/3491) — mainnet rechaza la tarifa que ofrece el SDK; nuestro arreglo, [x402#3503](https://github.com/x402-foundation/x402/pull/3503), ya está fusionado |
 
@@ -185,9 +185,9 @@ destinatarios permitidos.
 Así los dos proyectos dependen uno del otro en ambos sentidos: el contrato de Local402 fue escaneado con
 kuyfi (ver [Lo que no hace](#lo-que-no-hace)), y kuyfi vende esos escaneos con Local402.
 
-Pasar kuyfi a los paquetes 1.0, con escaneos pagados en testnet como evidencia, es la prueba de aceptación
+Pasar kuyfi a los paquetes 1.0, con escaneos pagados en testnet como evidencia, era la prueba de aceptación
 del sprint de octubre ([D5 en el plan del sprint](docs/sprint-plan.md#deliverables-and-acceptance-criteria)).
-El plan también cubre qué pasa si kuyfi no alcanza a moverse a tiempo.
+Está hecho: [kuyfi#5](https://github.com/alex0tico/kuyfi/pull/5) está mergeado.
 
 ## Pruébalo en 60 segundos
 
@@ -401,9 +401,9 @@ y [el runbook](docs/facilitator-runbook.md) cubre llaves, fondos, recargas y rot
 ## Tests
 
 ```bash
-npm test        # 41 tests unitarios entre pricing, fx y client
+npm test        # 140 tests entre los paquetes (4 más necesitan testnet, ver abajo)
 npm run typecheck
-cd contracts && cargo test    # 11 tests del contrato contra un router Soroswap simulado
+cd contracts && cargo test    # 17 tests del contrato contra un router Soroswap simulado
 ```
 
 Los tests del contrato cubren lo que importa: entrega exacta con devolución de lo no usado, que `quote`
@@ -420,6 +420,9 @@ de tocar la red: un payload de otra versión, esquema o red, una transacción qu
 que no es el `pay` de FxPay, un origen o un pagador que es el propio facilitador, un activo de envío que no
 acepta, un activo, monto o destinatario distinto del que pidió el vendedor, y un deadline vencido o
 demasiado lejano.
+
+Los tests cubren el 82,93% de las sentencias de lo que se publica en npm; los conteos y la cobertura de antes
+y después del sprint de octubre están en [el plan del sprint](docs/sprint-plan.md#d4-tests-before-and-after).
 
 Otros cuatro tests construyen un payload `exact-fx` real contra testnet y lo pasan por la verificación del
 facilitador, incluyendo los rechazos. Solo corren cuando `FX_PAYER_SECRET` está definido, así que un
@@ -463,7 +466,7 @@ Stellar Lab lee la atestación SEP-55 directamente, y su explorador de contratos
   cotización de SDEX del dashboard está para comparar y nunca se usa para pagar.
 - **No custodia fondos.** El input queda en FxPay solo dentro de la transacción que lo cambia. El contrato no
   guarda saldo entre pagos y no tiene funciones de administración ni de actualización.
-- **No está auditado.** El contrato tiene 11 tests y ha liquidado pagos reales, pero no tiene auditoría
+- **No está auditado.** El contrato tiene 17 tests y ha liquidado pagos reales, pero no tiene auditoría
   externa — hay una revisión interna en [docs/security-review.md](docs/security-review.md), y quién podría
   atacar un pago y qué lo detiene está en [docs/threat-model.md](docs/threat-model.md). El mismo wasm que
   corre en mainnet también se desplegó en testnet como [CD6PUDBJ…](https://stellar.expert/explorer/testnet/contract/CD6PUDBJNDYWLTQPHYU26OCEH4GWR7WN3UIXAEKUP3DQIS3DKJQIF7DL) y se escaneó con
@@ -488,14 +491,14 @@ Corriendo en **Stellar mainnet** con pagos reales: XLM y EURC a través del desp
 más arriba, y USDC directamente con el esquema `exact` de x402. Cada venta deja un recibo que registra el precio local, la tasa y su fuente, el premium
 del swap en puntos básicos, y el hash de la transacción. `GET /receipts.csv` se lo entrega a contabilidad.
 
-Lo siguiente, en octubre de 2026: una guía de integración para vendedores. Pau Koh, de la comunidad Stellar
-Chile y ajeno al proyecto, la va a seguir desde cero y señalar lo que no se entienda antes de darla por final.
+La [guía de integración](docs/integration-guide.md) para vendedores salió en octubre. Alguien ajeno al
+proyecto la siguió desde cero el 2026-10-31 y cada paso funcionó tal como está escrito ([#3](https://github.com/DiegoPoveda01/local402/issues/3)).
 
 ### Hoja de ruta
 
 | Cuándo | Qué | Evidencia de que está hecho |
 | --- | --- | --- |
-| Sprint de octubre 2026 | Paquetes 1.0, un facilitador que cualquiera puede desplegar, la guía de integración, más tests, y kuyfi en 1.0 | Los criterios de aceptación de [docs/sprint-plan.md](docs/sprint-plan.md) |
+| Sprint de octubre 2026 (terminado) | Paquetes 1.0, un facilitador que cualquiera puede desplegar, la guía de integración, más tests, y kuyfi en 1.0 | Los criterios de aceptación de [docs/sprint-plan.md](docs/sprint-plan.md) |
 | Cuando kuyfi esté listo | kuyfi en vivo en mainnet. El sprint ya agrega su destinatario a la allowlist, así que la decisión es de kuyfi ([kuyfi#2](https://github.com/alex0tico/kuyfi/issues/2)) | Hashes de mainnet de un escaneo de kuyfi pagado |
 | **Siguiente** | **Una auditoría externa de FxPay**, que el Instaward no financia. El sprint deja el código listo para auditar: [security-review.md](docs/security-review.md) para el contrato y [threat-model.md](docs/threat-model.md) para todo el camino del pago | Un informe de auditoría publicado, con cada hallazgo corregido o respondido |
 | Después de la auditoría | Abrir el facilitador de mainnet a cualquier vendedor: quitar la allowlist de destinatarios y revisar el monto mínimo | Un pago en mainnet liquidado para un vendedor que nadie agregó a mano |
