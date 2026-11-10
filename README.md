@@ -483,6 +483,10 @@ premium in basis points, and the transaction hash. `GET /receipts.csv` hands it 
 The [integration guide](docs/integration-guide.md) for sellers shipped in October. Someone outside the
 project followed it from scratch on 2026-10-31, and every step worked as written ([#3](https://github.com/DiegoPoveda01/local402/issues/3)).
 
+### Featured in Tellus Cooperative
+
+- [De cero a cien en blockchain: Diego Poveda y Local402](https://blog.telluscoop.com/p/diego-poveda-local402) — November 9, 2026.
+
 ### Roadmap
 
 | When | What | Evidence that it is done |
