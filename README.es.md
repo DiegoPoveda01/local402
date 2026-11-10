@@ -494,9 +494,10 @@ del swap en puntos básicos, y el hash de la transacción. `GET /receipts.csv` s
 La [guía de integración](docs/integration-guide.md) para vendedores salió en octubre. Alguien ajeno al
 proyecto la siguió desde cero el 2026-10-31 y cada paso funcionó tal como está escrito ([#3](https://github.com/DiegoPoveda01/local402/issues/3)).
 
-### Destacado en Tellus Cooperative
+### Reconocimientos de Tellus Cooperative
 
-- [De cero a cien en blockchain: Diego Poveda y Local402](https://blog.telluscoop.com/p/diego-poveda-local402) — 9 de noviembre de 2026.
+- [Find Your Way 2026: primer lugar, Track General](https://x.com/TellusCoop/status/2113397952085623215).
+- Destacado en el blog de Tellus: [De cero a cien en blockchain: Diego Poveda y Local402](https://blog.telluscoop.com/p/diego-poveda-local402) — 9 de noviembre de 2026.
 
 ### Hoja de ruta
 
