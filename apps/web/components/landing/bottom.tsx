@@ -142,9 +142,9 @@ export function Mainnet() {
       const walletAddress = await wallet.connect();
       setAddress(walletAddress);
       show(<S c="h">$ GET {resource.replace(MAINNET_API, "")}</S>, <S c="y">HTTP/1.1 402 Payment Required</S>,
-        <S c="h">{asset === "USDC" ? "→ Freighter firma una transferencia de USDC (exact)" : `→ Freighter firma FxPay.pay con ${asset} (exact-fx)`}</S>,
+        <S c="h">{asset === "USDC" ? "→ Varial firma una transferencia de USDC (exact)" : `→ Varial firma FxPay.pay con ${asset} (exact-fx)`}</S>,
         <S c="c">  el cliente revisa la tasa con Reflector y el tope de 200 CLP antes de enviar…</S>,
-        <S c="c">  si Freighter dice «Unable to scan site»: Blockaid aún no conoce este contrato nuevo</S>);
+        <S c="c">  si Varial dice «Unable to scan site»: Blockaid aún no conoce este contrato nuevo</S>);
       const started = performance.now();
       const data = await wallet.pay(resource, walletAddress, asset);
       const seconds = ((performance.now() - started) / 1000).toLocaleString(locale, { maximumFractionDigits: 1 });
@@ -158,8 +158,8 @@ export function Mainnet() {
     } catch (error) {
       const message = String((error as Error)?.message ?? error);
       const hint = {
-        no_freighter: <>No se encontró Freighter. Instálala desde <a href="https://www.freighter.app" target="_blank" rel="noopener">freighter.app</a> y recarga la página.</>,
-        wrong_network: "Freighter está en otra red. Cámbiala a Mainnet (Public) e inténtalo de nuevo.",
+        no_freighter: <>No se encontró Varial (antes Freighter). Instálala desde <a href="https://www.freighter.app" target="_blank" rel="noopener">freighter.app</a> y recarga la página.</>,
+        wrong_network: "Varial está en otra red. Cámbiala a Mainnet (Public) e inténtalo de nuevo.",
       }[message];
       show(<S c="r">{hint ?? `Error: ${message}`}</S>, "", ...agentLines());
     } finally {
@@ -207,8 +207,8 @@ export function Mainnet() {
             <div className="label">GET /indicadores · 50 CLP · mainnet</div>
             <h3 id="wallet-title">{tr("Paga 50 pesos reales desde tu wallet.", "Pay 50 real pesos from your wallet.")}</h3>
             <p id="wallet-text">{tr(
-              <>Con <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a> en Mainnet; basta con tener XLM. Tú firmas, el facilitador paga la red y el cliente rechaza cobros sobre 200 CLP.</>,
-              <>With <a href="https://www.freighter.app" target="_blank" rel="noopener">Freighter</a> on Mainnet; XLM alone is enough. You sign, the facilitator pays the network fee and the client refuses charges above 200 CLP.</>,
+              <>Con <a href="https://www.freighter.app" target="_blank" rel="noopener">Varial</a> en Mainnet; basta con tener XLM. Tú firmas, el facilitador paga la red y el cliente rechaza cobros sobre 200 CLP.</>,
+              <>With <a href="https://www.freighter.app" target="_blank" rel="noopener">Varial</a> on Mainnet; XLM alone is enough. You sign, the facilitator pays the network fee and the client refuses charges above 200 CLP.</>,
             )}</p>
             <p id="wallet-agents">{tr("¿Eres un agente? Lo mismo desde la terminal, con tu propia clave y un tope por pago.", "An agent? The same from the terminal, with your own key and a per-payment cap.")}</p>
             {payButtons((asset) => payFromWallet(asset))}

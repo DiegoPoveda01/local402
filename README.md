@@ -122,7 +122,7 @@ payer settle it in XLM while the seller still receives exact USDC.
 | The seller receives | that token | the exact USDC amount, or the transaction reverts |
 | A stock x402 client | pays | still pays: every 402 keeps a plain `exact` option next to `exact-fx` |
 
-Local402 does not replace a facilitator or fork x402. It is four npm packages and one contract on top of it,
+Local402 does not replace a facilitator or fork x402. It is six npm packages and one contract on top of it,
 and the one change it needed upstream — the fee bid — went back into x402 itself.
 
 ## Where you'd use it
@@ -200,7 +200,7 @@ npx -y local402-client quote https://local402-mainnet.vercel.app/asia --with XLM
 npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with EURC
 ```
 
-To pay for real, use the Freighter button in section 08 of the [dashboard](https://local402.xyz), or
+To pay for real, use the Varial (formerly Freighter) button in section 08 of the [dashboard](https://local402.xyz), or
 `STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "100 NGN"`. The `--max` limit can be
 in any supported currency, whatever the seller's, and the client refuses anything above it.
 
@@ -332,8 +332,8 @@ fee, which mainnet frequently rejects under Soroban surge pricing. `feeBumpSigne
 bump with a bid of twice the network's recent p99, capped — without touching the inner transaction or
 its signatures. We reported it as [x402#3491](https://github.com/x402-foundation/x402/issues/3491) and
 fixed it in [x402#3503](https://github.com/x402-foundation/x402/pull/3503), merged into x402 `main`: the
-exact facilitator now takes an `inclusionFeeStroops` option. The workaround stays until a release
-(after 2.26.0) ships it.
+exact facilitator takes an `inclusionFeeStroops` option, released in `@x402/stellar` 2.27.0. Local402
+still pins 2.25 and keeps the workaround until it moves to a release that has it.
 
 **Parallel settlement needs separate accounts.** Two settlements from one Stellar account collide on
 the sequence number. `ChannelPool` hands each concurrent settlement its own fee-paying account, and
@@ -487,6 +487,7 @@ project followed it from scratch on 2026-10-31, and every step worked as written
 
 - [Find Your Way 2026: first place, General Track](https://x.com/TellusCoop/status/2113397952085623215).
 - Featured on the Tellus blog: [De cero a cien en blockchain: Diego Poveda y Local402](https://blog.telluscoop.com/p/diego-poveda-local402) — November 9, 2026.
+- An Instaward in October 2026, which also sponsored the trip to demo Local402 at [HackMeridian 2026](https://www.youtube.com/watch?v=8Y8Twzy9j8c) in Lisbon.
 
 ### Roadmap
 

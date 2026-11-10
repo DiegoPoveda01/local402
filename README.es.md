@@ -125,7 +125,7 @@ USDC exacto.
 | El vendedor recibe | ese token | el monto exacto en USDC, o la transacción se revierte |
 | Un cliente x402 común | paga | sigue pagando: cada 402 mantiene una opción `exact` normal junto a `exact-fx` |
 
-Local402 no reemplaza a un facilitador ni hace un fork de x402. Son cuatro paquetes npm y un contrato encima, y el
+Local402 no reemplaza a un facilitador ni hace un fork de x402. Son seis paquetes npm y un contrato encima, y el
 único cambio que necesitó upstream — la oferta de comisión — volvió al propio x402.
 
 ## Dónde lo usarías
@@ -204,7 +204,7 @@ npx -y local402-client quote https://local402-mainnet.vercel.app/asia --with XLM
 npx -y local402-client quote https://local402-mainnet.vercel.app/uf --with EURC
 ```
 
-Para pagar de verdad, usa el botón de Freighter en la sección 08 del [dashboard](https://local402.xyz), o
+Para pagar de verdad, usa el botón de Varial (antes Freighter) en la sección 08 del [dashboard](https://local402.xyz), o
 `STELLAR_SECRET=S… npx -y local402-client pay <url> --with XLM --max "100 NGN"`. El límite `--max` puede ir en
 cualquier moneda soportada, sea o no la del vendedor, y el cliente rechaza cualquier cosa por encima.
 
@@ -339,8 +339,8 @@ vuelve a envolver el fee bump con una puja del doble del p99 reciente de la red,
 transacción interna ni sus firmas. Lo reportamos como
 [x402#3491](https://github.com/x402-foundation/x402/issues/3491) y lo corregimos en
 [x402#3503](https://github.com/x402-foundation/x402/pull/3503), ya fusionado en `main` de x402: el
-facilitador exact ahora acepta la opción `inclusionFeeStroops`. El workaround se queda hasta que una
-versión posterior a la 2.26.0 lo publique.
+facilitador exact acepta la opción `inclusionFeeStroops`, publicada en `@x402/stellar` 2.27.0. Local402
+sigue fijado en la 2.25 y mantiene el workaround hasta pasar a una versión que la traiga.
 
 **La liquidación en paralelo necesita cuentas separadas.** Dos liquidaciones desde una misma cuenta Stellar
 chocan en el número de secuencia. `ChannelPool` le entrega a cada liquidación concurrente su propia cuenta
@@ -498,6 +498,7 @@ proyecto la siguió desde cero el 2026-10-31 y cada paso funcionó tal como est�
 
 - [Find Your Way 2026: primer lugar, Track General](https://x.com/TellusCoop/status/2113397952085623215).
 - Destacado en el blog de Tellus: [De cero a cien en blockchain: Diego Poveda y Local402](https://blog.telluscoop.com/p/diego-poveda-local402) — 9 de noviembre de 2026.
+- Un Instaward en octubre de 2026, que además financió el viaje para mostrar Local402 en [HackMeridian 2026](https://www.youtube.com/watch?v=8Y8Twzy9j8c) en Lisboa.
 
 ### Hoja de ruta
 
