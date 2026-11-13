@@ -17,3 +17,6 @@ firma.png
 
 # personal event photos and videos (never commit)
 images/
+
+# Personal tax form (never commit)
+W8BEN*.pdf
