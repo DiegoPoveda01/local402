@@ -18,6 +18,13 @@ const funded = await fetch(`https://friendbot.stellar.org/?addr=${payer.publicKe
 if (!funded.ok) throw new Error(`Friendbot answered ${funded.status}`);
 console.log(`payer ${payer.publicKey()} funded by Friendbot`);
 
+// A cold testnet demo can answer 502 while its facilitator wakes up. Wake it before the agent quotes.
+for (let attempt = 1; ; attempt++) {
+  const status = (await fetch(`${base}/indicadores`)).status;
+  if (status === 402 || attempt === 3) break;
+  console.log(`demo answered ${status}, retrying`);
+}
+
 const history = join(mkdtempSync(join(tmpdir(), "local402-e2e-")), "history.jsonl");
 const client = new Client({ name: "local402-e2e", version: "1.0.0" });
 await client.connect(
