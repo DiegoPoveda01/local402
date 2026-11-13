@@ -57,8 +57,8 @@ export interface Local402ClientOptions {
   payWith?: PayAsset;
   /** Refuse any single payment worth more than this local price, e.g. "500 CLP", whatever currency it is priced in. */
   maxPrice?: string;
-  /** Refuse any payment that would take total spending past this budget. */
-  budget?: SpendingBudget;
+  /** Refuse any payment that would take spending past this budget, or past any of several (e.g. daily and total). */
+  budget?: SpendingBudget | SpendingBudget[];
   /** Refuse quotes charging more than this above the client's own oracle rate. Default 200 (2%). */
   maxOverchargeBps?: number;
   /** Rates used to check the seller's quote. Defaults to Reflector plus UF. */
@@ -134,7 +134,11 @@ export class Local402Client {
   readonly network: Network;
   private readonly http: x402HTTPClient;
   private readonly maxPrice?: string;
-  readonly budget?: SpendingBudget;
+  readonly budgets: SpendingBudget[];
+  /** The first budget. Kept for 1.0 callers; read `budgets` when there are several. */
+  get budget(): SpendingBudget | undefined {
+    return this.budgets[0];
+  }
   private readonly maxOverchargeBps: bigint;
   private readonly oracle: FiatRateSource;
   private readonly maxFxPremiumBps: number;
@@ -163,7 +167,7 @@ export class Local402Client {
           });
     this.http = new x402HTTPClient(new x402Client().register("stellar:*", scheme));
     this.maxPrice = options.maxPrice;
-    this.budget = options.budget;
+    this.budgets = options.budget === undefined ? [] : [options.budget].flat();
     this.maxOverchargeBps = BigInt(options.maxOverchargeBps ?? 200);
     this.oracle = options.oracle ?? new UfRateSource(new ReflectorFiatOracle());
     this.maxFxPremiumBps = options.maxFxPremiumBps ?? 500;
@@ -204,16 +208,17 @@ export class Local402Client {
     // Reserve the amount so concurrent payments cannot overrun the budget together. The budget is checked
     // again here, with no await before the reservation: another payment may have reserved since `check`.
     const charged = BigInt(price.amount);
-    if (this.budget) {
-      this.checkBudget(charged, budgetUnits!);
-      this.budget.spent += charged;
-    }
+    this.checkBudgets(charged, budgetUnits);
+    for (const budget of this.budgets) budget.spent += charged;
+    const release = () => {
+      for (const budget of this.budgets) budget.spent -= charged;
+    };
     const paid = await fetch(url, { ...NO_CACHE, headers: this.http.encodePaymentSignatureHeader(payload) }).catch((error) => {
-      if (this.budget) this.budget.spent -= charged;
+      release();
       throw error;
     });
     if (!paid.ok) {
-      if (this.budget) this.budget.spent -= charged;
+      release();
       throw new Local402Error("PAYMENT_FAILED", `Payment failed (HTTP ${paid.status}): ${await refusalReason(paid)}`);
     }
     const settlement = this.http.getPaymentSettleResponse((name) => paid.headers.get(name));
@@ -238,13 +243,13 @@ export class Local402Client {
     await this.check(price);
   }
 
-  /** `checkPrice`, returning the budget limit in USDC units when there is a budget. */
-  private async check(price: Price): Promise<bigint | undefined> {
+  /** `checkPrice`, returning each budget's limit in USDC units. */
+  private async check(price: Price): Promise<bigint[]> {
     const charged = BigInt(price.amount);
-    const [fair, cap, budget] = await Promise.all([
+    const [fair, cap, limits] = await Promise.all([
       price.local && quoteLocalPrice(`${price.local.amount} ${price.local.currency}`, { oracle: this.oracle }),
       this.maxPrice && quoteLocalPrice(this.maxPrice, { oracle: this.oracle }),
-      this.budget && quoteLocalPrice(this.budget.limit, { oracle: this.oracle }),
+      Promise.all(this.budgets.map((budget) => quoteLocalPrice(budget.limit, { oracle: this.oracle }))),
     ]);
     if (fair && charged * 10_000n > BigInt(fair.tokenAmount) * (10_000n + this.maxOverchargeBps)) {
       throw new Local402Error(
@@ -256,16 +261,17 @@ export class Local402Client {
       const label = fair ? `${fair.localAmount} ${fair.currency}` : `${price.amount} USDC units`;
       throw new Local402Error("REFUSED_MAX_PRICE", `Refusing to pay ${label}: above the ${this.maxPrice} limit`);
     }
-    if (!budget) return undefined;
-    const units = BigInt(budget.tokenAmount);
-    this.checkBudget(charged, units);
+    const units = limits.map((limit) => BigInt(limit.tokenAmount));
+    this.checkBudgets(charged, units);
     return units;
   }
 
-  private checkBudget(charged: bigint, units: bigint): void {
-    if (this.budget && this.budget.spent + charged > units) {
-      throw new Local402Error("REFUSED_BUDGET", `Refusing to pay ${formatUnits(charged)} USDC: it would exceed the ${this.budget.limit} budget (${formatUnits(this.budget.spent)} of ${formatUnits(units)} USDC already spent)`);
-    }
+  private checkBudgets(charged: bigint, units: bigint[]): void {
+    this.budgets.forEach((budget, i) => {
+      if (budget.spent + charged > units[i]) {
+        throw new Local402Error("REFUSED_BUDGET", `Refusing to pay ${formatUnits(charged)} USDC: it would exceed the ${budget.limit} budget (${formatUnits(budget.spent)} of ${formatUnits(units[i])} USDC already spent)`);
+      }
+    });
   }
 
   /**
@@ -310,8 +316,8 @@ function checkClientOptions(options: Local402ClientOptions): void {
   }
   if (options.rpcUrl !== undefined && !/^https?:\/\/\S+$/.test(options.rpcUrl)) throw invalid("rpcUrl must be an http(s) URL, e.g. https://soroban-testnet.stellar.org.");
   if (options.maxPrice !== undefined) parseLocalPrice(options.maxPrice);
-  if (options.budget !== undefined && !(options.budget instanceof SpendingBudget)) {
-    throw invalid('budget must be a SpendingBudget, e.g. new SpendingBudget("5000 CLP").');
+  if (options.budget !== undefined && ![options.budget].flat().every((budget) => budget instanceof SpendingBudget)) {
+    throw invalid('budget must be a SpendingBudget or an array of them, e.g. new SpendingBudget("5000 CLP").');
   }
   for (const name of ["oracle", "assetOracle"] as const) {
     if (options[name] !== undefined && typeof options[name]?.getRate !== "function") {

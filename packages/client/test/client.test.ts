@@ -63,6 +63,20 @@ describe("Local402Client.checkPrice", () => {
     budget.spent += 527043n;
     await expect(usdc.checkPrice(price("527043"))).rejects.toMatchObject({ code: "REFUSED_BUDGET", message: expect.stringMatching(/exceed the 100 CLP budget/) });
   });
+
+  it("enforces every budget it is given", async () => {
+    // 100 CLP/day and 1000 CLP in total: the daily one stops the third 50 CLP payment, then the total one stops a new day.
+    const [daily, total] = [new SpendingBudget("100 CLP"), new SpendingBudget("1000 CLP")];
+    const payer = new Local402Client({ secret: Keypair.random().secret(), oracle, budget: [daily, total] });
+    daily.spent = total.spent = 1054086n;
+    await expect(payer.checkPrice(price("527043"))).rejects.toMatchObject({ code: "REFUSED_BUDGET", message: expect.stringMatching(/100 CLP budget/) });
+    daily.spent = 0n;
+    total.spent = 10540860n - 527042n; // 1000 CLP = 10540860 units, one unit short of room
+    await expect(payer.checkPrice(price("527043"))).rejects.toMatchObject({ code: "REFUSED_BUDGET", message: expect.stringMatching(/1000 CLP budget/) });
+    total.spent -= 1n;
+    await expect(payer.checkPrice(price("527043"))).resolves.toBeUndefined();
+    expect(payer.budget).toBe(daily);
+  });
 });
 
 describe("Local402Client.checkFxLeg", () => {
