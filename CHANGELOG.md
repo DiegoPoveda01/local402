@@ -4,6 +4,20 @@ The four packages (`local402-pricing`, `local402-fx`, `local402-client` and `loc
 version from 1.0 on. `local402-facilitator`, the facilitator kit new in 1.0, is released with them under
 the same version.
 
+## Unreleased
+
+### Added
+
+- **`local402-client` accepts several budgets.** `budget` takes one `SpendingBudget` or an array, and a
+  payment must fit every one of them, so a daily and a total limit can be enforced together. `client.budget`
+  still returns the first.
+- **`local402-mcp` 1.0.0.** Per-payment, daily and total limits in any supported currency (`LIMITS=2000 CLP/day,
+  5000 NGN/payment`), converted with the oracle sellers price with and counted from a payment history on disk,
+  so they hold across restarts. New `local402_quote` (prices without paying) and `local402_history` tools,
+  and `local402_discover` filters by currency and maximum price. Defaults are low limits on testnet; any
+  `NETWORK` other than `stellar:testnet` or `stellar:pubnet` is refused. Setup for Claude Code, Claude Desktop
+  and Cursor in its README, and CI runs an end-to-end job that quotes, pays and reads the history on testnet.
+
 ## 1.0.1
 
 ### Fixed

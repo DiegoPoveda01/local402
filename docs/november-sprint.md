@@ -39,6 +39,28 @@ evidence depends on another team or person.
 
 Progress and its evidence links are posted to Passport every week, as in October.
 
+## Evidence
+
+### D1: testnet payments made by an agent through `local402-mcp`
+
+Ten payments of 50 CLP (0.0502463 USDC each, paid with XLM through `exact-fx`) for
+`https://local402.vercel.app/indicadores`, made on 13-11-2026 by `scripts/mcp-e2e.ts`: an MCP client that
+starts the server, discovers the route with the currency and price filters, quotes it, pays it ten times and
+finds every transaction in `local402_history`. Payer `GAMEBKSUXN7JVQDGSAIX2ATSZUISQIC6RZVEGFYYVK52236KIECWOPXC`.
+
+| # | Transaction |
+| --- | --- |
+| 1 | [`c8d4a0d6…8ef38`](https://stellar.expert/explorer/testnet/tx/c8d4a0d67d128d8982993ca9308c8a316927d18f8061b7a3fef6e36110b8ef38) |
+| 2 | [`c7fa10c4…f2a02`](https://stellar.expert/explorer/testnet/tx/c7fa10c4d662a8f616be72238c18103f8b5542f1f5dd722b667c7c2b577f2a02) |
+| 3 | [`d6683110…db168`](https://stellar.expert/explorer/testnet/tx/d66831106bda0f1f48905463f7b0c27f2aa796a88aadd3c8ee045db4327db168) |
+| 4 | [`0acd361f…6a4f0`](https://stellar.expert/explorer/testnet/tx/0acd361f9e1f3b01f5ce77fe9f14745d100890b50d8a38fd5f57629cf0a6a4f0) |
+| 5 | [`0deb5dcf…30144`](https://stellar.expert/explorer/testnet/tx/0deb5dcfa7c583a3ff16fe57606384779dfb0cb0058da609b469265ae1230144) |
+| 6 | [`7d6393f3…88640`](https://stellar.expert/explorer/testnet/tx/7d6393f3d6d77739dae5c9db1fc12c827707e34b3df71e8712b7d93916588640) |
+| 7 | [`9c8f8849…e870c`](https://stellar.expert/explorer/testnet/tx/9c8f884970de3aa3dcf4cd8b04624c81a3b30f2aa3c12c8739705957cde1870c) |
+| 8 | [`195dd3b3…12164`](https://stellar.expert/explorer/testnet/tx/195dd3b3e1da28f0dc3a5e0c83dc8c48169055e4cc765550dbeba8e358c12164) |
+| 9 | [`8664695a…660cf`](https://stellar.expert/explorer/testnet/tx/8664695a2d1a527c0b85cb09b9ffc9038212e553e1ad259dd8f3a615e0c660cf) |
+| 10 | [`ae36a8a9…b3b19`](https://stellar.expert/explorer/testnet/tx/ae36a8a99078a0333ed318d6e5f2b985aa359146d774735b307e693b4e8d3b19) |
+
 ## Explicitly not in this sprint
 
 - **Anything delivered in October** (the 1.0 packages, the facilitator kit, the integration guide, the CI

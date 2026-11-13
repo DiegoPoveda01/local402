@@ -1,6 +1,6 @@
 {
   "name": "@local402/mcp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "bin": {
@@ -13,6 +13,7 @@
     "@local402/client": "*",
     "@local402/pricing": "*",
     "@modelcontextprotocol/sdk": "1.30.0",
+    "@stellar/stellar-sdk": "16.4.1",
     "@x402/core": "2.25.0",
     "@x402/extensions": "2.25.0",
     "zod": "^3.25.0"

@@ -18,6 +18,19 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  # An MCP client starts local402-mcp, then quotes, pays and reads its history against the testnet demo.
+  # The payer is a fresh Friendbot account paying with XLM, so the job needs no secrets.
+  mcp-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/mcp-e2e.ts
+
   soroban:
     runs-on: ubuntu-latest
     defaults:
