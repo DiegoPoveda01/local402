@@ -13,7 +13,7 @@ What you will have at the end:
 - a seller on `localhost:4021` with `GET /weather` priced at `50 CLP`;
 - two paid requests, one in USDC (`exact`) and one in XLM (`exact-fx`), with their transactions on
   stellar.expert;
-- a `/receipts` route that lists what was sold, in pesos and in USDC.
+- `/receipts` and `/receipts.csv` routes that list what was sold, in pesos and in USDC.
 
 Every function used here is described in the [API reference](api-reference.md). Every error code is in
 [errors.md](errors.md).
@@ -130,28 +130,17 @@ Save this as `server.ts`:
 ```ts
 import express from "express";
 import { paymentMiddleware } from "@x402/express";
-import { local402Server, localRoute } from "local402-server";
+import { FileReceiptStore, local402Server, localRoute, receiptsHandler, recordReceipts } from "local402-server";
 
 const price = "50 CLP";
 const payTo = process.env.PAY_TO!;
-const explorer = "https://stellar.expert/explorer/testnet/tx/";
-const receipts: object[] = [];
+const receipts = new FileReceiptStore("receipts.json");
 
-const server = local402Server(process.env.FACILITATOR_URL).onAfterSettle(async ({ requirements, result }) => {
-  const quote = requirements.extra?.local402 as { localAmount: string; currency: string; usdPerUnit: string; oracleSource: string };
-  receipts.unshift({
-    paidAt: new Date().toISOString(),
-    price: `${quote.localAmount} ${quote.currency}`,
-    rate: `1 ${quote.currency} = ${quote.usdPerUnit} USD (${quote.oracleSource})`,
-    scheme: requirements.scheme,
-    received: `${Number(requirements.amount) / 1e7} USDC`,
-    payer: result.payer,
-    transaction: `${explorer}${result.transaction}`,
-  });
-});
+const server = local402Server(process.env.FACILITATOR_URL).onAfterSettle(recordReceipts(receipts));
 
 const app = express();
-app.get("/receipts", (_req, res) => res.json(receipts));
+app.get("/receipts", receiptsHandler(receipts));
+app.get("/receipts.csv", receiptsHandler(receipts, "csv"));
 app.use(
   paymentMiddleware(
     { "GET /weather": localRoute(price, { payTo, description: "Weather in Santiago" }) },
@@ -170,7 +159,8 @@ Three lines do the pricing:
   and `exact-fx` (XLM or EURC) and sends them to your facilitator.
 - `paymentMiddleware` comes from x402 itself. Local402 adds a price, not a new middleware.
 
-The `onAfterSettle` hook runs after every settled payment. Step 8 uses it.
+`recordReceipts` is an `onAfterSettle` hook: after every settled payment it writes one receipt to
+`receipts.json`. Step 8 reads them.
 
 Start the seller and leave it running:
 
@@ -375,36 +365,50 @@ try {
 
 ## 8. Receipts
 
-Open <http://localhost:4021/receipts>. The `onAfterSettle` hook from step 4 recorded every sale, newest first:
+Open <http://localhost:4021/receipts>. Every sale is there, newest first:
 
 ```json
 [
   {
+    "id": "000002",
+    "resource": "http://localhost:4021/weather",
     "paidAt": "2026-10-31T02:46:51.456Z",
-    "price": "50 CLP",
-    "rate": "1 CLP = 0.00101055585484 USD (reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC)",
     "scheme": "exact-fx",
-    "received": "0.0505278 USDC",
+    "network": "stellar:testnet",
     "payer": "G...",
-    "transaction": "https://stellar.expert/explorer/testnet/tx/4d282cad..."
+    "payTo": "G...",
+    "local": { "amount": "50", "currency": "CLP" },
+    "rate": { "usdPerUnit": "0.00101055585484", "source": "reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC", "oracleTimestamp": 1793414700 },
+    "settled": { "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "amount": "505278", "decimals": 7 },
+    "spent": { "asset": "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC", "amount": "4771234" },
+    "transaction": "4d282cad..."
   },
   {
-    "paidAt": "2026-10-31T02:46:30.112Z",
-    "price": "50 CLP",
-    "rate": "1 CLP = 0.00101055585484 USD (reflector:CBKGPWGKSKZF52CFHMTRR23TBWTPMRDIYZ4O2P5VS65BMHYH4DXMCJZC)",
+    "id": "000001",
     "scheme": "exact",
-    "received": "0.0505278 USDC",
-    "payer": "G...",
-    "transaction": "https://stellar.expert/explorer/testnet/tx/253844ce..."
+    "local": { "amount": "50", "currency": "CLP" },
+    "settled": { "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "amount": "505278", "decimals": 7 },
+    "transaction": "253844ce...",
+    "...": "same fields as above"
   }
 ]
 ```
 
-That is what a seller books: the sale in pesos, the rate it was converted at and from which oracle, the
-USDC received and the transaction that proves it. The hook receives `requirements` (what was charged,
-with the quote in `requirements.extra.local402`) and `result` (the transaction hash and the payer). This
-example keeps receipts in memory, so they disappear when the process stops; store them in a database in a
-real deployment.
+<http://localhost:4021/receipts.csv> downloads the same receipts as a spreadsheet, one row per sale:
+
+```text
+id,paid_at,resource,local_amount,currency,usd_per_unit,rate_source,oracle_time,usdc_received,paid_asset,paid_amount,fx_premium_bps,scheme,network,payer,pay_to,transaction
+000002,2026-10-31T02:46:51.456Z,http://localhost:4021/weather,50,CLP,0.00101055585484,reflector:CBKG...,2026-10-31T02:45:00.000Z,0.0505278,XLM,0.4771234,,exact-fx,stellar:testnet,G...,G...,4d282cad...
+000001,2026-10-31T02:46:30.112Z,http://localhost:4021/weather,50,CLP,0.00101055585484,reflector:CBKG...,2026-10-31T02:45:00.000Z,0.0505278,USDC,0.0505278,,exact,stellar:testnet,G...,G...,253844ce...
+```
+
+That is what a seller books: the sale in pesos, the rate it was converted at, from which oracle and when
+it was published, the USDC received and the transaction that proves it. Paste a `transaction` into
+[stellar.expert](https://stellar.expert/explorer/testnet) to see the same USDC arrive at `pay_to`.
+
+`receipts.json` survives restarts, for one process. With several instances, or to keep receipts in your
+own database, implement the two methods of `ReceiptStore` (`add` and `list`) and pass that instead; the
+[API reference](api-reference.md#receipts) has the contract.
 
 ## 9. Another currency
 
@@ -433,12 +437,11 @@ changes:
 1. **The seller's address.** `PAY_TO` must be a mainnet account with a trustline to Circle's USDC
    (`USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`). Any wallet that holds USDC on
    Stellar already has one. Only the public key goes in your config.
-2. **The network, in three places in `server.ts`.**
+2. **The network, in two places in `server.ts`.** Receipts record it, so mainnet rows say `stellar:pubnet`.
 
    ```ts
    localRoute(price, { payTo, network: "stellar:pubnet" })
    local402Server(process.env.FACILITATOR_URL, "stellar:pubnet")
-   const explorer = "https://stellar.expert/explorer/public/tx/";   // receipts link to mainnet
    ```
 
 3. **A mainnet facilitator.** Either:

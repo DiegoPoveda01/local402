@@ -387,10 +387,10 @@ export function ReceiptCard() {
   return (
     <div className="receipt" translate="no" key={r?.transaction}>
       <div style={{ "--i": 0 } as CSSProperties}>receipts.csv · {r ? r.id : "000004"} · {r ? r.paidAt.slice(0, 10) : "2026-10-07"}</div>
-      {row(1, "monto_local, moneda", r ? `${r.local.amount} ${r.local.currency}` : "50 CLP")}
-      {row(2, "activo_pagado, monto_pagado", r ? (r.spent ? `${symbolMainnet(r.spent.asset)} ${csv(r.spent.amount, 7)}` : `USDC ${csv(r.settled.amount, r.settled.decimals)}`) : "USDC 0.0512658")}
-      <div style={{ "--i": 3 } as CSSProperties}><span className="meta">usdc_recibido</span><div className="big ok">{r ? csv(r.settled.amount, r.settled.decimals) : "0.0512658"}</div></div>
-      {row(4, "transaccion", r ? <TxLink hash={r.transaction} net="public" /> : "c5977d…6bb350")}
+      {row(1, "local_amount, currency", r ? `${r.local.amount} ${r.local.currency}` : "50 CLP")}
+      {row(2, "paid_asset, paid_amount", r ? (r.spent ? `${symbolMainnet(r.spent.asset)} ${csv(r.spent.amount, 7)}` : `USDC ${csv(r.settled.amount, r.settled.decimals)}`) : "USDC 0.0512658")}
+      <div style={{ "--i": 3 } as CSSProperties}><span className="meta">usdc_received</span><div className="big ok">{r ? csv(r.settled.amount, r.settled.decimals) : "0.0512658"}</div></div>
+      {row(4, "transaction", r ? <TxLink hash={r.transaction} net="public" /> : "c5977d…6bb350")}
       <span className="watermark" aria-hidden="true"></span>
       <span className="stamp" translate="yes">{tr("Pagado", "Paid")}</span>
     </div>

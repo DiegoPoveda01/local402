@@ -24,7 +24,7 @@ Conventions on this page:
 ## local402-server
 
 ```ts
-import { localRoute, local402Server, Local402Error } from "local402-server";
+import { localRoute, local402Server, recordReceipts, FileReceiptStore, receiptsHandler, Local402Error } from "local402-server";
 import { localToolPayment } from "local402-server/mcp";
 ```
 
@@ -71,6 +71,82 @@ runs after each settled payment, which is where receipts come from:
 | `result.transaction` | The settlement transaction hash. |
 | `result.payer` | The payer's public key. |
 | `result.extra.sendAsset`, `result.extra.sendAmount` | On `exact-fx`, the asset the payer spent and how much. |
+
+`recordReceipts` below turns those values into a receipt, so most sellers never read them by hand.
+
+### Receipts
+
+One receipt per settled payment, kept in a store and served as JSON or CSV:
+
+```ts
+const receipts = new FileReceiptStore("receipts.json");
+const server = local402Server(url).onAfterSettle(recordReceipts(receipts));
+app.get("/receipts", receiptsHandler(receipts));
+app.get("/receipts.csv", receiptsHandler(receipts, "csv"));
+```
+
+#### `Receipt`
+
+| Field | Type | |
+| --- | --- | --- |
+| `id` | `string` | Unique in its store. The stores below number receipts `000001`, `000002`… |
+| `resource` | `string` | URL that was paid for. |
+| `paidAt` | `string` | ISO 8601 time the payment settled. |
+| `scheme` | `string` | `"exact"` or `"exact-fx"`. |
+| `network` | `string` | `"stellar:testnet"` or `"stellar:pubnet"`. |
+| `payer` | `string?` | Payer's public key. |
+| `payTo` | `string` | Address that received the USDC. |
+| `local` | `{ amount, currency }` | The price as the seller set it, e.g. `50` `CLP`. |
+| `rate` | `{ usdPerUnit, source, oracleTimestamp }` | Rate the quote used, its oracle, and when the oracle published it (Unix seconds). |
+| `settled` | `{ asset, amount, decimals }` | USDC received, in its smallest unit. |
+| `spent` | `{ asset, amount }?` | On `exact-fx`, the asset the payer spent and how much. |
+| `fxPremiumBps` | `number?` | On `exact-fx`, how much more the payer spent than the oracle value of the USDC, when `fxPremium` is given. |
+| `transaction` | `string` | Settlement transaction hash. |
+
+#### `ReceiptStore`
+
+The interface every store implements. Write one to keep receipts in your own database:
+
+```ts
+interface ReceiptStore {
+  /** Saves a receipt and returns it with an id unique within the store. */
+  add(receipt: Omit<Receipt, "id">): Promise<Receipt>;
+  /** Every receipt, newest first. */
+  list(): Promise<Receipt[]>;
+}
+```
+
+| Store | Keeps receipts |
+| --- | --- |
+| `new MemoryReceiptStore()` | For as long as the process runs. |
+| `new FileReceiptStore(path)` | In a JSON file, across restarts, for one process. A file that is not a JSON array throws `INVALID_CONFIG` when the store opens, rather than being overwritten. |
+
+`receiptId(n)` formats the numbered ids, for a store that wants the same ones.
+
+#### `recordReceipts(store, options?)`
+
+An `onAfterSettle` hook that adds one receipt per settled payment that carries a Local402 quote.
+
+| Option | Type | |
+| --- | --- | --- |
+| `fxPremium` | `(spent, settledAmount) => Promise<number \| undefined>` | Prices what an `exact-fx` swap cost, in basis points. If it throws, the receipt is kept without `fxPremiumBps`. |
+| `onReceipt` | `(receipt) => void` | Called with each stored receipt, e.g. to push it to a dashboard. |
+
+#### `receiptsHandler(store, format?)`
+
+A request handler on Node's `IncomingMessage` and `ServerResponse`, so it mounts on Express and on
+`http.createServer` as is. `format` is `"json"` (default) or `"csv"`, served as a download named
+`local402-receipts.csv`. It answers 503 when the store fails.
+
+#### `receiptsToCsv(receipts)`, `receiptsToJson(receipts)`
+
+The two exports as strings. The CSV has one row per receipt, with the columns in `RECEIPT_CSV_COLUMNS`:
+
+`id, paid_at, resource, local_amount, currency, usd_per_unit, rate_source, oracle_time, usdc_received,
+paid_asset, paid_amount, fx_premium_bps, scheme, network, payer, pay_to, transaction`
+
+Amounts are exact decimals (`0.0527043`, never floating point), times are ISO 8601, `paid_asset` is
+`USDC`, `XLM` or `EURC`, and a cell that a spreadsheet would run as a formula is prefixed with `'`.
 
 ### `localToolPayment(server, price, options)` (from `local402-server/mcp`)
 

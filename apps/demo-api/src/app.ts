@@ -6,9 +6,9 @@ import type { AssetAmount, Network } from "@x402/core/types";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { chileUf, quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSource, type UfValueSource } from "@local402/pricing";
 import { fxNetwork, mainnetShadowQuote, quoteFx } from "@local402/fx";
-import { local402Server, localRoute } from "@local402/server";
+import { FileReceiptStore, local402Server, localRoute, receiptsHandler, recordReceipts } from "@local402/server";
 import { Local402Client, oracleSendAmount, type PayAsset } from "@local402/client";
-import { ReceiptBook, Redis } from "./receipts.js";
+import { ReceiptStream, RedisReceiptStore, Redis } from "./receipts.js";
 
 const NETWORK = (process.env.NETWORK ?? "stellar:testnet") as Network;
 const FACILITATOR_URL = process.env.FACILITATOR_URL ?? "http://localhost:4022";
@@ -51,8 +51,12 @@ const fxPremium = async (spent: { asset: string; amount: string }, settledAmount
   const oracleSend = oracleSendAmount(settledAmount, await sendAssetRate(symbol));
   return Number(((BigInt(spent.amount) - oracleSend) * 10_000n) / oracleSend);
 };
-const receipts = new ReceiptBook({ redis, key: process.env.RECEIPTS_KEY || undefined, fxPremium, file: process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)) });
-const server = local402Server(FACILITATOR_URL, NETWORK).onAfterSettle(receipts.record);
+// Redis is shared by every serverless instance; without it, a file keeps receipts across restarts.
+const receipts = redis
+  ? new RedisReceiptStore(redis, process.env.RECEIPTS_KEY || undefined)
+  : new FileReceiptStore(process.env.RECEIPTS_FILE ?? fileURLToPath(new URL("../data/receipts.json", import.meta.url)));
+const live = new ReceiptStream();
+const server = local402Server(FACILITATOR_URL, NETWORK).onAfterSettle(recordReceipts(receipts, { fxPremium, onReceipt: live.send }));
 
 // The output examples are published through Bazaar so agents can find these routes before paying.
 // Regional routes, each charged in one of its own currencies: units of each currency per US dollar.
@@ -298,49 +302,11 @@ app.get("/demo/quote", async (req, res) => {
   }
 });
 
-app.get("/receipts", async (_req, res) => {
-  res.json(await receipts.list());
-});
-
-/** XLM and every Stellar asset contract this demo accepts publish 7 decimals. */
-const SEND_ASSET_DECIMALS = 7;
-
-const PLAIN_NUMBER = /^-?\d+(\.\d+)?$/;
-/** RFC 4180 quoting, plus the guard a spreadsheet needs: a cell starting with `=` is a formula, not text. */
-function csvCell(value: string | number): string {
-  const text = String(value);
-  const safe = /^[=+\-@\t\r]/.test(text) && !PLAIN_NUMBER.test(text) ? `'${text}` : text;
-  return /[",\n\r]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
-}
-
-app.get("/receipts.csv", async (_req, res) => {
-  const header = "id,fecha,recurso,monto_local,moneda,usd_por_unidad,fuente_tasa,usdc_recibido,activo_pagado,monto_pagado,prima_fx_bps,esquema,pagador,transaccion";
-  const rows = (await receipts.list()).map((r) => {
-    const received = Number(r.settled.amount) / 10 ** r.settled.decimals;
-    return [
-      r.id,
-      r.paidAt,
-      r.resource,
-      r.local.amount,
-      r.local.currency,
-      r.rate.usdPerUnit,
-      r.rate.source,
-      received,
-      r.spent ? (ASSET_SYMBOLS[r.spent.asset] ?? r.spent.asset) : "USDC",
-      r.spent ? Number(r.spent.amount) / 10 ** SEND_ASSET_DECIMALS : received,
-      r.fxPremiumBps ?? "",
-      r.scheme,
-      r.payer ?? "",
-      r.transaction,
-    ]
-      .map(csvCell)
-      .join(",");
-  });
-  res.type("text/csv").attachment("local402-recibos.csv").send([header, ...rows].join("\n"));
-});
+app.get("/receipts", receiptsHandler(receipts));
+app.get("/receipts.csv", receiptsHandler(receipts, "csv"));
 
 app.get("/receipts/stream", (_req, res) => {
-  receipts.subscribe(res);
+  live.subscribe(res);
 });
 
 // Demo payments spend a shared testnet wallet, so they are capped per minute, per visitor and overall.

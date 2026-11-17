@@ -19,7 +19,7 @@ const DESCRIPTIONS: Record<string, string> = {
   pricing: "Price x402 routes in local currency (CLP, UF, EUR, BRL…) with the Reflector oracle on Stellar",
   fx: "exact-fx: x402 payments on Stellar where the payer spends XLM or EURC and the seller receives exact USDC",
   client: "x402 client for Stellar that checks local-currency quotes against its own oracle and pays with USDC, XLM or EURC",
-  server: "One-line local-currency x402 routes and paid MCP tools on Stellar",
+  server: "One-line local-currency x402 routes, paid MCP tools and seller receipts (CSV, JSON) on Stellar",
   facilitator: "Deployable x402 facilitator for Stellar: settles exact and exact-fx, with a seller allowlist, separate verify and settle limits, health and readiness",
   mcp: "MCP server that lets an AI agent discover, quote and pay x402 APIs priced in local currency on Stellar",
 };

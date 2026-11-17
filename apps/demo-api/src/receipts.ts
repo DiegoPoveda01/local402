@@ -1,33 +1,5 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
 import type { Response } from "express";
-import type { SettleResultContext } from "@x402/core/server";
-import type { LocalQuote } from "@local402/pricing";
-
-/** What a seller needs to book a sale made in local currency and settled on Stellar. */
-export interface Receipt {
-  id: string;
-  resource: string;
-  paidAt: string;
-  scheme: string;
-  network: string;
-  payer?: string;
-  payTo: string;
-  /** Price as the seller set it, e.g. 50 CLP. */
-  local: { amount: string; currency: string };
-  /** Exchange rate used for the quote and where it came from. */
-  rate: { usdPerUnit: string; source: string; oracleTimestamp: number };
-  /** Token the seller actually received, in its smallest unit. */
-  settled: { asset: string; amount: string; decimals: number };
-  /** Asset the payer spent when it differs from the settled one (exact-fx). */
-  spent?: { asset: string; amount: string };
-  /** How much more the payer spent than the oracle value of the settled USDC, in basis points (exact-fx). */
-  fxPremiumBps?: number;
-  transaction: string;
-}
-
-/** Premium of an exact-fx payment over the oracle, or undefined when it cannot be priced. */
-export type FxPremium = (spent: { asset: string; amount: string }, settledAmount: string) => Promise<number | undefined>;
+import { receiptId, type Receipt, type ReceiptStore } from "@local402/server";
 
 /** Most recent receipts kept in Redis. */
 const REDIS_LIMIT = 500;
@@ -57,76 +29,35 @@ export class Redis {
   }
 }
 
-export class ReceiptBook {
-  private receipts: Receipt[] = [];
+/** Receipts shared by every serverless instance: a `ReceiptStore` from local402-server, backed by Redis. */
+export class RedisReceiptStore implements ReceiptStore {
+  constructor(
+    private readonly redis: Redis,
+    private readonly key = "local402:receipts",
+  ) {}
+
+  async add(receipt: Omit<Receipt, "id">): Promise<Receipt> {
+    const [count] = await this.redis.pipeline(["INCR", `${this.key}:count`]);
+    const saved = { id: receiptId(Number(count)), ...receipt };
+    await this.redis.pipeline(["LPUSH", this.key, JSON.stringify(saved)], ["LTRIM", this.key, 0, REDIS_LIMIT - 1]);
+    return saved;
+  }
+
+  async list(): Promise<Receipt[]> {
+    const [items] = await this.redis.pipeline(["LRANGE", this.key, 0, -1]);
+    return (items as string[]).map((item) => JSON.parse(item) as Receipt);
+  }
+}
+
+/** Streams new receipts to the dashboard as server-sent events. */
+export class ReceiptStream {
   private readonly listeners = new Set<Response>();
 
-  /**
-   * Keeps receipts in Redis when given one (shared by every serverless instance),
-   * otherwise in memory and, when given a file, across restarts.
-   */
-  constructor(
-    private readonly options: { file?: string; redis?: Redis; key?: string; fxPremium?: FxPremium } = {},
-  ) {
-    if (options.redis || !options.file) return;
-    try {
-      this.receipts = JSON.parse(readFileSync(options.file, "utf8")) as Receipt[];
-    } catch {
-      this.receipts = [];
-    }
-  }
-
-  private get key(): string {
-    return this.options.key ?? "local402:receipts";
-  }
-
-  /** `onAfterSettle` hook for an x402 resource server. */
-  readonly record = async (ctx: SettleResultContext): Promise<void> => {
-    const { requirements, result } = ctx;
-    const quote = requirements.extra?.local402 as LocalQuote | undefined;
-    if (!quote) return;
-    const { redis, file, fxPremium } = this.options;
-    const extra = result.extra as { sendAsset?: string; sendAmount?: string } | undefined;
-    const spent = extra?.sendAsset && extra.sendAmount ? { asset: extra.sendAsset, amount: extra.sendAmount } : undefined;
-    const [count, fxPremiumBps] = await Promise.all([
-      redis ? redis.pipeline(["INCR", `${this.key}:count`]).then(([value]) => Number(value)) : this.receipts.length + 1,
-      spent && fxPremium ? fxPremium(spent, requirements.amount).catch(() => undefined) : undefined,
-    ]);
-    const receipt: Receipt = {
-      id: `${count}`.padStart(6, "0"),
-      resource: ctx.paymentPayload.resource?.url ?? "",
-      paidAt: new Date().toISOString(),
-      scheme: requirements.scheme,
-      network: requirements.network,
-      payer: result.payer,
-      payTo: requirements.payTo,
-      local: { amount: quote.localAmount, currency: quote.currency },
-      rate: { usdPerUnit: quote.usdPerUnit, source: quote.oracleSource, oracleTimestamp: quote.oracleTimestamp },
-      settled: { asset: requirements.asset, amount: requirements.amount, decimals: quote.tokenDecimals },
-      spent,
-      fxPremiumBps,
-      transaction: result.transaction,
-    };
-    if (redis) {
-      await redis.pipeline(["LPUSH", this.key, JSON.stringify(receipt)], ["LTRIM", this.key, 0, REDIS_LIMIT - 1]);
-    } else {
-      this.receipts.unshift(receipt);
-      if (file) {
-        mkdirSync(dirname(file), { recursive: true });
-        writeFileSync(file, JSON.stringify(this.receipts, null, 2));
-      }
-    }
+  readonly send = (receipt: Receipt): void => {
     const event = `data: ${JSON.stringify(receipt)}\n\n`;
     for (const listener of this.listeners) listener.write(event);
   };
 
-  async list(): Promise<Receipt[]> {
-    if (!this.options.redis) return this.receipts;
-    const [items] = await this.options.redis.pipeline(["LRANGE", this.key, 0, -1]);
-    return (items as string[]).map((item) => JSON.parse(item) as Receipt);
-  }
-
-  /** Streams new receipts as server-sent events. */
   subscribe(res: Response): void {
     res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
     res.write(": connected\n\n");

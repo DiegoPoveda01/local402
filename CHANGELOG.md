@@ -4,6 +4,25 @@ The four packages (`local402-pricing`, `local402-fx`, `local402-client` and `loc
 version from 1.0 on. `local402-facilitator`, the facilitator kit new in 1.0, is released with them under
 the same version.
 
+## 1.2.0
+
+### Added
+
+- **Seller receipts in `local402-server`.** `recordReceipts(store)` is an `onAfterSettle` hook that keeps
+  one receipt per settled payment: the price as the seller set it, the exchange rate with its oracle and
+  publication time, the USDC received, what an `exact-fx` payer spent, the payer, the scheme and the
+  transaction hash. `MemoryReceiptStore` and `FileReceiptStore` come with it; any other backend implements
+  the two methods of `ReceiptStore`. `receiptsHandler(store, "json" | "csv")` serves them, and
+  `receiptsToCsv` / `receiptsToJson` export them, with exact decimal amounts and spreadsheet-safe cells.
+  The demo's own receipts code is gone: it records with the package and keeps them in Redis through its
+  own `ReceiptStore`.
+
+### Changed
+
+- The demo's `/receipts.csv` uses the package's English column names (`usdc_received`, not
+  `usdc_recibido`) and adds `oracle_time`, `network` and `pay_to`.
+- The other four packages move to 1.2.0 with `local402-server`, as they share one version.
+
 ## 1.1.0
 
 ### Added

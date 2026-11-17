@@ -2,7 +2,7 @@
 // pays it and reads it back from the payment history. The payer is a new Friendbot account paying with XLM,
 // so it needs no secrets. PAYMENTS=10 pays that many times; the hashes are printed.
 //
-// npx tsx scripts/mcp-e2e.ts [https://local402.vercel.app]
+// npx tsx scripts/mcp-e2e.ts [https://local402.xyz]
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,7 +10,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { Keypair } from "@stellar/stellar-sdk";
 
-const base = (process.argv[2] ?? "https://local402.vercel.app").replace(/\/+$/, "");
+const base = (process.argv[2] ?? "https://local402.xyz").replace(/\/+$/, "");
 const payments = Number(process.env.PAYMENTS ?? 1);
 const payer = Keypair.random();
 

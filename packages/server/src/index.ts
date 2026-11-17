@@ -7,6 +7,7 @@ import { ExactFxServerScheme, FX_SCHEME } from "@local402/fx";
 import { Local402Error, localPrice, ReflectorFiatOracle, UfRateSource, type FiatRateSource, type LocalPriceOptions } from "@local402/pricing";
 
 export { Local402Error, type Local402ErrorCode } from "@local402/pricing";
+export * from "./receipts.js";
 
 export interface LocalRouteOptions extends Omit<RouteConfig, "accepts"> {
   /** Stellar address that receives the USDC. */
