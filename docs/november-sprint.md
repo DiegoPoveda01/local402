@@ -24,7 +24,7 @@ evidence depends on another team or person.
 | # | Deliverable | Done when |
 | --- | --- | --- |
 | D1 | **`local402-mcp` 1.0: agent budgets in local currency.** Per-payment, daily and total limits set as `2000 CLP/day` or `5000 NGN/payment`, converted with the same oracle rate the seller uses and kept across restarts. A quote tool that does not pay, a payment-history tool with each receipt and transaction link, Bazaar discovery filtered by currency and maximum price, and safe defaults (testnet unless mainnet is explicit, low default limits). Setup for Claude Desktop, Claude Code and Cursor through `npx`. | `local402-mcp` 1.0.0 is on npm. CI tests the three budget paths (over the per-payment limit, over the daily limit, after a restart) and runs an end-to-end job where an MCP client quotes, pays and reads its history on testnet. At least 10 testnet payments made by an agent through it are listed here with their hashes. |
-| D2 | **Seller receipts in local currency.** Receipts move from the demo app into `local402-server`: one per settled payment, with the price as the seller set it, the exchange rate and its oracle timestamp, the USDC received, the payer, the scheme and the transaction hash. Memory and file storage, with a documented interface for others, a receipts endpoint, and CSV and JSON export. | `local402-server` 1.1.0 is on npm with a CHANGELOG entry and tests for each storage backend and both formats. Every row of the CSV downloaded from the testnet demo on local402.xyz matches one transaction on stellar.expert, one to one, with the local price, rate and USDC amount. |
+| D2 | **Seller receipts in local currency.** Receipts move from the demo app into `local402-server`: one per settled payment, with the price as the seller set it, the exchange rate and its oracle timestamp, the USDC received, the payer, the scheme and the transaction hash. Memory and file storage, with a documented interface for others, a receipts endpoint, and CSV and JSON export. | `local402-server` 1.2.0 is on npm (written as 1.1.0 before D1 took that version) with a CHANGELOG entry and tests for each storage backend and both formats. Every row of the CSV downloaded from the testnet demo on local402.xyz matches one transaction on stellar.expert, one to one, with the local price, rate and USDC amount. |
 | D3 | **`local402-paywall`: a browser paywall priced in local currency.** It follows the x402 paywall pattern and adds the price in the seller's currency and payment in XLM or EURC through `exact-fx`. When a browser opens a paid route, the seller returns a page with the price (for example 500 CLP) and the amount in the asset the visitor picks. The visitor pays from Varial, with a maximum-price guard so the wallet never signs more than the quote allows, and then sees the content and the transaction link. The same route keeps answering agents with x402. | `local402-paywall` is on npm with tests (quote shown, maximum-price guard, each asset path). A paid testnet route on local402.xyz can be paid by anyone from Varial. One testnet payment in each of USDC, XLM and EURC goes through the published package, and a payment above the quoted maximum is refused before the wallet signs. |
 | D4 | **`npm create local402`: a first paid route in one command.** `create-local402` creates and funds a testnet account through Friendbot, adds the USDC trustline, writes an Express app with a route priced in the currency the seller picks, and makes a paid request against it with `exact` and `exact-fx`, printing the transaction links. The guide gets a quick start that is this one command. | `create-local402` is on npm. A scheduled GitHub Actions workflow runs it every 6 hours on a clean runner against testnet, with the transaction hashes in each run's log, and has run green on at least 10 of its last 12 runs at the end of the sprint, with any failure traced to testnet or Friendbot in the log. Coverage across the packages stays at 80% or more. |
 
@@ -33,7 +33,7 @@ evidence depends on another team or person.
 | Week | Work | End-of-week check |
 | --- | --- | --- |
 | 1 | D1: persistent budgets, quote and history tools, discovery filters, safe defaults, setup docs, end-to-end CI | `local402-mcp` 1.0.0 on npm and an agent paying through it on testnet |
-| 2 | D2: receipts API, the two storage backends, the receipts endpoint, CSV and JSON export | `local402-server` 1.1.0 on npm. The testnet demo records receipts and serves a CSV |
+| 2 | D2: receipts API, the two storage backends, the receipts endpoint, CSV and JSON export | `local402-server` 1.2.0 on npm. The testnet demo records receipts and serves a CSV |
 | 3 | D3: the Varial flow moves out of the demo into `local402-paywall`, with the price page, the three asset paths and the guard | A paid testnet route on local402.xyz that anyone can pay from Varial |
 | 4 | D4: `create-local402`, the scheduled onboarding workflow, the quick start | Every row of the table above has its evidence. A written report goes to the Stellar Chile chapter lead |
 
@@ -60,6 +60,27 @@ finds every transaction in `local402_history`. Payer `GAMEBKSUXN7JVQDGSAIX2ATSZU
 | 8 | [`195dd3b3…12164`](https://stellar.expert/explorer/testnet/tx/195dd3b3e1da28f0dc3a5e0c83dc8c48169055e4cc765550dbeba8e358c12164) |
 | 9 | [`8664695a…660cf`](https://stellar.expert/explorer/testnet/tx/8664695a2d1a527c0b85cb09b9ffc9038212e553e1ad259dd8f3a615e0c660cf) |
 | 10 | [`ae36a8a9…b3b19`](https://stellar.expert/explorer/testnet/tx/ae36a8a99078a0333ed318d6e5f2b985aa359146d774735b307e693b4e8d3b19) |
+
+### D2: the testnet demo's receipts CSV against the chain
+
+`local402-server` 1.2.0 records the receipts of the testnet demo on local402.xyz since 16-11-2026, keeping
+them in Redis through its own `ReceiptStore`. The CSV downloaded from <https://local402.xyz/receipts.csv>
+that day is saved in [evidence/d2-receipts-testnet-2026-11-16.csv](evidence/d2-receipts-testnet-2026-11-16.csv):
+107 receipts from 15-09-2026 on, 49 paid in USDC and 58 through `exact-fx` (51 in XLM, 7 in EURC), priced
+in CLP, NGN, EUR, UF, MXN and INR.
+
+`scripts/verify-receipts.ts` reads each row and looks its transaction up on Horizon. All 107 rows are
+107 different successful transactions, and in each one `pay_to` receives exactly `usdc_received` of
+Circle's testnet USDC. Anyone can repeat it, on the saved file or on the live CSV:
+
+```bash
+npx tsx scripts/verify-receipts.ts docs/evidence/d2-receipts-testnet-2026-11-16.csv
+# 107 rows, 107 transactions, 0 mismatches
+```
+
+Receipt `000107`, the first recorded by the package after the deploy: 50 CLP at 0.00100301261063 USD per
+peso, 0.0501507 USDC received, paid with XLM,
+[`a4b401b2…e6461`](https://stellar.expert/explorer/testnet/tx/a4b401b25f5167f534fb0ac37550ff6fcb5bd3579ed22fe7e1bda12fcebe6461).
 
 ## Explicitly not in this sprint
 
