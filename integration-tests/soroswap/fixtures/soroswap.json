@@ -1,0 +1,750 @@
+{
+  "schema_version": 2,
+  "ledger_snapshot": {
+    "protocol_version": 29,
+    "sequence_number": 65550506,
+    "timestamp": 1795038573,
+    "network_id": "7ac33997544e3175d266bd022439b22cdb16508c01163f26e5cb2a3e1045a979",
+    "base_reserve": 5000000,
+    "min_persistent_entry_ttl": 2073600,
+    "min_temp_entry_ttl": 17280,
+    "max_entry_ttl": 3110400,
+    "ledger_entries": [
+      {
+        "entry": {
+          "last_modified_ledger_seq": 65287496,
+          "data": {
+            "account": {
+              "account_id": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+              "balance": "321099354850",
+              "seq_num": "144373126631784461",
+              "num_sub_entries": 6,
+              "inflation_dest": null,
+              "flags": 2,
+              "home_domain": "circle.com",
+              "thresholds": "00020202",
+              "signers": [
+                {
+                  "key": "GAUKFO2NIYEFO773KJZKLPSPYNQ6M7INPEAIQIJCIH7EEVP2KSVQWGH4",
+                  "weight": 1
+                },
+                {
+                  "key": "GAXFRO4MH6FSBJMNECVZJ6R3ZXANI7CFCMVN47IDNRQDHII3J5HTOZGB",
+                  "weight": 1
+                },
+                {
+                  "key": "GB73YPMX5R5673G35HHAXYUNRS4R4QZEUHCRT3OUAMSH2NUM6KT4N3KO",
+                  "weight": 1
+                },
+                {
+                  "key": "GC6ANHZDMCPKU55BUQIJKI3VOYEMETF7Z46HXQRCNONQXPEXQHCVIAFP",
+                  "weight": 1
+                }
+              ],
+              "ext": {
+                "v1": {
+                  "liabilities": {
+                    "buying": "0",
+                    "selling": "0"
+                  },
+                  "ext": {
+                    "v2": {
+                      "num_sponsored": 0,
+                      "num_sponsoring": 0,
+                      "signer_sponsoring_i_ds": [
+                        null,
+                        null,
+                        null,
+                        null
+                      ],
+                      "ext": {
+                        "v3": {
+                          "ext": "v0",
+                          "seq_ledger": 62313360,
+                          "seq_time": "1777311197"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": null
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 50746276,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAG5LRYQ5JVEUI5TEID72EYOVX44TTUJT5BQR2J6J77FH65PCCFAJDDH",
+              "key": "ledger_key_contract_instance",
+              "durability": "persistent",
+              "val": {
+                "contract_instance": {
+                  "executable": {
+                    "wasm": "4c3db3ebd2d6a2ab23de1f622eaabb39501539b4611b68622ec4e47f76c4ba07"
+                  },
+                  "storage": [
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Factory"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CA4HEQTL2WPEUYKYKCDOHCDNIV4QHNJ7EL4J4NQ6VADP7SYHVRYZ7AW2"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 67234828
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 65550431,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAM7DY53G63XA4AJRS24Z6VFYAFSSF76C3RZ45BE5YU3FQS5255OOABP",
+              "key": "ledger_key_contract_instance",
+              "durability": "persistent",
+              "val": {
+                "contract_instance": {
+                  "executable": {
+                    "wasm": "18051456816b66f12e773a56f77c5794fac1b1fb7ab6e22d4fad5a412770f73e"
+                  },
+                  "storage": [
+                    {
+                      "key": {
+                        "u32": 0
+                      },
+                      "val": {
+                        "address": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+                      }
+                    },
+                    {
+                      "key": {
+                        "u32": 1
+                      },
+                      "val": {
+                        "address": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75"
+                      }
+                    },
+                    {
+                      "key": {
+                        "u32": 2
+                      },
+                      "val": {
+                        "i128": "87023177322"
+                      }
+                    },
+                    {
+                      "key": {
+                        "u32": 3
+                      },
+                      "val": {
+                        "i128": "12000533198"
+                      }
+                    },
+                    {
+                      "key": {
+                        "u32": 4
+                      },
+                      "val": {
+                        "address": "CA4HEQTL2WPEUYKYKCDOHCDNIV4QHNJ7EL4J4NQ6VADP7SYHVRYZ7AW2"
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "METADATA"
+                      },
+                      "val": {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "decimal"
+                            },
+                            "val": {
+                              "u32": 7
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "name"
+                            },
+                            "val": {
+                              "string": "native-USDC Soroswap LP Token"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "symbol"
+                            },
+                            "val": {
+                              "string": "native-USDC-SOROSWAP-LP"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "TotalSupply"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "i128": "27779685437"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 66065648
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 65550431,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "Balance"
+                  },
+                  {
+                    "address": "CAM7DY53G63XA4AJRS24Z6VFYAFSSF76C3RZ45BE5YU3FQS5255OOABP"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "map": [
+                  {
+                    "key": {
+                      "symbol": "amount"
+                    },
+                    "val": {
+                      "i128": "87023177322"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "authorized"
+                    },
+                    "val": {
+                      "bool": true
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "clawback"
+                    },
+                    "val": {
+                      "bool": false
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 66065648
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 50463386,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+              "key": "ledger_key_contract_instance",
+              "durability": "persistent",
+              "val": {
+                "contract_instance": {
+                  "executable": "stellar_asset",
+                  "storage": [
+                    {
+                      "key": {
+                        "symbol": "METADATA"
+                      },
+                      "val": {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "decimal"
+                            },
+                            "val": {
+                              "u32": 7
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "name"
+                            },
+                            "val": {
+                              "string": "native"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "symbol"
+                            },
+                            "val": {
+                              "string": "native"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "AssetInfo"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "vec": [
+                          {
+                            "symbol": "Native"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 68638104
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 62313106,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CCPLJV7AKKFIE4LXFVUWZXDI2HNLEC7U3CQHAMVDLYHQFGMGVTCR4D5W",
+              "key": "ledger_key_contract_instance",
+              "durability": "persistent",
+              "val": {
+                "contract_instance": {
+                  "executable": {
+                    "wasm": "aba81900bc82d24a6f5b66a6fee775bc51543f91dc89e824bd96ffcf3879dba1"
+                  },
+                  "storage": [
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "MintAsset"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Minters"
+                          },
+                          {
+                            "address": "CAE2G5Z77UP7GYPYGFOWFGW7C7J6I4YP2AFGSADRKQY62SYUFLPNFTXL"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CCO3242SDS3TV6T27VXBX65FYEI2A4JJTFVOXPZ6LJQANFFNV3NSD575"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Owner"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "GDTBSE4OQZNASLF2LPSLFZ6ARRWQSDGQUY7EDNKV6YJ5USXJ7SZIINOP"
+                      }
+                    },
+                    {
+                      "key": {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "role"
+                            },
+                            "val": {
+                              "symbol": "admin"
+                            }
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "GDUCZFFNH744QQOAHL4QXIDY5S5RCDGRLMOS5EUXY32KSCCY5AFA6JVE"
+                      }
+                    },
+                    {
+                      "key": {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "role"
+                            },
+                            "val": {
+                              "symbol": "blocklister"
+                            }
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "GDXXIU24VDETZWRNH5NPRNK5F36MTFIF5MSSIYQ4CMSHAKLKSDUVCN3C"
+                      }
+                    },
+                    {
+                      "key": {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "role"
+                            },
+                            "val": {
+                              "symbol": "minter_asset_controller"
+                            }
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "GBPAINTUTPWAHL5ZXC3S2HZA3SN6M5T7CKWWBP2IFLGIJTNRHO73XZPM"
+                      }
+                    },
+                    {
+                      "key": {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "role"
+                            },
+                            "val": {
+                              "symbol": "pauser"
+                            }
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "GCTHERMTWQLKMAI5AETB3L2HJ7U27TGCPROAIPA3WIEXMF6Q7RTU2JOK"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 68345445
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 65550431,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "Balance"
+                  },
+                  {
+                    "address": "CAM7DY53G63XA4AJRS24Z6VFYAFSSF76C3RZ45BE5YU3FQS5255OOABP"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "map": [
+                  {
+                    "key": {
+                      "symbol": "amount"
+                    },
+                    "val": {
+                      "i128": "12000533198"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "authorized"
+                    },
+                    "val": {
+                      "bool": true
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "clawback"
+                    },
+                    "val": {
+                      "bool": false
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 66065648
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 62313360,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+              "key": "ledger_key_contract_instance",
+              "durability": "persistent",
+              "val": {
+                "contract_instance": {
+                  "executable": "stellar_asset",
+                  "storage": [
+                    {
+                      "key": {
+                        "symbol": "METADATA"
+                      },
+                      "val": {
+                        "map": [
+                          {
+                            "key": {
+                              "symbol": "decimal"
+                            },
+                            "val": {
+                              "u32": 7
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "name"
+                            },
+                            "val": {
+                              "string": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "symbol"
+                            },
+                            "val": {
+                              "string": "USDC"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Admin"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "address": "CCPLJV7AKKFIE4LXFVUWZXDI2HNLEC7U3CQHAMVDLYHQFGMGVTCR4D5W"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "AssetInfo"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "vec": [
+                          {
+                            "symbol": "AlphaNum4"
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "asset_code"
+                                },
+                                "val": {
+                                  "string": "USDC"
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "issuer"
+                                },
+                                "val": {
+                                  "bytes": "3b9911380efe988ba0a8900eb1cfe44f366f7dbe946bed077240f7f624df15c5"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 68033878
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 53868378,
+          "data": {
+            "contract_code": {
+              "ext": {
+                "v1": {
+                  "ext": "v0",
+                  "cost_inputs": {
+                    "ext": "v0",
+                    "n_instructions": 8626,
+                    "n_functions": 114,
+                    "n_globals": 3,
+                    "n_table_entries": 12,
+                    "n_types": 36,
+                    "n_data_segments": 3,
+                    "n_elem_segments": 1,
+                    "n_imports": 22,
+                    "n_exports": 26,
+                    "n_data_segment_bytes": 1291
+                  }
+                }
+              },
+              "hash": "18051456816b66f12e773a56f77c5794fac1b1fb7ab6e22d4fad5a412770f73e",
+              "code": ""
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 67235018
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 54106645,
+          "data": {
+            "contract_code": {
+              "ext": {
+                "v1": {
+                  "ext": "v0",
+                  "cost_inputs": {
+                    "ext": "v0",
+                    "n_instructions": 8279,
+                    "n_functions": 71,
+                    "n_globals": 3,
+                    "n_table_entries": 8,
+                    "n_types": 31,
+                    "n_data_segments": 2,
+                    "n_elem_segments": 1,
+                    "n_imports": 28,
+                    "n_exports": 24,
+                    "n_data_segment_bytes": 1219
+                  }
+                }
+              },
+              "hash": "4c3db3ebd2d6a2ab23de1f622eaabb39501539b4611b68622ec4e47f76c4ba07",
+              "code": ""
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 67235018
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 62122165,
+          "data": {
+            "contract_code": {
+              "ext": {
+                "v1": {
+                  "ext": "v0",
+                  "cost_inputs": {
+                    "ext": "v0",
+                    "n_instructions": 8515,
+                    "n_functions": 288,
+                    "n_globals": 4,
+                    "n_table_entries": 7,
+                    "n_types": 35,
+                    "n_data_segments": 1,
+                    "n_elem_segments": 1,
+                    "n_imports": 23,
+                    "n_exports": 31,
+                    "n_data_segment_bytes": 1315
+                  }
+                }
+              },
+              "hash": "aba81900bc82d24a6f5b66a6fee775bc51543f91dc89e824bd96ffcf3879dba1",
+              "code": ""
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 68351483
+      }
+    ]
+  },
+  "known_absent": [
+    "AAAAAAAAAAAha+dS9NTNpcjGasFPQUFyfBbutwGp0fWSmhHY2JyTGA==",
+    "AAAAAAAAAABUeZ0u28RatKnrDiJytf5zht9wWxW433+15pJyrATxVw==",
+    "AAAABgAAAAEltPzYWa7C+mNIQ4xImzw8EMmLbSG+T9PLMMtolT75dwAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAZWCoAoYTyjg/rb7E8QLnleusjXWx3dMKhA2+WSuCnnWAAAAAQ==",
+    "AAAABgAAAAGVgqAKGE8o4P62+xPEC55XrrI11sd3TCoQNvlkrgp51gAAABQAAAAB",
+    "AAAABgAAAAGetNfgUoqCcXctaWzcaNHasgv02KBwMqNeDwKZhqzFHgAAABVM5l8NaFYv7wAAAAA=",
+    "AAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAZWCoAoYTyjg/rb7E8QLnleusjXWx3dMKhA2+WSuCnnWAAAAAQ=="
+  ],
+  "report": {
+    "discovery_rounds": 2,
+    "present_entries": 11,
+    "absent_entries": 6,
+    "final_replay_rpc_reads": 0
+  },
+  "provenance": {
+    "rpc_origin": "https://mainnet.sorobanrpc.com",
+    "network_passphrase": "Public Global Stellar Network ; September 2015",
+    "ledger_sequence": 65550506,
+    "ledger_hash": "bd520c6d7e579e80517234fe0805626f7355e9b57ac0ae9bb8df7ca6ba533581",
+    "protocol_version": 29
+  },
+  "ledger_digest": "c178d438475d1249c7f16983d6f6101f1c60b59b6336cc6fa08b9391e2b45059",
+  "inventory_digest": "107808a27be14ab9df47fc8e373cc1fdfeee55e0074998dbffffe80050ad973d",
+  "canonical_digest": "036f312cb5da3e45b346bdc9159d632ac29a415318f0042d7107bf6d85eefdca"
+}
