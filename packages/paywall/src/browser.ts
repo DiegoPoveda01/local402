@@ -14,12 +14,18 @@ let shown = 0;
 async function showAmount() {
   const choice = picked();
   const turn = ++shown;
-  element("amount").textContent = `Quoting ${choice.payWith}...`;
+  element("amount").classList.add("quoting");
   const text = await estimate(choice.payWith, data.network, choice.asset, choice.amount).then(
-    (amount) => `${amount} ${choice.payWith}${choice.payWith === "USDC" ? "" : " (unused input is refunded)"}`,
+    (amount) => `${amount} ${choice.payWith}`,
     () => `No ${choice.payWith} quote right now`,
   );
-  if (turn === shown) element("amount").textContent = text;
+  if (turn !== shown) return;
+  const amount = element("amount");
+  amount.textContent = text;
+  amount.classList.remove("tween", "quoting");
+  void amount.offsetWidth; // restarts the fade on every change
+  amount.classList.add("tween");
+  element("refund").hidden = choice.payWith === "USDC";
 }
 
 async function connect(): Promise<string> {

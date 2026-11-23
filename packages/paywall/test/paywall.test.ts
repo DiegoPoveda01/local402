@@ -31,7 +31,7 @@ const embedded = (html: string) => JSON.parse(/id="local402-paywall">(.*?)<\/scr
 describe("the paywall page", () => {
   it("shows the local price, each asset the route takes, and the USDC amount", () => {
     const html = local402Paywall().generateHtml(required());
-    expect(html).toContain("<h1>500 CLP</h1>");
+    expect(html).toContain("<h1>500 <em>CLP</em></h1>");
     for (const asset of ["USDC", "XLM", "EURC"]) expect(html).toContain(`value="${asset}"`);
     expect(html).toContain('<p id="amount">0.527043 USDC</p>');
     expect(html).toContain(`src="${PAYWALL_SCRIPT}"`);
