@@ -9,10 +9,11 @@
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { build } from "esbuild";
 
 const OUT = resolve(".npm");
 // Dependency order: each package compiles against the declarations of the ones before it.
-const PACKAGES = ["pricing", "fx", "client", "server", "facilitator"];
+const PACKAGES = ["pricing", "fx", "client", "server", "facilitator", "paywall"];
 // The MCP server is packed last, paying through the compiled client, and is the only packed app under apps/.
 const PACKED = [...PACKAGES, "mcp"];
 const DESCRIPTIONS: Record<string, string> = {
@@ -20,6 +21,7 @@ const DESCRIPTIONS: Record<string, string> = {
   fx: "exact-fx: x402 payments on Stellar where the payer spends XLM or EURC and the seller receives exact USDC",
   client: "x402 client for Stellar that checks local-currency quotes against its own oracle and pays with USDC, XLM or EURC",
   server: "One-line local-currency x402 routes, paid MCP tools and seller receipts (CSV, JSON) on Stellar",
+  paywall: "x402 paywall page for Stellar: shows the local price, lets the visitor pay with USDC, XLM or EURC from Varial, and refuses above a maximum before the wallet signs",
   facilitator: "Deployable x402 facilitator for Stellar: settles exact and exact-fx, with a seller allowlist, separate verify and settle limits, health and readiness",
   mcp: "MCP server that lets an AI agent discover, quote and pay x402 APIs priced in local currency on Stellar",
 };
@@ -91,3 +93,30 @@ for (const name of PACKED) {
   if (existsSync(`${workspace(name)}/README.md`)) copyFileSync(`${workspace(name)}/README.md`, join(dir, "README.md"));
   console.log(`${published(source.name)}@${source.version} → ${dir}`);
 }
+
+// The paywall page loads one self-contained script (dist/browser.js, served from jsDelivr), not the tsc output.
+// The Node-only modules the client pulls in (quote signing, settlement channels) are never called in the
+// browser, so they resolve to empty stubs.
+await build({
+  entryPoints: ["packages/paywall/src/browser.ts"],
+  outfile: join(OUT, "paywall/dist/browser.js"),
+  allowOverwrite: true,
+  bundle: true,
+  platform: "browser",
+  format: "esm",
+  target: "es2022",
+  minify: true,
+  plugins: [
+    {
+      name: "node-stubs",
+      setup(build) {
+        build.onResolve({ filter: /^node:(crypto|async_hooks)$/ }, (args) => ({ path: args.path, namespace: "node-stub" }));
+        build.onLoad({ filter: /.*/, namespace: "node-stub" }, () => ({
+          contents: "export class AsyncLocalStorage {}; export function createHmac() { throw new Error('unavailable in the browser'); }; export function timingSafeEqual() { return false; }",
+        }));
+      },
+    },
+  ],
+  logLevel: "warning",
+});
+console.log(`local402-paywall browser bundle → ${join(OUT, "paywall/dist/browser.js")}`);

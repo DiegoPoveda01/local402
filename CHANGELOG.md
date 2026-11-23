@@ -4,6 +4,26 @@ The four packages (`local402-pricing`, `local402-fx`, `local402-client` and `loc
 version from 1.0 on. `local402-facilitator`, the facilitator kit new in 1.0, is released with them under
 the same version.
 
+## 1.3.0
+
+### Added
+
+- **`local402-paywall`.** An x402 `PaywallProvider` for routes priced with `localRoute`. A browser that
+  opens a paid route gets a page with the local price, a choice of USDC, XLM or EURC with the amount in
+  each, and a button that pays from Varial with `local402-client`. Payments above a maximum (by default
+  the route's price plus 2%) are refused before the wallet is asked to sign. Agents keep getting the
+  x402 402. The page's script is published as `dist/browser.js` and loaded from jsDelivr by default.
+
+### Changed
+
+- **`local402-client` checks every limit before anything is signed.** `pay()` used to create the
+  payment, which signs it, and then check `maxPrice` and the budgets. It now checks the price the 402
+  states first, and checks again only if the payment comes out at a different amount. For `exact-fx`,
+  the FxPay quote plus slippage is checked between the quote and the signature.
+- `local402-fx`: `ExactFxClientScheme` takes a `beforeSign(maxSend, requirements)` hook. It runs after
+  the quote and before any auth entry is signed, and throwing from it stops the payment.
+- The other packages move to 1.3.0 with `local402-paywall`, as they share one version.
+
 ## 1.2.0
 
 ### Added

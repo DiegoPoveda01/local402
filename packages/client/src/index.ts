@@ -164,6 +164,8 @@ export class Local402Client {
             sendAsset: this.payWith === "XLM" ? fx.xlm : fx.eurc,
             rpcConfig,
             slippageBps: options.fxSlippageBps,
+            // The swap's ceiling is known before the wallet is asked to sign; refuse it there.
+            beforeSign: (maxSend, requirements) => this.checkFxLeg(requirements.amount, maxSend),
           });
     this.http = new x402HTTPClient(new x402Client().register("stellar:*", scheme));
     this.maxPrice = options.maxPrice;
@@ -200,9 +202,12 @@ export class Local402Client {
       const offered = required.accepts.map((accept) => `${accept.scheme} on ${accept.network}`).join(", ") || "nothing";
       throw new Local402Error("NO_PAYMENT_OPTION", `The seller accepts ${offered}; this client pays ${this.scheme} (${this.payWith}) on ${this.network}.`);
     }
+    // Every check runs before the payload is created, because creating it is what asks the wallet to sign.
+    const option = required.accepts.find((accept) => accept.scheme === this.scheme && accept.network === this.network)!;
+    const budgetUnits = await this.check(describe(url, option));
     const payload = await this.http.createPaymentPayload(required);
     const price = describe(url, payload.accepted);
-    const budgetUnits = await this.check(price);
+    if (price.amount !== option.amount) await this.check(price);
     const fx = this.payWith === "USDC" ? undefined : await this.checkFxLeg(price.amount, fxMaxSend(payload));
 
     // Reserve the amount so concurrent payments cannot overrun the budget together. The budget is checked

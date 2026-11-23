@@ -8,6 +8,7 @@ import { chileUf, quoteLocalPrice, REFLECTOR_CEX, ReflectorFiatOracle, UfRateSou
 import { fxNetwork, mainnetShadowQuote, quoteFx } from "@local402/fx";
 import { FileReceiptStore, local402Server, localRoute, receiptsHandler, recordReceipts } from "@local402/server";
 import { Local402Client, oracleSendAmount, type PayAsset } from "@local402/client";
+import { local402Paywall } from "@local402/paywall";
 import { ReceiptStream, RedisReceiptStore, Redis } from "./receipts.js";
 
 const NETWORK = (process.env.NETWORK ?? "stellar:testnet") as Network;
@@ -168,6 +169,10 @@ app.use(
   paymentMiddleware(
     { ...Object.fromEntries(products.map(({ path, route }) => [`GET ${path}`, route])), "GET /convertir": convertRoute },
     server,
+    undefined,
+    // A browser opening a paid route gets a page to pay it from Varial; agents keep getting the 402.
+    // PAYWALL_SCRIPT points the page at a local build; by default it loads the published package.
+    local402Paywall({ scriptUrl: process.env.PAYWALL_SCRIPT || undefined }),
   ),
 );
 

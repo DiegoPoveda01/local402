@@ -23,6 +23,11 @@ export interface ExactFxClientOptions {
   /** Seconds of signing time the deadline allows for beyond `maxTimeoutSeconds`. Default `SIGNING_GRACE_SECONDS`. */
   signingGraceSeconds?: number;
   rpcConfig?: RpcConfig;
+  /**
+   * Called with the most `sendAsset` the payment may spend, before anything is built or signed. Throw to
+   * refuse it: the wallet is never asked to sign.
+   */
+  beforeSign?: (maxSend: bigint, requirements: PaymentRequirements) => unknown;
 }
 
 /** Adds `slippageBps` to a quote, rounding up. */
@@ -143,6 +148,7 @@ export class ExactFxClientScheme implements SchemeNetworkClient {
     const i128 = (value: string | bigint) => nativeToScVal(value, { type: "i128" });
 
     const maxSend = maxSendFor(await quoteFx(this.options, network, asset, amount), this.options.slippageBps ?? 200);
+    await this.options.beforeSign?.(maxSend, requirements);
 
     const latestLedger = await getRpcClient(network, rpcConfig).getLatestLedger();
     const ledgerSeconds = await getEstimatedLedgerCloseTimeSeconds(network);

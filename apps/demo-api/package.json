@@ -10,6 +10,7 @@
   "dependencies": {
     "@local402/client": "*",
     "@local402/fx": "*",
+    "@local402/paywall": "*",
     "@local402/pricing": "*",
     "@local402/server": "*",
     "@x402/core": "2.25.0",

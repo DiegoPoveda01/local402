@@ -186,6 +186,22 @@ describe("exact-fx client, against the network", () => {
     network.authFor = Keypair.random().publicKey();
     await expect(client().createPaymentPayload(2, requirements)).rejects.toMatchObject({ code: "SIGNER_MISMATCH" });
   });
+
+  it("asks beforeSign about the quote plus slippage, and signs nothing when it refuses", async () => {
+    const signAuthEntry = vi.fn(payer.signAuthEntry);
+    const refusing = new ExactFxClientScheme(
+      { ...payer, signAuthEntry },
+      {
+        fxContract: FX,
+        sendAsset: XLM,
+        beforeSign: (maxSend) => {
+          throw new Error(`too much: ${maxSend}`);
+        },
+      },
+    );
+    await expect(refusing.createPaymentPayload(2, requirements)).rejects.toThrow(`too much: ${maxSendFor(QUOTE, 200)}`);
+    expect(signAuthEntry).not.toHaveBeenCalled();
+  });
 });
 
 describe("feeBumpSigner", () => {

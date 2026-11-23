@@ -113,6 +113,14 @@ describe("Local402Client.pay guards", () => {
     expect(paid).toHaveLength(0);
   });
 
+  it("refuses a price above maxPrice before the wallet is asked to sign", async () => {
+    const sign = vi.spyOn(ExactStellarScheme.prototype, "createPaymentPayload");
+    const paid = seller(required("527043"));
+    await expect(client({ maxPrice: "40 CLP" }).pay(URL)).rejects.toMatchObject({ code: "REFUSED_MAX_PRICE" });
+    expect(sign).not.toHaveBeenCalled();
+    expect(paid).toHaveLength(0);
+  });
+
   it("gives the reservation back when the seller refuses the payment, with its reason on one bounded line", async () => {
     signsDummy();
     const budget = new SpendingBudget("100 CLP");
