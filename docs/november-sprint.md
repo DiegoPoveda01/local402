@@ -82,6 +82,35 @@ Receipt `000107`, the first recorded by the package after the deploy: 50 CLP at 
 peso, 0.0501507 USDC received, paid with XLM,
 [`a4b401b2…e6461`](https://stellar.expert/explorer/testnet/tx/a4b401b25f5167f534fb0ac37550ff6fcb5bd3579ed22fe7e1bda12fcebe6461).
 
+### D3: `local402-paywall` on local402.xyz, paid from Varial
+
+[`local402-paywall` 1.3.0](https://www.npmjs.com/package/local402-paywall) is on npm, with tests for the
+quote shown, the maximum-price guard and each asset path (`packages/paywall/test`). local402.xyz uses it on
+its paid testnet routes: a browser opening <https://local402.xyz/indicadores> gets a page with the price
+in pesos (50 CLP), a choice of USDC, XLM or EURC with the amount in each, and a button that pays from
+Varial. The page's script is the published `dist/browser.js`, loaded from jsDelivr. An agent asking for the
+same URL still gets the x402 402 as JSON.
+
+Three testnet payments from a Varial wallet through that page, one per asset. In each one the seller
+received the same 0.0490682 USDC:
+
+| Paid with | Spent | Transaction |
+|---|---|---|
+| USDC | 0.0490682 USDC | [`6ee615bc…bef35`](https://stellar.expert/explorer/testnet/tx/6ee615bc8a0cc2bff54fc33dad9048ad56b55534cc61c8bcbc4b35053d4bef35) |
+| XLM | 0.0762033 XLM, 0.0014942 refunded | [`06d38e06…9cfca`](https://stellar.expert/explorer/testnet/tx/06d38e06594d12b2982e052db7db8f730e23952bf8d56426bcc62851d809cfca) |
+| EURC | 0.0108841 EURC, 0.0002135 refunded | [`f91d9ea9…26ea0`](https://stellar.expert/explorer/testnet/tx/f91d9ea99b14f93d3c51d69115595fa6a82bf70cb4adc592f34c0ea855826ea0) |
+
+A payment above the maximum is refused before the wallet is asked to sign.
+[evidence/d3-refusal.mjs](evidence/d3-refusal.mjs) pays the same route with a 40 CLP maximum, through the
+published package, with a wallet that counts the times it is asked to sign:
+
+```
+USDC REFUSED_MAX_PRICE Refusing to pay 50 CLP: above the 40 CLP limit
+XLM REFUSED_MAX_PRICE Refusing to pay 50 CLP: above the 40 CLP limit
+EURC REFUSED_MAX_PRICE Refusing to pay 50 CLP: above the 40 CLP limit
+wallet asked to sign: 0 times
+```
+
 ## Explicitly not in this sprint
 
 - **Anything delivered in October** (the 1.0 packages, the facilitator kit, the integration guide, the CI
