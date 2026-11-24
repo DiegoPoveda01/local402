@@ -1,13 +1,13 @@
 # Paying a 1 USDC invoice with XLM
 
-How much does the buyer spend if their limit is 1 XLM above FxPay’s quote? This test builds FxPay from this checkout and uses [Kanatoko](https://crates.io/crates/kanatoko) to run `quote` and `pay` against the Soroswap XLM/USDC pool at Stellar mainnet ledger **65,550,506**. FxPay quoted **7.2794956 XLM** for 1 USDC.
+How much does the buyer spend if their limit is 1 XLM above FxPay’s quote? This test builds FxPay from this checkout and uses [Kanatoko](https://crates.io/crates/kanatoko) to run `quote` and `pay` against the Soroswap XLM/USDC pool at Stellar Protocol 30 mainnet ledger **65,646,122**. FxPay quoted **7.8542879 XLM** for 1 USDC.
 
 | Same invoice and starting balances | Buyer’s limit | Net spend | Refund | Seller received |
 | --- | ---: | ---: | ---: | ---: |
-| One stroop below the quote | 7.2794955 XLM | 0 XLM | — | 0 USDC |
-| One XLM above the quote | 8.2794956 XLM | 7.2794956 XLM | 1 XLM | 1 USDC |
+| One stroop below the quote | 7.8542878 XLM | 0 XLM | — | 0 USDC |
+| One XLM above the quote | 8.8542879 XLM | 7.8542879 XLM | 1 XLM | 1 USDC |
 
-At the lower limit, FxPay returns `ExcessiveInput` and the buyer, seller, FxPay and pool balances stay put. At the higher limit, the XLM transfer events show the buyer paying FxPay the full 8.2794956 XLM, FxPay sending 7.2794956 XLM to the pool, and 1 XLM going back to the buyer. The USDC transfer events show 1 USDC passing from the pool through FxPay to the seller. FxPay finishes with zero of either asset. [Read the payment assertions](tests/payment.rs#L135).
+At the lower limit, FxPay returns `ExcessiveInput` and the buyer, seller, FxPay and pool balances stay put. At the higher limit, the XLM transfer events show the buyer paying FxPay the full 8.8542879 XLM, FxPay sending 7.8542879 XLM to the pool, and 1 XLM going back to the buyer. The USDC transfer events show 1 USDC passing from the pool through FxPay to the seller. FxPay finishes with zero of either asset. [Read the payment assertions](tests/payment.rs#L135).
 
 The buyer and seller are funded locally and the seller has a USDC trustline. The local host authorizes the buyer’s `pay` call and its single transfer of the spending limit. Wallet signing, facilitator settlement over HTTP and network fees are outside this contract test.
 

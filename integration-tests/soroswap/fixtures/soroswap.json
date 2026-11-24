@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
   "ledger_snapshot": {
-    "protocol_version": 29,
-    "sequence_number": 65550506,
-    "timestamp": 1795038573,
+    "protocol_version": 30,
+    "sequence_number": 65646122,
+    "timestamp": 1795516662,
     "network_id": "7ac33997544e3175d266bd022439b22cdb16508c01163f26e5cb2a3e1045a979",
     "base_reserve": 5000000,
     "min_persistent_entry_ttl": 2073600,
@@ -12,11 +12,11 @@
     "ledger_entries": [
       {
         "entry": {
-          "last_modified_ledger_seq": 65287496,
+          "last_modified_ledger_seq": 65578556,
           "data": {
             "account": {
               "account_id": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-              "balance": "321099354850",
+              "balance": "321182208225",
               "seq_num": "144373126631784461",
               "num_sub_entries": 6,
               "inflation_dest": null,
@@ -112,7 +112,7 @@
       },
       {
         "entry": {
-          "last_modified_ledger_seq": 65550431,
+          "last_modified_ledger_seq": 65646117,
           "data": {
             "contract_data": {
               "ext": "v0",
@@ -146,7 +146,7 @@
                         "u32": 2
                       },
                       "val": {
-                        "i128": "87023177322"
+                        "i128": "90472289201"
                       }
                     },
                     {
@@ -154,7 +154,7 @@
                         "u32": 3
                       },
                       "val": {
-                        "i128": "12000533198"
+                        "i128": "11563501125"
                       }
                     },
                     {
@@ -217,11 +217,11 @@
           },
           "ext": "v0"
         },
-        "live_until": 66065648
+        "live_until": 66154558
       },
       {
         "entry": {
-          "last_modified_ledger_seq": 65550431,
+          "last_modified_ledger_seq": 65646117,
           "data": {
             "contract_data": {
               "ext": "v0",
@@ -244,7 +244,7 @@
                       "symbol": "amount"
                     },
                     "val": {
-                      "i128": "87023177322"
+                      "i128": "90472289201"
                     }
                   },
                   {
@@ -269,7 +269,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 66065648
+        "live_until": 66154558
       },
       {
         "entry": {
@@ -340,7 +340,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 68638104
+        "live_until": 68745049
       },
       {
         "entry": {
@@ -475,7 +475,7 @@
       },
       {
         "entry": {
-          "last_modified_ledger_seq": 65550431,
+          "last_modified_ledger_seq": 65646117,
           "data": {
             "contract_data": {
               "ext": "v0",
@@ -498,7 +498,7 @@
                       "symbol": "amount"
                     },
                     "val": {
-                      "i128": "12000533198"
+                      "i128": "11563501125"
                     }
                   },
                   {
@@ -523,7 +523,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 66065648
+        "live_until": 66154558
       },
       {
         "entry": {
@@ -626,7 +626,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 68033878
+        "live_until": 68213789
       },
       {
         "entry": {
@@ -738,13 +738,13 @@
     "final_replay_rpc_reads": 0
   },
   "provenance": {
-    "rpc_origin": "https://mainnet.sorobanrpc.com",
+    "rpc_origin": "https://rpc.lightsail.network",
     "network_passphrase": "Public Global Stellar Network ; September 2015",
-    "ledger_sequence": 65550506,
-    "ledger_hash": "bd520c6d7e579e80517234fe0805626f7355e9b57ac0ae9bb8df7ca6ba533581",
-    "protocol_version": 29
+    "ledger_sequence": 65646122,
+    "ledger_hash": "a956a4928cf90c34814d3626803344c5574fb8b44a607e10a7036fa45cc2e80e",
+    "protocol_version": 30
   },
-  "ledger_digest": "c178d438475d1249c7f16983d6f6101f1c60b59b6336cc6fa08b9391e2b45059",
-  "inventory_digest": "107808a27be14ab9df47fc8e373cc1fdfeee55e0074998dbffffe80050ad973d",
-  "canonical_digest": "036f312cb5da3e45b346bdc9159d632ac29a415318f0042d7107bf6d85eefdca"
+  "ledger_digest": "4aa5657aa5c8922c6018673578d1b0e7659350feb57f10845785e03222de2ea6",
+  "inventory_digest": "c9c17d0cbad6ebbe011cfbb8265540c4cd3d4d79fdbf9b8366c5af780871ff12",
+  "canonical_digest": "692941fcfe5d8e01d57c3a657d71794b14f302a0fc1bbeaf93d1282f219ad0a4"
 }
