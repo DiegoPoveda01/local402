@@ -167,9 +167,14 @@ export class Local402Client {
             // The swap's ceiling is known before the wallet is asked to sign; refuse it there.
             beforeSign: (maxSend, requirements) => this.checkFxLeg(requirements.amount, maxSend),
           });
-    this.http = new x402HTTPClient(new x402Client().register("stellar:*", scheme));
     this.maxPrice = options.maxPrice;
     this.budgets = options.budget === undefined ? [] : [options.budget].flat();
+    // x402 caps every payment at $1 unless told otherwise. A client with its own limit in local currency checks it
+    // before signing, so that cap would only refuse prices the caller allowed (1.20 EUR, 2000 CLP). Without a limit
+    // of its own, the $1 cap stays.
+    const x402 = new x402Client().register("stellar:*", scheme);
+    if (this.maxPrice !== undefined || this.budgets.length) x402.setSpendControls({ maxAmountPerPayment: false });
+    this.http = new x402HTTPClient(x402);
     this.maxOverchargeBps = BigInt(options.maxOverchargeBps ?? 200);
     this.oracle = options.oracle ?? new UfRateSource(new ReflectorFiatOracle());
     this.maxFxPremiumBps = options.maxFxPremiumBps ?? 500;

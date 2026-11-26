@@ -1,0 +1,35 @@
+name: create-local402 on testnet
+
+# Every 6 hours a clean runner, with no checkout and no secrets, runs the published create-local402 against Stellar
+# testnet: three Friendbot accounts, the USDC trustlines, the generated app installed and started, and one paid
+# request with exact (USDC) and one with exact-fx (XLM). The transaction links go to the run's log and summary.
+on:
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: npm create local402
+        run: |
+          set -o pipefail
+          npx --yes create-local402@latest local402-app --price "50 CLP" 2>&1 | tee run.log
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### create-local402 on testnet"
+            grep -E '^(ok|FAIL) ' run.log || true
+            echo
+            grep -oE 'https://stellar.expert/explorer/testnet/tx/[0-9a-f]{64}' run.log | sort -u | sed 's/^/- /' || true
+            grep -E '^create-local402 failed' run.log || true
+          } >> "$GITHUB_STEP_SUMMARY"

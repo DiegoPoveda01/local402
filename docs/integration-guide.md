@@ -18,6 +18,18 @@ What you will have at the end:
 Every function used here is described in the [API reference](api-reference.md). Every error code is in
 [errors.md](errors.md).
 
+## Quick start: one command
+
+```sh
+npm create local402@latest
+```
+
+It asks for a price in your currency, creates the testnet accounts with Friendbot, writes and installs an app that
+sells `GET /hello` at that price with its own facilitator, and pays it once in USDC (`exact`) and once in XLM
+(`exact-fx`), printing both transactions. A scheduled
+[workflow](https://github.com/DiegoPoveda01/local402/actions/workflows/create-local402.yml) runs it on a clean
+machine every 6 hours. The rest of this guide builds the same thing by hand, one step at a time.
+
 ## 1. Start a facilitator
 
 A facilitator is the service that checks a signed payment and submits it to Stellar. It pays the network

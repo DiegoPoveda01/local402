@@ -4,6 +4,24 @@ The four packages (`local402-pricing`, `local402-fx`, `local402-client` and `loc
 version from 1.0 on. `local402-facilitator`, the facilitator kit new in 1.0, is released with them under
 the same version.
 
+## create-local402 1.0.0 and local402-client 1.3.1
+
+### Added
+
+- **`create-local402`.** `npm create local402` asks for a price in the seller's currency, creates the seller,
+  facilitator and buyer accounts on testnet with Friendbot, adds the USDC trustlines, writes an Express app that
+  sells `GET /hello` at that price with its own facilitator in the same process, installs and starts it, and pays
+  it with USDC (`exact`) and with XLM (`exact-fx`), printing both transaction links. A failure names the step
+  that failed. A scheduled workflow runs it every 6 hours on a clean runner. It has its own version, like
+  `local402-mcp`.
+
+### Fixed
+
+- **`local402-client` paid nothing above $1.** x402 caps each payment at $1 by default, so a 1.20 EUR or
+  2000 CLP route was refused even within `maxPrice`. A client with `maxPrice` or a budget now lifts that
+  cap, since its own limit is checked before signing; a client with neither keeps it. Only `local402-client`
+  moves to 1.3.1; `local402-mcp` and `local402-paywall` pick it up through their `^1.3.0` range.
+
 ## 1.3.0
 
 ### Added

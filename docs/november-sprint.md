@@ -111,6 +111,29 @@ EURC REFUSED_MAX_PRICE Refusing to pay 50 CLP: above the 40 CLP limit
 wallet asked to sign: 0 times
 ```
 
+### D4: `npm create local402`, run every 6 hours on a clean runner
+
+`create-local402` 1.0.0 creates the seller, facilitator and buyer accounts with Friendbot, adds the USDC
+trustlines, writes an Express app that sells `GET /hello` at the price the seller types with its own
+facilitator, installs and starts it, and pays it once with USDC (`exact`) and once with XLM (`exact-fx`). Its
+tests are in `packages/create/test`; coverage across the packages is 81%.
+
+The published package, run as `npx create-local402@latest mi-api --price "1.20 EUR"`. 1.20 EUR was the first
+price above $1, which is how `local402-client` 1.3.1 came about (x402's default $1 cap refused it even within
+`maxPrice`):
+
+| Step | Transaction |
+|---|---|
+| Seller USDC trustline | [`e9a05de3…0d311`](https://stellar.expert/explorer/testnet/tx/e9a05de3ee2be23140f9e0c4624a4dd85d5bfae2139db3c761262555e0d0d311) |
+| Buyer trustline and 2.733146 USDC bought on the testnet DEX | [`0b993014…95d8f`](https://stellar.expert/explorer/testnet/tx/0b993014a5e5bbae45af5b99a69cf623609da8ba88f6aaff651481ba83095d8f) |
+| 1.20 EUR paid with USDC (`exact`), quoted at 1.316573 USDC | [`115d951b…149db`](https://stellar.expert/explorer/testnet/tx/115d951b5744c4f250626aa0d88df3a39915031092e4a4a2a04ef43bed2149db) |
+| 1.20 EUR paid with XLM (`exact-fx`) | [`aa651975…edb82`](https://stellar.expert/explorer/testnet/tx/aa6519750bb20df84413ac5037033eaaaeb819e6cb4224e48f52f2934dfedb82) |
+
+The [scheduled workflow](https://github.com/DiegoPoveda01/local402/actions/workflows/create-local402.yml)
+runs `npx create-local402@latest` every 6 hours on a runner with no checkout and no secrets, and writes each
+run's steps and transaction links to its summary. The record of its last 12 runs goes here at the end of
+the week.
+
 ## Explicitly not in this sprint
 
 - **Anything delivered in October** (the 1.0 packages, the facilitator kit, the integration guide, the CI

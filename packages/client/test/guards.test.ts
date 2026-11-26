@@ -106,6 +106,17 @@ describe("Local402Client.pay guards", () => {
     expect(budget.spent).toBe(527043n);
   });
 
+  it("pays above $1 within its own local limit, and keeps x402's $1 cap when it has none", async () => {
+    signsDummy();
+    // 1500 CLP is about 1.58 USDC.
+    const quote = { localAmount: "1500", currency: "CLP", usdPerUnit: "0", oracleSource: "seller" };
+    seller(required("15811290", quote), settled());
+    await expect(client({ maxPrice: "2000 CLP" }).pay(URL)).resolves.toMatchObject({ price: { amount: "15811290" } });
+    const paid = seller(required("15811290", quote));
+    await expect(client().pay(URL)).rejects.toThrow(/maxAmountPerPayment/);
+    expect(paid).toHaveLength(0);
+  });
+
   it("sends nothing when the seller overcharges its own quote", async () => {
     signsDummy();
     const paid = seller(required("600000"));

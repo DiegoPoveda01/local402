@@ -14,8 +14,9 @@ import { build } from "esbuild";
 const OUT = resolve(".npm");
 // Dependency order: each package compiles against the declarations of the ones before it.
 const PACKAGES = ["pricing", "fx", "client", "server", "facilitator", "paywall"];
-// The MCP server is packed last, paying through the compiled client, and is the only packed app under apps/.
-const PACKED = [...PACKAGES, "mcp"];
+// The MCP server pays through the compiled client and is the only packed app under apps/. create-local402 keeps its
+// own name on npm, so that `npm create local402` finds it.
+const PACKED = [...PACKAGES, "mcp", "create"];
 const DESCRIPTIONS: Record<string, string> = {
   pricing: "Price x402 routes in local currency (CLP, UF, EUR, BRL…) with the Reflector oracle on Stellar",
   fx: "exact-fx: x402 payments on Stellar where the payer spends XLM or EURC and the seller receives exact USDC",
@@ -23,6 +24,7 @@ const DESCRIPTIONS: Record<string, string> = {
   server: "One-line local-currency x402 routes, paid MCP tools and seller receipts (CSV, JSON) on Stellar",
   paywall: "x402 paywall page for Stellar: shows the local price, lets the visitor pay with USDC, XLM or EURC from Varial, and refuses above a maximum before the wallet signs",
   facilitator: "Deployable x402 facilitator for Stellar: settles exact and exact-fx, with a seller allowlist, separate verify and settle limits, health and readiness",
+  create: "npm create local402: a paid x402 route priced in your currency on Stellar testnet, funded, installed and paid in one command",
   mcp: "MCP server that lets an AI agent discover, quote and pay x402 APIs priced in local currency on Stellar",
 };
 

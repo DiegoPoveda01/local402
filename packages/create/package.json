@@ -1,0 +1,18 @@
+{
+  "name": "create-local402",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "bin": {
+    "create-local402": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@local402/client": "*",
+    "@local402/pricing": "*",
+    "@stellar/stellar-sdk": "16.4.1"
+  }
+}
