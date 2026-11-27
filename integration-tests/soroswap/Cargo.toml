@@ -7,7 +7,7 @@ publish = false
 [workspace]
 
 [dev-dependencies]
-kanatoko = { version = "=30.0.0", features = ["capture"] }
+kanatoko = "30.1"
 hex = "0.4"
 serde_json = "1"
 sha2 = "0.10"
