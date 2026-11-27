@@ -1,0 +1,14 @@
+[package]
+name = "local402-kanatoko-demo"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dev-dependencies]
+kanatoko = "30.1"
+hex = "0.4"
+serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
